@@ -1,6 +1,6 @@
 /**
  * Mothership — Chilliwack scenes, drawing helpers, flavour copy.
- * Modes: Shed / Yard / Fly (side-scroller + beam). Theme starts on title cassette insert; press-step joint with Tayler then UFO lands.
+ * Modes: Shed / Yard / Ship (interior) / Fly. Theme starts on title cassette insert; press-step joint with Tayler then UFO lands.
  * Fly scroll is player-driven. No cockpit cassette.
  * Flight: North→South Chilliwack; Mt. Cheam (Lhílheqey) fixed EAST = LEFT of skyline.
  * Characters: Zakk (char-ref-2 all-black) & Tayler (char-ref-1 backwards cap).
@@ -82,6 +82,10 @@
 
   const SHED_WORLD_W = 1520;
   const SHED_DOOR_X = 1420;
+  /** Walkable mothership bridge / control deck */
+  const SHIP_WORLD_W = 980;
+  /** Driver's seat / helm interact X */
+  const SHIP_HELM_X = 720;
   /** Visible cassette prop in shed (on clutter near stereo) */
   const SHED_CASSETTE_X = 600;
   const SHED_CASSETTE_Y_OFF = 42; // above floor
@@ -161,185 +165,156 @@
     ctx.textAlign = 'left';
   }
 
-  // ——— Sky / mountains (Mt. Cheam readable) ———
+  // ——— Sky / mountains: misty layered silhouettes (user haze ref) ———
   function drawSky(ctx, w, h, t) {
-    const g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, '#1a2a4a');
-    g.addColorStop(0.35, '#4a88c0');
-    g.addColorStop(0.7, '#7ec8f0');
-    g.addColorStop(1, '#b8e0a0');
-    ctx.fillStyle = g;
+    // Pale mist sky — off-white to soft blue-grey
+    const gsky = ctx.createLinearGradient(0, 0, 0, h);
+    gsky.addColorStop(0, '#e8eef2');
+    gsky.addColorStop(0.45, '#d5dde4');
+    gsky.addColorStop(0.75, '#c5ced6');
+    gsky.addColorStop(1, '#b8c4cc');
+    ctx.fillStyle = gsky;
     ctx.fillRect(0, 0, w, h);
 
-    // soft sun
-    ctx.fillStyle = 'rgba(255, 230, 160, 0.55)';
-    ctx.beginPath();
-    ctx.arc(w * 0.82, h * 0.13, 30, 0, Math.PI * 2); // west when facing south
-    ctx.fill();
-
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    for (let i = 0; i < 14; i++) {
-      const sx = ((i * 137 + t * 0.015) % w);
-      const sy = 18 + (i * 47) % (h * 0.28);
-      ctx.beginPath();
-      ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    // Soft bright fog glow upper mid
+    const fog = ctx.createRadialGradient(w * 0.45, h * 0.28, 10, w * 0.45, h * 0.35, w * 0.55);
+    fog.addColorStop(0, 'rgba(255,255,255,0.55)');
+    fog.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = fog;
+    ctx.fillRect(0, 0, w, h * 0.7);
   }
 
   /**
-   * Coast / Cascade skyline. Camera faces roughly SOUTH while scrolling RIGHT
-   * (North Chilliwack → South / Cultus). EAST is LEFT of frame — Mt. Cheam
-   * (Lhílheqey) stays pinned there with slow parallax and never leaves screen.
-   * West (RIGHT) has no Cheam — softer foothills / afternoon light only.
+   * Atmospheric Cascade skyline matching misty silhouette photo.
+   * Camera faces SOUTH; EAST = LEFT — Mt. Cheam pinned left, unlabeled.
+   * Layers: pale distant peaks → mid grey ridges → dark tree slope → near charcoal.
    */
   function drawMountains(ctx, w, groundY, scrollX) {
     const base = groundY;
-    // Far Cascade backdrop — denser / taller on the east (left)
-    ctx.fillStyle = '#3a4a5c';
-    ctx.beginPath();
-    ctx.moveTo(-40, base);
-    for (let i = 0; i <= 18; i++) {
-      const x = i * (w / 16) - 20;
-      const eastBias = 1 - i / 18;
-      const peak = base - 42 - eastBias * 70 - ((i * 37) % 28) * (0.4 + eastBias * 0.7);
-      ctx.lineTo(x, peak);
-    }
-    ctx.lineTo(w + 60, base);
-    ctx.closePath();
-    ctx.fill();
+    const cheamX = w * 0.22 + Math.sin(scrollX * 0.0003) * 4;
 
-    // Cheam Range: Welch / Lady / Knight as secondary silhouettes LEFT of Cheam
-    const cheamX = w * 0.20; // fixed EAST = LEFT
-    const cheamParallax = Math.sin(scrollX * 0.00035) * 5;
-    const cx = cheamX + cheamParallax;
-
-    function peak(x0, h, half, col) {
-      const pg = ctx.createLinearGradient(x0 - half, base - h, x0 + half, base);
-      pg.addColorStop(0, col);
-      pg.addColorStop(0.55, col);
-      pg.addColorStop(1, '#1a2834');
-      ctx.fillStyle = pg;
+    function fillPoly(pts, col) {
+      ctx.fillStyle = col;
       ctx.beginPath();
-      ctx.moveTo(x0 - half, base);
-      ctx.lineTo(x0 - half * 0.22, base - h * 0.62);
-      ctx.lineTo(x0, base - h);
-      ctx.lineTo(x0 + half * 0.28, base - h * 0.55);
-      ctx.lineTo(x0 + half, base);
-      ctx.closePath();
-      ctx.fill();
-      // lit west face
-      ctx.fillStyle = 'rgba(180,200,220,0.08)';
-      ctx.beginPath();
-      ctx.moveTo(x0 - half, base);
-      ctx.lineTo(x0 - half * 0.22, base - h * 0.62);
-      ctx.lineTo(x0, base - h);
-      ctx.closePath();
-      ctx.fill();
-      // east face shade
-      ctx.fillStyle = 'rgba(8,12,20,0.32)';
-      ctx.beginPath();
-      ctx.moveTo(x0, base - h);
-      ctx.lineTo(x0 + half * 0.28, base - h * 0.55);
-      ctx.lineTo(x0 + half, base);
+      ctx.moveTo(pts[0], pts[1]);
+      for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
       ctx.closePath();
       ctx.fill();
     }
 
-    // Welch Peak (furthest left, lower ridge)
-    peak(cx - 210, 92, 70, '#3a4c5c');
-    // Lady Peak
-    peak(cx - 138, 118, 62, '#334656');
-    // Knight Peak (closer to Cheam)
-    peak(cx - 72, 128, 58, '#2e4252');
-
-    // snow nubs on companions
-    ctx.fillStyle = '#e8eef4';
+    // Layer 1 — farthest pale mountains (mist-washed)
+    ctx.fillStyle = '#cfd6dd';
     ctx.beginPath();
-    ctx.moveTo(cx - 150, base - 100);
-    ctx.lineTo(cx - 138, base - 118);
-    ctx.lineTo(cx - 124, base - 96);
-    ctx.closePath();
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(cx - 84, base - 110);
-    ctx.lineTo(cx - 72, base - 128);
-    ctx.lineTo(cx - 58, base - 106);
-    ctx.closePath();
-    ctx.fill();
-
-    // Mt. Cheam — sharp pyramidal Cascade, snow cap, always LEFT/EAST
-    ctx.fillStyle = '#2a3a4c';
-    ctx.beginPath();
-    ctx.moveTo(cx - 108, base);
-    ctx.lineTo(cx - 38, base - 128);
-    ctx.lineTo(cx, base - 198);
-    ctx.lineTo(cx + 36, base - 118);
-    ctx.lineTo(cx + 118, base);
-    ctx.closePath();
-    ctx.fill();
-    // darker east face (right side when facing south)
-    ctx.fillStyle = '#1e2c3a';
-    ctx.beginPath();
-    ctx.moveTo(cx, base - 198);
-    ctx.lineTo(cx + 36, base - 118);
-    ctx.lineTo(cx + 118, base);
-    ctx.closePath();
-    ctx.fill();
-    // west face highlight
-    ctx.fillStyle = 'rgba(90,110,130,0.22)';
-    ctx.beginPath();
-    ctx.moveTo(cx - 108, base);
-    ctx.lineTo(cx - 38, base - 128);
-    ctx.lineTo(cx, base - 198);
-    ctx.closePath();
-    ctx.fill();
-    // snow cap
-    ctx.fillStyle = '#eef4fa';
-    ctx.beginPath();
-    ctx.moveTo(cx - 26, base - 154);
-    ctx.lineTo(cx, base - 198);
-    ctx.lineTo(cx + 22, base - 148);
-    ctx.lineTo(cx + 8, base - 140);
-    ctx.lineTo(cx - 4, base - 162);
-    ctx.lineTo(cx - 16, base - 146);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.beginPath();
-    ctx.moveTo(cx - 14, base - 168);
-    ctx.lineTo(cx, base - 198);
-    ctx.lineTo(cx + 4, base - 164);
-    ctx.closePath();
-    ctx.fill();
-    // snow fingers
-    ctx.fillStyle = '#d8e4ee';
-    ctx.beginPath();
-    ctx.moveTo(cx - 10, base - 150);
-    ctx.lineTo(cx - 4, base - 128);
-    ctx.lineTo(cx + 2, base - 148);
-    ctx.closePath();
-    ctx.fill();
-
-
-    // Near foothills
-    ctx.fillStyle = '#4a6a48';
-    ctx.beginPath();
-    ctx.moveTo(0, base);
-    for (let i = 0; i <= 14; i++) {
-      const x = i * (w / 12) - (scrollX * 0.4) % (w / 12);
-      const hMul = i < 6 ? 1.15 : 0.75;
-      ctx.lineTo(x, base - (18 + (i % 4) * 9) * hMul);
-    }
+    ctx.moveTo(-30, base);
+    ctx.lineTo(cheamX - 260, base - 70);
+    ctx.lineTo(cheamX - 200, base - 118);
+    ctx.lineTo(cheamX - 150, base - 88);
+    ctx.lineTo(cheamX - 90, base - 145);
+    ctx.lineTo(cheamX - 40, base - 100);
+    ctx.lineTo(cheamX + 10, base - 175); // Cheam distant pale echo
+    ctx.lineTo(cheamX + 70, base - 95);
+    ctx.lineTo(cheamX + 160, base - 60);
+    ctx.lineTo(w * 0.72, base - 48);
+    ctx.lineTo(w + 40, base - 35);
     ctx.lineTo(w + 40, base);
     ctx.closePath();
     ctx.fill();
 
-    const haze = ctx.createLinearGradient(w * 0.55, 0, w, 0);
-    haze.addColorStop(0, 'rgba(180,200,220,0)');
-    haze.addColorStop(1, 'rgba(200,210,180,0.12)');
-    ctx.fillStyle = haze;
-    ctx.fillRect(w * 0.55, base - 140, w * 0.45, 140);
+    // Valley fog wash over far peaks
+    const mist1 = ctx.createLinearGradient(0, base - 180, 0, base - 40);
+    mist1.addColorStop(0, 'rgba(243,244,246,0.15)');
+    mist1.addColorStop(0.55, 'rgba(243,244,246,0.55)');
+    mist1.addColorStop(1, 'rgba(243,244,246,0.75)');
+    ctx.fillStyle = mist1;
+    ctx.fillRect(0, base - 190, w, 160);
+
+    // Layer 2 — mid blue-grey ridges (Cheam range readable)
+    const mid = '#7a8896';
+    ctx.fillStyle = mid;
+    ctx.beginPath();
+    ctx.moveTo(-20, base);
+    // Welch / Lady / Knight / Cheam silhouettes — flat, no snow detail (haze style)
+    ctx.lineTo(cheamX - 230, base);
+    ctx.lineTo(cheamX - 210, base - 78);
+    ctx.lineTo(cheamX - 175, base - 52);
+    ctx.lineTo(cheamX - 155, base - 105);
+    ctx.lineTo(cheamX - 120, base - 62);
+    ctx.lineTo(cheamX - 95, base - 118);
+    ctx.lineTo(cheamX - 55, base - 70);
+    // Cheam — iconic pyramid, LEFT/EAST
+    ctx.lineTo(cheamX - 28, base - 155);
+    ctx.lineTo(cheamX, base - 210);
+    ctx.lineTo(cheamX + 32, base - 148);
+    ctx.lineTo(cheamX + 95, base - 55);
+    ctx.lineTo(cheamX + 180, base - 42);
+    ctx.lineTo(w * 0.85, base - 28);
+    ctx.lineTo(w + 30, base - 22);
+    ctx.lineTo(w + 30, base);
+    ctx.closePath();
+    ctx.fill();
+
+    // Soft fog between mid and near
+    const mist2 = ctx.createLinearGradient(0, base - 120, 0, base);
+    mist2.addColorStop(0, 'rgba(209,213,219,0.35)');
+    mist2.addColorStop(1, 'rgba(209,213,219,0.65)');
+    ctx.fillStyle = mist2;
+    ctx.fillRect(0, base - 130, w, 130);
+
+    // Layer 3 — dark tree-covered slope (sawtooth evergreens), diagonal like ref
+    const treeCol = '#3d4654';
+    ctx.fillStyle = treeCol;
+    ctx.beginPath();
+    const slopeScroll = (scrollX * 0.12) % 40;
+    ctx.moveTo(-40, base + 10);
+    ctx.lineTo(-40, base - 20);
+    // rising diagonal left→right mid, then trees
+    for (let i = 0; i <= 28; i++) {
+      const x = i * (w / 22) - slopeScroll;
+      const ridge = base - 35 - (i < 14 ? i * 4.2 : (28 - i) * 1.2) - ((i * 17) % 11);
+      const tree = (i % 2 === 0) ? 16 + (i % 5) * 3 : 10 + (i % 3) * 4;
+      ctx.lineTo(x, ridge - tree);
+      ctx.lineTo(x + w / 44, ridge - tree * 0.35);
+    }
+    ctx.lineTo(w + 50, base - 18);
+    ctx.lineTo(w + 50, base + 10);
+    ctx.closePath();
+    ctx.fill();
+
+    // Extra conifer spikes for texture
+    ctx.fillStyle = '#2f3642';
+    for (let i = 0; i < 22; i++) {
+      const x = ((i * 73 - slopeScroll * 2) % (w + 60)) - 20;
+      const y = base - 48 - (i % 7) * 5 - (x < w * 0.45 ? 25 : 8);
+      ctx.beginPath();
+      ctx.moveTo(x, y + 28);
+      ctx.lineTo(x + 7, y);
+      ctx.lineTo(x + 14, y + 28);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Layer 4 — near charcoal rocky foreground silhouette
+    ctx.fillStyle = '#0a0c10';
+    ctx.beginPath();
+    ctx.moveTo(-30, base + 20);
+    ctx.lineTo(-30, base - 8);
+    for (let i = 0; i <= 16; i++) {
+      const x = i * (w / 14) - (scrollX * 0.25) % (w / 14);
+      const jag = base - 6 - ((i * 41) % 18) - (i % 3) * 4;
+      ctx.lineTo(x, jag);
+    }
+    ctx.lineTo(w + 40, base - 4);
+    ctx.lineTo(w + 40, base + 20);
+    ctx.closePath();
+    ctx.fill();
+
+    // Final valley fog veil (ethereal)
+    const mist3 = ctx.createLinearGradient(0, base - 90, 0, base + 5);
+    mist3.addColorStop(0, 'rgba(243,244,246,0)');
+    mist3.addColorStop(0.4, 'rgba(243,244,246,0.25)');
+    mist3.addColorStop(1, 'rgba(229,233,238,0.4)');
+    ctx.fillStyle = mist3;
+    ctx.fillRect(0, base - 100, w, 110);
   }
 
   function drawSmokePuffs(ctx, x, y, t, seed) {
@@ -369,8 +344,9 @@
     // paper tip / filter
     ctx.fillStyle = '#e8d8b0';
     ctx.fillRect(-2, -2.2, 5, 4.4);
-    if (opts.lit !== false && opts.lit !== 0) {
-      const glow = opts.lit === true || opts.lit == null ? 1 : opts.lit;
+    // Cherry only when lit is explicitly truthy (false/0/undefined = unlit)
+    if (opts.lit) {
+      const glow = opts.lit === true ? 1 : Number(opts.lit);
       ctx.fillStyle = '#ff8844';
       ctx.shadowColor = '#ff6622';
       ctx.shadowBlur = 6 * glow;
@@ -484,15 +460,18 @@
       ctx.fillText('roll joint', taylerX + 26, handY - 24);
       ctx.textAlign = 'left';
     } else if (stage === 'light') {
-      drawJoint(ctx, taylerX + 24, handY, -0.45, { lit: 0.5 + p * 0.5 });
-      drawLighterFlame(ctx, taylerX + 40, handY + 6, t);
-      if (p > 0.35) {
-        drawSmokePuffs(ctx, taylerX + 42, handY - 8, t, 1.2);
+      // Zakk lights — lighter at Zakk; joint unlit until ~0.45 then cherry ramps
+      const litAmt = p < 0.45 ? 0 : Math.min(1, (p - 0.45) / 0.55);
+      drawJoint(ctx, taylerX + 24, handY, -0.45, { lit: litAmt > 0 ? litAmt : false });
+      const zSide = zakkX < taylerX ? -1 : 1;
+      drawLighterFlame(ctx, zakkX + zSide * 26, zakkY - 36, t);
+      if (litAmt > 0.2) {
+        drawSmokePuffs(ctx, taylerX + 42, handY - 8, t, 0.6 + litAmt * 1.0);
       }
       ctx.fillStyle = '#ffe8a0';
       ctx.font = 'bold 11px Segoe UI, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('light the joint', taylerX + 30, handY - 26);
+      ctx.fillText('Zakk lights it', (taylerX + zakkX) / 2, handY - 26);
       ctx.textAlign = 'left';
     } else if (stage === 'smoke' || stage === 'pass' || stage === 'watch') {
       // Smoke the joint — handoff + both puffing
@@ -666,11 +645,14 @@
     if (opts.smoking) {
       const jx = x + facing * 22 * scale;
       const jy = y - 20 * scale;
-      drawJoint(ctx, jx, jy, facing > 0 ? -0.5 : Math.PI + 0.5);
-      const smokeMul = opts.heavySmoke ? 2.2 : 1.4;
-      drawSmokePuffs(ctx, jx + facing * 14, jy - 6, t, smokeMul);
-      if (opts.heavySmoke) {
-        drawSmokePuffs(ctx, jx + facing * 8, jy - 18, t + 400, 1.6);
+      const jointLit = !!opts.jointLit;
+      drawJoint(ctx, jx, jy, facing > 0 ? -0.5 : Math.PI + 0.5, { lit: jointLit });
+      if (jointLit) {
+        const smokeMul = opts.heavySmoke ? 2.2 : 1.4;
+        drawSmokePuffs(ctx, jx + facing * 14, jy - 6, t, smokeMul);
+        if (opts.heavySmoke) {
+          drawSmokePuffs(ctx, jx + facing * 8, jy - 18, t + 400, 1.6);
+        }
       }
     }
 
@@ -828,11 +810,14 @@
     if (opts.smoking) {
       const jx = x + facing * 22 * scale;
       const jy = y - (seated ? 16 : 20) * scale;
-      drawJoint(ctx, jx, jy, facing > 0 ? -0.55 : Math.PI + 0.55);
-      const smokeMul = opts.heavySmoke ? 2.0 : 0.8;
-      drawSmokePuffs(ctx, jx + facing * 14, jy - 6, t, smokeMul);
-      if (opts.heavySmoke) {
-        drawSmokePuffs(ctx, jx + facing * 6, jy - 16, t + 300, 1.5);
+      const jointLit = !!opts.jointLit;
+      drawJoint(ctx, jx, jy, facing > 0 ? -0.55 : Math.PI + 0.55, { lit: jointLit });
+      if (jointLit) {
+        const smokeMul = opts.heavySmoke ? 2.0 : 0.8;
+        drawSmokePuffs(ctx, jx + facing * 14, jy - 6, t, smokeMul);
+        if (opts.heavySmoke) {
+          drawSmokePuffs(ctx, jx + facing * 6, jy - 16, t + 300, 1.5);
+        }
       }
     }
 
@@ -850,7 +835,7 @@
     drawZakk(ctx, x, y, facing, moving, t, opts);
   }
   function drawTaylor(ctx, sx, sy, t) {
-    drawTayler(ctx, sx, sy, 1, false, t, { seated: true, smoking: true });
+    drawTayler(ctx, sx, sy, 1, false, t, { seated: true, smoking: true, jointLit: true });
   }
 
   // ——— Shed props ———
@@ -1103,7 +1088,7 @@
     ctx.fillStyle = '#333';
     ctx.fillRect(x + 24, y - 40, 3, 5);
     ctx.fillRect(x + 30, y - 39, 3, 4);
-    drawJoint(ctx, x + 10, y - 40, -0.2);
+    drawJoint(ctx, x + 10, y - 40, -0.2, { lit: false });
     drawSmokePuffs(ctx, x + 42, y - 44, t, 2.1);
   }
 
@@ -1754,85 +1739,97 @@
     ctx.rect(glassX, glassY, glassW, glassH);
     ctx.clip();
 
+    // Misty Chilliwack haze (match drawSky / drawMountains — no bright blue, no snow)
     const skyG = ctx.createLinearGradient(0, glassY, 0, glassY + glassH);
-    skyG.addColorStop(0, '#4a9ae8');
-    skyG.addColorStop(0.35, '#7ebef0');
-    skyG.addColorStop(0.7, '#b8daf8');
-    skyG.addColorStop(1, '#d8ecff');
+    skyG.addColorStop(0, '#e8eef2');
+    skyG.addColorStop(0.4, '#d5dde4');
+    skyG.addColorStop(0.75, '#c5ced6');
+    skyG.addColorStop(1, '#b8c4cc');
     ctx.fillStyle = skyG;
     ctx.fillRect(glassX, glassY, glassW, glassH);
 
-    // soft cloud wisps
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    for (let i = 0; i < 4; i++) {
-      const cx = glassX + 40 + i * 70 + Math.sin(t * 0.0004 + i) * 6;
-      const cy = glassY + 18 + (i % 2) * 14;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, 28, 8, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    const fog = ctx.createRadialGradient(glassX + glassW * 0.45, glassY + glassH * 0.3, 4, glassX + glassW * 0.45, glassY + glassH * 0.35, glassW * 0.55);
+    fog.addColorStop(0, 'rgba(255,255,255,0.45)');
+    fog.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = fog;
+    ctx.fillRect(glassX, glassY, glassW, glassH * 0.7);
 
-    // Mt. Cheam east/left (unlabeled) + companions
     const groundLine = glassY + glassH - 34;
-    ctx.fillStyle = '#2e4254';
+    const cheamX = glassX + glassW * 0.32;
+
+    // Layer 1 — pale distant peaks
+    ctx.fillStyle = '#cfd6dd';
     ctx.beginPath();
     ctx.moveTo(glassX - 4, groundLine);
-    ctx.lineTo(glassX + 36, glassY + 58);
-    ctx.lineTo(glassX + 70, groundLine);
-    ctx.fill();
-    ctx.fillStyle = '#243848';
-    ctx.beginPath();
-    ctx.moveTo(glassX + 20, groundLine);
-    ctx.lineTo(glassX + 78, glassY + 22);
-    ctx.lineTo(glassX + 148, groundLine);
-    ctx.fill();
-    // Cheam pyramid
-    ctx.fillStyle = '#1e3040';
-    ctx.beginPath();
-    ctx.moveTo(glassX + 48, groundLine);
-    ctx.lineTo(glassX + 108, glassY + 10);
-    ctx.lineTo(glassX + 178, groundLine);
-    ctx.fill();
-    // snow cap
-    ctx.fillStyle = '#eef6ff';
-    ctx.beginPath();
-    ctx.moveTo(glassX + 92, glassY + 36);
-    ctx.lineTo(glassX + 108, glassY + 10);
-    ctx.lineTo(glassX + 128, glassY + 40);
-    ctx.closePath();
-    ctx.fill();
-    // east face shade
-    ctx.fillStyle = 'rgba(8,14,22,0.35)';
-    ctx.beginPath();
-    ctx.moveTo(glassX + 108, glassY + 10);
-    ctx.lineTo(glassX + 178, groundLine);
-    ctx.lineTo(glassX + 108, groundLine);
+    ctx.lineTo(cheamX - 90, groundLine - 28);
+    ctx.lineTo(cheamX - 50, groundLine - 52);
+    ctx.lineTo(cheamX - 10, groundLine - 34);
+    ctx.lineTo(cheamX + 20, groundLine - 70);
+    ctx.lineTo(cheamX + 55, groundLine - 38);
+    ctx.lineTo(glassX + glassW + 4, groundLine - 18);
+    ctx.lineTo(glassX + glassW + 4, groundLine);
     ctx.closePath();
     ctx.fill();
 
-    // tree line
-    for (let i = 0; i < 11; i++) {
-      const tx = glassX + 12 + i * 32;
-      const trunkG = ctx.createLinearGradient(tx, groundLine - 40, tx, groundLine);
-      trunkG.addColorStop(0, '#2a5a28');
-      trunkG.addColorStop(1, '#1a3a1a');
-      ctx.fillStyle = '#4a3020';
-      ctx.fillRect(tx + 4, groundLine - 28, 5, 22);
-      ctx.fillStyle = trunkG;
-      ctx.beginPath();
-      ctx.moveTo(tx - 6, groundLine - 18);
-      ctx.lineTo(tx + 6, groundLine - 48);
-      ctx.lineTo(tx + 18, groundLine - 18);
-      ctx.closePath();
-      ctx.fill();
+    // Layer 2 — mid grey ridges; Cheam left/east, flat, unlabeled, no snow
+    ctx.fillStyle = '#7a8896';
+    ctx.beginPath();
+    ctx.moveTo(glassX - 4, groundLine);
+    ctx.lineTo(cheamX - 70, groundLine - 22);
+    ctx.lineTo(cheamX - 48, groundLine - 48);
+    ctx.lineTo(cheamX - 22, groundLine - 28);
+    ctx.lineTo(cheamX - 8, groundLine - 72);
+    ctx.lineTo(cheamX + 8, groundLine - 95); // Cheam pyramid tip
+    ctx.lineTo(cheamX + 28, groundLine - 68);
+    ctx.lineTo(cheamX + 70, groundLine - 24);
+    ctx.lineTo(glassX + glassW + 4, groundLine - 12);
+    ctx.lineTo(glassX + glassW + 4, groundLine);
+    ctx.closePath();
+    ctx.fill();
+
+    // Valley mist wash
+    const mist = ctx.createLinearGradient(0, glassY + 20, 0, groundLine);
+    mist.addColorStop(0, 'rgba(243,244,246,0.1)');
+    mist.addColorStop(0.55, 'rgba(243,244,246,0.45)');
+    mist.addColorStop(1, 'rgba(209,213,219,0.55)');
+    ctx.fillStyle = mist;
+    ctx.fillRect(glassX, glassY, glassW, groundLine - glassY);
+
+    // Layer 3 — dark tree slope
+    ctx.fillStyle = '#3d4654';
+    ctx.beginPath();
+    ctx.moveTo(glassX - 4, groundLine);
+    for (let i = 0; i <= 12; i++) {
+      const tx = glassX + i * (glassW / 11);
+      const ridge = groundLine - 10 - (i % 3) * 4 - ((i * 5) % 7);
+      const tree = 10 + (i % 4) * 3;
+      ctx.lineTo(tx, ridge - tree);
+      ctx.lineTo(tx + glassW / 22, ridge - tree * 0.3);
     }
-    // lawn / yard
+    ctx.lineTo(glassX + glassW + 4, groundLine);
+    ctx.closePath();
+    ctx.fill();
+
+    // Near charcoal edge
+    ctx.fillStyle = '#0a0c10';
+    ctx.beginPath();
+    ctx.moveTo(glassX - 4, groundLine + 2);
+    ctx.lineTo(glassX - 4, groundLine - 4);
+    for (let i = 0; i <= 8; i++) {
+      const x = glassX + i * (glassW / 7);
+      ctx.lineTo(x, groundLine - 2 - ((i * 3) % 5));
+    }
+    ctx.lineTo(glassX + glassW + 4, groundLine + 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // lawn / yard (muted)
     const lawn = ctx.createLinearGradient(0, groundLine, 0, glassY + glassH);
-    lawn.addColorStop(0, '#3a8a2a');
-    lawn.addColorStop(1, '#2a6a1a');
+    lawn.addColorStop(0, '#4a6a48');
+    lawn.addColorStop(1, '#3a5a38');
     ctx.fillStyle = lawn;
     ctx.fillRect(glassX, groundLine, glassW, glassY + glassH - groundLine);
-    ctx.fillStyle = 'rgba(255,255,200,0.08)';
+    ctx.fillStyle = 'rgba(200,210,190,0.08)';
     ctx.fillRect(glassX, groundLine, glassW, 6);
 
     // UFO landing (clipped inside glass)
@@ -2252,6 +2249,386 @@
       ctx.fillStyle = '#8a2040'; ctx.fillRect(4, -21, 8, 2.5);
     }
     ctx.restore();
+  }
+
+
+  /**
+   * Cheesy clay green alien (Wes Anderson / alien-band vibe).
+   * Feet at (x,y). facing: 1 right / -1 left.
+   * opts: seated, yield (stepped aside), scale, bob
+   */
+  function drawClayAlien(ctx, x, y, facing, t, opts) {
+    opts = opts || {};
+    const scale = opts.scale != null ? opts.scale : 1.15;
+    const seated = !!opts.seated;
+    const yieldAmt = opts.yield != null ? opts.yield : 0;
+    const bob = Math.sin((t || 0) * 0.006 + (opts.seed || 0)) * (seated ? 1.2 : 2.5);
+    ctx.save();
+    ctx.translate(x + yieldAmt * facing * 28, y);
+    ctx.scale(facing * scale, scale);
+
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 12, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const skin = '#6dff7a';
+    const skinLo = '#3a9a48';
+    const bodyTop = seated ? -36 : -42;
+
+    // skinny legs / boots
+    ctx.fillStyle = '#2a2030';
+    if (seated) {
+      ctx.fillRect(-10, -6, 8, 7);
+      ctx.fillRect(2, -6, 8, 7);
+    } else {
+      ctx.fillRect(-9, -8, 7, 9);
+      ctx.fillRect(2, -8, 7, 9);
+    }
+    // jumpsuit pants
+    ctx.fillStyle = '#3a2a48';
+    if (seated) {
+      ctx.fillRect(-11, -20, 22, 16);
+    } else {
+      ctx.fillRect(-9, -28, 7, 22);
+      ctx.fillRect(2, -28, 7, 22);
+    }
+    // torso jumpsuit
+    ctx.fillStyle = '#4a3458';
+    ctx.fillRect(-12, bodyTop, 24, seated ? 20 : 22);
+    // chrome belt
+    ctx.fillStyle = '#c8d4de';
+    ctx.fillRect(-12, bodyTop + (seated ? 14 : 16), 24, 3);
+    // badge
+    ctx.fillStyle = '#88ffcc';
+    ctx.beginPath();
+    ctx.arc(6, bodyTop + 8, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // arms
+    ctx.fillStyle = skin;
+    ctx.fillRect(-16, bodyTop + 2, 5, 14);
+    ctx.fillRect(11, bodyTop + 2, 5, 14);
+    ctx.fillStyle = skinLo;
+    ctx.fillRect(-16, bodyTop + 12, 5, 4);
+    ctx.fillRect(11, bodyTop + 12, 5, 4);
+
+    // neck
+    ctx.fillStyle = skin;
+    ctx.fillRect(-3, bodyTop - 6, 6, 8);
+
+    // big clay head (oversized)
+    ctx.fillStyle = skin;
+    ctx.beginPath();
+    ctx.ellipse(0, bodyTop - 18 + bob * 0.15, 14, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // head highlight
+    ctx.fillStyle = 'rgba(200,255,180,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(-4, bodyTop - 24 + bob * 0.15, 5, 6, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // huge black oval eyes (comic alien)
+    ctx.fillStyle = '#0a0c10';
+    ctx.beginPath();
+    ctx.ellipse(-5.5, bodyTop - 18 + bob * 0.1, 4.2, 5.5, -0.15, 0, Math.PI * 2);
+    ctx.ellipse(5.5, bodyTop - 18 + bob * 0.1, 4.2, 5.5, 0.15, 0, Math.PI * 2);
+    ctx.fill();
+    // eye gleam
+    ctx.fillStyle = '#e8fff0';
+    ctx.beginPath();
+    ctx.arc(-4, bodyTop - 20, 1.2, 0, Math.PI * 2);
+    ctx.arc(7, bodyTop - 20, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // tiny smile
+    ctx.strokeStyle = '#2a6a30';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, bodyTop - 10, 3.5, 0.15, Math.PI - 0.15);
+    ctx.stroke();
+
+    // antennae optional
+    if (!opts.noAntenna) {
+      ctx.strokeStyle = skinLo;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-6, bodyTop - 32);
+      ctx.lineTo(-9, bodyTop - 40);
+      ctx.moveTo(6, bodyTop - 32);
+      ctx.lineTo(9, bodyTop - 40);
+      ctx.stroke();
+      ctx.fillStyle = '#ff66aa';
+      ctx.beginPath();
+      ctx.arc(-9, bodyTop - 41, 2, 0, Math.PI * 2);
+      ctx.arc(9, bodyTop - 41, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Walkable mothership bridge / alien control deck.
+   * opts: seatTaken, alienYield (0..1), showPlayerSeat
+   */
+  function drawShipInterior(ctx, w, h, camX, t, opts) {
+    opts = opts || {};
+    const groundY = h * 0.72;
+    const drift = Math.sin(t * 0.00035) * 18; // sky "we're flying" parallax
+    const driftY = Math.cos(t * 0.00028) * 6;
+
+    // Deep hull backdrop
+    const hull = ctx.createLinearGradient(0, 0, 0, h);
+    hull.addColorStop(0, '#0c141c');
+    hull.addColorStop(0.35, '#1a2834');
+    hull.addColorStop(0.7, '#243040');
+    hull.addColorStop(1, '#121820');
+    ctx.fillStyle = hull;
+    ctx.fillRect(0, 0, w, h);
+
+    // Curved upper hull ribs
+    ctx.strokeStyle = 'rgba(120,150,170,0.22)';
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 8; i++) {
+      const rx = i * 140 - (camX * 0.25) % 140 - 40;
+      ctx.beginPath();
+      ctx.moveTo(rx, 10);
+      ctx.quadraticCurveTo(rx + 40, groundY * 0.35, rx + 20, groundY - 8);
+      ctx.stroke();
+    }
+    // ceiling curve band
+    ctx.fillStyle = '#2a3848';
+    ctx.beginPath();
+    ctx.moveTo(-20, 0);
+    ctx.quadraticCurveTo(w / 2, 70, w + 20, 0);
+    ctx.lineTo(w + 20, 0);
+    ctx.lineTo(-20, 0);
+    ctx.fill();
+    ctx.fillStyle = '#3a4a5a';
+    ctx.beginPath();
+    ctx.moveTo(-20, 0);
+    ctx.quadraticCurveTo(w / 2, 42, w + 20, 0);
+    ctx.fill();
+
+    // ——— Observation windows (Chilliwack sky drifting) ———
+    const winYs = [78, 78, 78];
+    const winXs = [80, 320, 560];
+    for (let wi = 0; wi < 3; wi++) {
+      const wx = winXs[wi] - camX * 0.15;
+      const wy = winYs[wi];
+      const ww = 200;
+      const wh = 110;
+      // frame
+      ctx.fillStyle = '#4a5a68';
+      ctx.beginPath();
+      ctx.moveTo(wx - 6, wy + wh);
+      ctx.quadraticCurveTo(wx + ww / 2, wy - 18, wx + ww + 6, wy + wh);
+      ctx.lineTo(wx + ww + 6, wy + wh + 10);
+      ctx.lineTo(wx - 6, wy + wh + 10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#1a242c';
+      ctx.fillRect(wx, wy, ww, wh);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(wx, wy, ww, wh);
+      ctx.clip();
+      // misty sky matching drawSky
+      const skyG = ctx.createLinearGradient(0, wy, 0, wy + wh);
+      skyG.addColorStop(0, '#e8eef2');
+      skyG.addColorStop(0.5, '#d5dde4');
+      skyG.addColorStop(1, '#b8c4cc');
+      ctx.fillStyle = skyG;
+      ctx.fillRect(wx, wy, ww, wh);
+      // drifting mountains (aliens flying)
+      const scroll = camX * 0.08 + drift + wi * 40;
+      const base = wy + wh - 8 + driftY * 0.3;
+      ctx.fillStyle = '#cfd6dd';
+      ctx.beginPath();
+      ctx.moveTo(wx - 10, base);
+      ctx.lineTo(wx + 40 - scroll * 0.2, base - 28);
+      ctx.lineTo(wx + 90 - scroll * 0.2, base - 18);
+      ctx.lineTo(wx + 140 - scroll * 0.2, base - 42);
+      ctx.lineTo(wx + ww + 10, base - 14);
+      ctx.lineTo(wx + ww + 10, base + 20);
+      ctx.lineTo(wx - 10, base + 20);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#7a8896';
+      ctx.beginPath();
+      ctx.moveTo(wx - 10, base);
+      // Cheam-ish left peak, unlabeled
+      ctx.lineTo(wx + 30 - scroll * 0.15, base - 22);
+      ctx.lineTo(wx + 55 - scroll * 0.15, base - 55);
+      ctx.lineTo(wx + 85 - scroll * 0.15, base - 20);
+      ctx.lineTo(wx + 150 - scroll * 0.15, base - 12);
+      ctx.lineTo(wx + ww + 10, base - 8);
+      ctx.lineTo(wx + ww + 10, base + 20);
+      ctx.lineTo(wx - 10, base + 20);
+      ctx.closePath();
+      ctx.fill();
+      const mist = ctx.createLinearGradient(0, wy, 0, base);
+      mist.addColorStop(0, 'rgba(243,244,246,0.15)');
+      mist.addColorStop(1, 'rgba(209,213,219,0.5)');
+      ctx.fillStyle = mist;
+      ctx.fillRect(wx, wy, ww, wh);
+      // glass sheen
+      ctx.fillStyle = 'rgba(180,220,255,0.08)';
+      ctx.fillRect(wx, wy, ww * 0.35, wh);
+      ctx.restore();
+
+      // mullion
+      ctx.strokeStyle = 'rgba(160,180,200,0.35)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(wx + 2, wy + 2, ww - 4, wh - 4);
+    }
+
+    // Side curved walls
+    ctx.fillStyle = '#1e2a34';
+    ctx.beginPath();
+    ctx.moveTo(0, 40);
+    ctx.quadraticCurveTo(30 - camX * 0.05, groundY * 0.5, 0, groundY);
+    ctx.lineTo(0, h);
+    ctx.lineTo(0, 40);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(w, 40);
+    ctx.quadraticCurveTo(w - 30 + camX * 0.05, groundY * 0.5, w, groundY);
+    ctx.lineTo(w, h);
+    ctx.lineTo(w, 40);
+    ctx.fill();
+
+    // Deck floor
+    const floorG = ctx.createLinearGradient(0, groundY - 4, 0, h);
+    floorG.addColorStop(0, '#3a4854');
+    floorG.addColorStop(0.15, '#2a343c');
+    floorG.addColorStop(1, '#141a20');
+    ctx.fillStyle = floorG;
+    ctx.fillRect(0, groundY, w, h - groundY);
+    // deck plating lines
+    ctx.strokeStyle = 'rgba(100,120,140,0.25)';
+    ctx.lineWidth = 1;
+    for (let x = -((camX | 0) % 48); x < w; x += 48) {
+      ctx.beginPath();
+      ctx.moveTo(x, groundY + 2);
+      ctx.lineTo(x + 20, h);
+      ctx.stroke();
+    }
+    // walk stripe
+    ctx.fillStyle = 'rgba(125,255,58,0.12)';
+    ctx.fillRect(0, groundY + 18, w, 6);
+    ctx.fillStyle = 'rgba(200,220,240,0.08)';
+    ctx.fillRect(0, groundY, w, 3);
+
+    // Console banks (left mid deck)
+    function drawConsole(cx, cy, wide) {
+      const sx = cx - camX;
+      ctx.fillStyle = '#1a2228';
+      ctx.fillRect(sx, cy - 38, wide, 38);
+      ctx.fillStyle = '#2a3844';
+      ctx.fillRect(sx + 4, cy - 52, wide - 8, 16);
+      // screens
+      for (let i = 0; i < Math.floor(wide / 36); i++) {
+        const on = ((Math.floor(t / 180) + i) % 3) !== 2;
+        ctx.fillStyle = on ? '#44ffaa' : '#1a4030';
+        ctx.shadowColor = '#44ffaa';
+        ctx.shadowBlur = on ? 6 : 0;
+        ctx.fillRect(sx + 10 + i * 34, cy - 48, 22, 10);
+      }
+      ctx.shadowBlur = 0;
+      // knobs
+      for (let i = 0; i < Math.floor(wide / 28); i++) {
+        ctx.fillStyle = '#8898a8';
+        ctx.beginPath();
+        ctx.arc(sx + 16 + i * 28, cy - 18, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = ((Math.floor(t / 90) + i) % 2) ? '#ff4466' : '#66aaff';
+        ctx.beginPath();
+        ctx.arc(sx + 16 + i * 28, cy - 18, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    drawConsole(200, groundY, 160);
+    drawConsole(420, groundY, 140);
+
+    // Helm / driver's seat pedestal (front-right)
+    const helmX = SHIP_HELM_X - camX;
+    const helmY = groundY;
+    // raised dais
+    ctx.fillStyle = '#2a3540';
+    ctx.beginPath();
+    ctx.ellipse(helmX, helmY - 2, 70, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#3a4854';
+    ctx.beginPath();
+    ctx.ellipse(helmX, helmY - 8, 58, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // control yoke console
+    ctx.fillStyle = '#1a2830';
+    ctx.fillRect(helmX - 50, helmY - 55, 100, 28);
+    ctx.fillStyle = '#88ffcc';
+    ctx.shadowColor = '#66ffaa';
+    ctx.shadowBlur = 8;
+    ctx.fillRect(helmX - 36, helmY - 48, 72, 8);
+    ctx.shadowBlur = 0;
+    // blinkenlights
+    for (let i = 0; i < 6; i++) {
+      const on = ((Math.floor(t / 120) + i) % 4) !== 3;
+      ctx.fillStyle = on ? '#ffe088' : '#4a4030';
+      ctx.beginPath();
+      ctx.arc(helmX - 40 + i * 16, helmY - 58, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // driver's seat chair
+    ctx.fillStyle = '#4a3040';
+    ctx.fillRect(helmX - 16, helmY - 70, 32, 22);
+    ctx.fillStyle = '#5a3850';
+    ctx.fillRect(helmX - 18, helmY - 88, 36, 20);
+    ctx.fillStyle = '#3a2030';
+    ctx.fillRect(helmX - 22, helmY - 90, 8, 42);
+    ctx.fillRect(helmX + 14, helmY - 90, 8, 42);
+    // seat empty label when not taken
+    if (!opts.seatTaken) {
+      ctx.fillStyle = 'rgba(125,255,58,0.55)';
+      ctx.font = 'bold 10px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText("DRIVER'S SEAT", helmX, helmY - 98);
+      ctx.textAlign = 'left';
+    }
+
+    // Aliens at the helm (still "flying")
+    const yieldAmt = opts.alienYield != null ? opts.alienYield : 0;
+    const seatTaken = !!opts.seatTaken;
+    // left alien at side console
+    drawClayAlien(ctx, 280 - camX, groundY, 1, t, { seed: 1, yield: 0 });
+    // helm aliens — step aside when yielding / seat taken
+    drawClayAlien(ctx, SHIP_HELM_X - 55 - camX, groundY, 1, t, {
+      seed: 2,
+      seated: !seatTaken && yieldAmt < 0.4,
+      yield: -yieldAmt,
+    });
+    drawClayAlien(ctx, SHIP_HELM_X + 48 - camX, groundY, -1, t, {
+      seed: 3,
+      seated: false,
+      yield: yieldAmt,
+    });
+
+    // Ambient green glow
+    const glow = ctx.createRadialGradient(helmX, groundY - 40, 10, helmX, groundY - 40, 160);
+    glow.addColorStop(0, 'rgba(80,255,160,' + (0.06 + Math.sin(t * 0.004) * 0.03) + ')');
+    glow.addColorStop(1, 'rgba(80,255,160,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(helmX - 160, groundY - 160, 320, 200);
+
+    // Caption
+    ctx.fillStyle = 'rgba(200,230,210,0.55)';
+    ctx.font = '11px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Mothership bridge — Chilliwack below · aliens still flying', w / 2, 22);
+    ctx.textAlign = 'left';
   }
 
   function drawYard(ctx, w, h, camX, t, landing) {
@@ -3047,8 +3424,8 @@
     ctx.fillRect(0, h * 0.7, w, h * 0.3);
     drawClayUFO(ctx, w / 2 + Math.sin(t * 0.001) * 40, 118 + Math.cos(t * 0.0007) * 12, 1.72, t, true, { showPilots: true, legExtend: 0 });
     // brothers on title
-    drawZakk(ctx, w / 2 - 80, h * 0.7, 1, false, t, { smoking: true });
-    drawTayler(ctx, w / 2 + 90, h * 0.7, -1, false, t, { smoking: true });
+    drawZakk(ctx, w / 2 - 80, h * 0.7, 1, false, t, { smoking: true, jointLit: true });
+    drawTayler(ctx, w / 2 + 90, h * 0.7, -1, false, t, { smoking: true, jointLit: true });
     ctx.fillStyle = 'rgba(5,20,10,0.35)';
     ctx.fillRect(0, 0, w, h);
   }
@@ -3064,6 +3441,8 @@
     SHED_GAGS,
     SHED_WORLD_W,
     SHED_DOOR_X,
+    SHIP_WORLD_W,
+    SHIP_HELM_X,
     SHED_CASSETTE_X,
     SHED_STEREO_X,
     SHED_CAMINO_X,
@@ -3080,6 +3459,8 @@
     drawFx,
     drawShed,
     drawYard,
+    drawShipInterior,
+    drawClayAlien,
     drawBoardCutscene,
     drawCassetteScene,
     drawFlyScene,

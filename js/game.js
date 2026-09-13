@@ -1,6 +1,6 @@
 /**
  * Mothership — Chilliwack skies
- * Flow: title (insert cassette → playTheme) → shed (Tayler press steps → UFO land) → yard (board/sit→legs tuck) → fly → results
+ * Flow: title (insert cassette → playTheme) → shed (Tayler press steps → UFO land) → yard (board ship) → ship (walk to helm / take seat) → fly → results
  * Pilots: Zakk & Tayler. Theme starts on menu cassette insert (iOS-safe gesture).
  * Fly scroll is player-driven (no auto-scroll). Landing legs extend on ground, tuck on takeoff.
  */
@@ -53,7 +53,7 @@
   let prevInteractHeld = false;
   let prevBeamHeld = false;
 
-  // title | shed | yard | fly | results
+  // title | shed | yard | ship | fly | results
   let mode = 'title';
   let t = 0;
   let lastTs = 0;
@@ -93,7 +93,7 @@
   let jointTimer = 0;
   /** UFO landing auto-anim after smoke (separate from press steps) */
   let ufoLanding = false;
-  /** Brief sit + takeoff (legs tuck) after boarding in yard */
+  /** Brief sit + takeoff after taking driver's seat (ship mode) */
   let boardSit = null;
   /** Guard double-insert on title stereo */
   let titleInserting = false;
@@ -105,7 +105,7 @@
   const JOINT_STEPS = [
     { id: 'gethigh', dur: 34, prompt: 'get high with T', label: 'Start the sesh…', btn: 'get high with T' },
     { id: 'roll', dur: 55, prompt: 'roll joint', label: 'Tayler rolls — paper + weed…', btn: 'roll joint' },
-    { id: 'light', dur: 42, prompt: 'light the joint', label: 'Flick — lit!', btn: 'light the joint' },
+    { id: 'light', dur: 42, prompt: 'light the joint', label: 'Zakk lights it…', btn: 'light the joint' },
     { id: 'smoke', dur: 64, prompt: 'Smoke the joint', label: 'Puff puff…', btn: 'Smoke the joint' },
   ];
 
@@ -154,6 +154,8 @@
     } else if (mode === 'shed' && nearDoor() && ufoLanded()) {
       el.btnInteract.textContent = 'EXIT';
     } else if (mode === 'yard' && nearInteract()) {
+      el.btnInteract.textContent = 'BOARD';
+    } else if (mode === 'ship' && nearInteract() && !boardSit) {
       el.btnInteract.textContent = 'SIT';
     } else {
       el.btnInteract.textContent = 'USE';
@@ -189,6 +191,7 @@
     const labels = {
       shed: 'SHED',
       yard: 'YARD',
+      ship: 'SHIP',
       fly: 'FLY',
     };
     el.modeLabel.textContent = labels[mode] || '';
@@ -459,10 +462,30 @@
       showPilots: false,
     };
     Audio.play('landing');
-    showFlash("Mothership waiting. Walk up and sit in the driver's seat.", 130);
-    setPrompt("Walk to the UFO — ENTER driver's seat");
+    showFlash('Mothership waiting. Walk up and board the mothership.', 130);
+    setPrompt('Walk to the UFO — board the mothership');
     showScreen('play');
     syncHud();
+  }
+
+
+  function enterShip() {
+    mode = 'ship';
+    interactQueued = false;
+    jumpQueued = false;
+    prevInteractHeld = true;
+    boardSit = null;
+    landing = null;
+    tayler = null;
+    Audio.play('ui');
+    Audio.play('power');
+    camX = 0;
+    avatar = makeAvatar(140, GROUND);
+    showFlash('Welcome aboard — walk to the aliens / take the driver\'s seat.', 130);
+    setPrompt("Walk to the aliens — take the driver's seat");
+    showScreen('play');
+    syncHud();
+    syncInteractBtn();
   }
 
   function enterFly() {
@@ -669,17 +692,17 @@
     if (k === 'e' || k === 'enter') {
       if (mode === 'fly') {
         if (k === 'e') beamQueued = true;
-      } else if (mode === 'shed' || mode === 'yard') {
+      } else if (mode === 'shed' || mode === 'yard' || mode === 'ship') {
         interactQueued = true;
       }
     }
-    if ((k === 'arrowup' || k === 'w') && (mode === 'shed' || mode === 'yard')) {
+    if ((k === 'arrowup' || k === 'w') && (mode === 'shed' || mode === 'yard' || mode === 'ship')) {
       interactQueued = true;
     }
 
     if ((e.code === 'Space' || k === ' ')) {
       if (mode === 'fly') beamQueued = true;
-      else if (mode === 'shed' || mode === 'yard') jumpQueued = true;
+      else if (mode === 'shed' || mode === 'yard' || mode === 'ship') jumpQueued = true;
     }
 
     if (k === 'b' && mode === 'fly') beamQueued = true;
@@ -698,7 +721,7 @@
 
   canvas.addEventListener('click', () => {
     if (mode === 'title') insertCassetteAndStart();
-    else if (mode === 'shed' || mode === 'yard') interactQueued = true;
+    else if (mode === 'shed' || mode === 'yard' || mode === 'ship') interactQueued = true;
   });
 
   function bindTitleInsert(node) {
@@ -758,12 +781,12 @@
   el.btnBeam.addEventListener('touchstart', (e) => {
     e.preventDefault();
     if (mode === 'fly') beamQueued = true;
-    else if (mode === 'shed' || mode === 'yard') interactQueued = true;
+    else if (mode === 'shed' || mode === 'yard' || mode === 'ship') interactQueued = true;
   }, { passive: false });
   el.btnBeam.addEventListener('mousedown', (e) => {
     e.preventDefault();
     if (mode === 'fly') beamQueued = true;
-    else if (mode === 'shed' || mode === 'yard') interactQueued = true;
+    else if (mode === 'shed' || mode === 'yard' || mode === 'ship') interactQueued = true;
   });
 
   function onInteractPointer(e) {
@@ -848,8 +871,11 @@
     if (mode === 'shed') {
       return nearTaylerSesh() || nearDoor();
     }
-    if (mode === 'yard' && landing && landing.phase === 'landed' && !boardSit) {
+    if (mode === 'yard' && landing && landing.phase === 'landed') {
       return Math.abs(avatar.x - landing.x) < 110;
+    }
+    if (mode === 'ship' && !boardSit && avatar) {
+      return Math.abs(avatar.x - W.SHIP_HELM_X) < 90;
     }
     return false;
   }
@@ -991,38 +1017,6 @@
   }
 
   function updateYard() {
-    if (boardSit) {
-      boardSit.timer++;
-      if (!boardSit.phase || boardSit.phase === 'sit') {
-        setPrompt("Sitting in the driver's seat…");
-        if (landing) {
-          landing.legExtend = 1;
-          landing.showPilots = true;
-        }
-        if (boardSit.timer > 28) {
-          boardSit.phase = 'takeoff';
-          boardSit.timer = 0;
-          Audio.play('power');
-          showFlash('Legs tucking — liftoff!', 90);
-        }
-        return;
-      }
-      // Takeoff: landing legs retract into hull, then enter fly (legs stay tucked)
-      setPrompt('Landing legs tucking in…');
-      if (landing) {
-        const tuck = Math.min(1, boardSit.timer / 40);
-        landing.legExtend = 1 - tuck;
-        landing.showPilots = true;
-        landing.y = landing.targetY - tuck * 36;
-        if (tuck > 0.35) landing.phase = 'takeoff';
-      }
-      if (boardSit.timer > 44) {
-        enterFly();
-        return;
-      }
-      return;
-    }
-
     updateSideScroller(1200);
     if (landing) landing.timer++;
 
@@ -1034,23 +1028,77 @@
 
     if (landing && landing.phase === 'landed') {
       if (nearInteract()) {
-        setPrompt("↑ / E / USE — sit in the driver's seat");
+        setPrompt('↑ / E / USE — board the mothership');
         if (wantsInteract()) {
           Audio.play('power');
           Audio.play('ui');
-          boardSit = { timer: 0, phase: 'sit' };
-          if (landing) {
-            landing.legExtend = 1;
-            landing.showPilots = true;
-          }
-          showFlash("Driver's seat — flight controls unlocked!", 100);
+          showFlash('Boarding the mothership…', 80);
+          enterShip();
           return;
         }
       } else {
         prevInteractHeld = interactHeld();
-        setPrompt("Walk to the UFO — ENTER driver's seat");
+        setPrompt('Walk to the UFO — board the mothership');
       }
     }
+  }
+
+  function updateShip() {
+    if (boardSit) {
+      boardSit.timer++;
+      if (!boardSit.phase || boardSit.phase === 'yield') {
+        setPrompt('Aliens yield the controls…');
+        boardSit.alienYield = Math.min(1, boardSit.timer / 24);
+        if (boardSit.timer > 26) {
+          boardSit.phase = 'sit';
+          boardSit.timer = 0;
+          boardSit.seatTaken = true;
+          boardSit.alienYield = 1;
+          Audio.play('ui');
+          showFlash("Taking the driver's seat…", 80);
+        }
+        return;
+      }
+      if (boardSit.phase === 'sit') {
+        setPrompt("Sitting in the driver's seat…");
+        boardSit.seatTaken = true;
+        boardSit.alienYield = 1;
+        if (boardSit.timer > 22) {
+          boardSit.phase = 'takeoff';
+          boardSit.timer = 0;
+          Audio.play('power');
+          showFlash('Legs tucking — liftoff!', 90);
+        }
+        return;
+      }
+      // Brief takeoff beat then free flight
+      setPrompt('Landing legs tucking in — liftoff…');
+      boardSit.seatTaken = true;
+      boardSit.alienYield = 1;
+      boardSit.tuck = Math.min(1, boardSit.timer / 36);
+      if (boardSit.timer > 40) {
+        enterFly();
+        return;
+      }
+      return;
+    }
+
+    updateSideScroller(W.SHIP_WORLD_W);
+
+    if (nearInteract()) {
+      setPrompt("↑ / E / USE — take the driver's seat");
+      if (wantsInteract()) {
+        Audio.play('power');
+        Audio.play('ui');
+        boardSit = { timer: 0, phase: 'yield', alienYield: 0, seatTaken: false };
+        showFlash('Excuse me, green dudes — mind if I drive?', 100);
+        return;
+      }
+    } else {
+      prevInteractHeld = interactHeld();
+      setPrompt("Walk to the aliens / take the driver's seat");
+    }
+    syncInteractBtn();
   }
 
   function updateFly() {
@@ -1224,6 +1272,7 @@
     }
     if (mode === 'shed') updateShed();
     else if (mode === 'yard') updateYard();
+    else if (mode === 'ship') updateShip();
     else if (mode === 'fly') updateFly();
 
     W.updateFx(particles, floaters);
@@ -1269,18 +1318,35 @@
         smoking: smoking || ufoLanding,
         smokeProgress: smokeProgress,
       });
+      // Sesh anim owns the joint prop — avoid double-drawing on characters
+      const seshOwnsJoint = (jointPhase === 'anim' || ufoLanding) && !!jointStage &&
+        (jointStage === 'gethigh' || jointStage === 'roll' || jointStage === 'light' || jointStage === 'smoke');
+      let lightProg = 0;
+      if (jointStage === 'light' && jointPhase === 'anim') {
+        const li = jointStageIndex('light');
+        const ld = li >= 0 ? JOINT_STEPS[li].dur : 42;
+        lightProg = Math.min(1, jointTimer / Math.max(1, ld));
+      }
+      // Lit only after mid light progress, or smoke / done / landing
+      const jointLit = smokeDone || ufoLanding || jointStage === 'smoke' ||
+        (jointStage === 'light' && lightProg >= 0.45) ||
+        (jointPhase === 'await' && jointStepIndex >= 3);
+      const showCharJoint = !seshOwnsJoint && (
+        smokeDone || ufoLanding ||
+        (jointPhase === 'await' && jointStepIndex >= 2) ||
+        (jointStage === 'smoke' && jointPhase !== 'anim')
+      );
       if (tayler) {
-        const litOrLater = smokeDone || ufoLanding || jointStage === 'light' || jointStage === 'smoke';
         W.drawTayler(ctx, tayler.x - camX, tayler.y, 1, false, t, {
           seated: true,
-          smoking: litOrLater,
-          heavySmoke: smokeDone || ufoLanding || jointStage === 'smoke',
+          smoking: showCharJoint,
+          jointLit: jointLit,
+          heavySmoke: smokeDone || ufoLanding || (jointStage === 'smoke' && jointLit),
         });
       }
-      const zakkHasJoint = smokeDone || ufoLanding || jointStage === 'smoke' ||
-        (jointStage === 'smoke' && jointTimer > 20);
       W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {
-        smoking: zakkHasJoint || smokeDone,
+        smoking: showCharJoint && (smokeDone || ufoLanding || jointStage === 'smoke' || jointStepIndex >= 3),
+        jointLit: jointLit,
         heavySmoke: smokeDone || ufoLanding || jointStage === 'smoke',
       });
       if ((jointPhase === 'anim' || ufoLanding) && jointStage && tayler) {
@@ -1380,26 +1446,41 @@
     } else if (mode === 'yard') {
       W.drawYard(ctx, CW, CH, camX, t, landing);
       if (tayler) {
-        const tMoving = landing && landing.phase === 'landed' && !boardSit;
+        const tMoving = landing && landing.phase === 'landed';
         W.drawTayler(ctx, tayler.x - camX, tayler.y, 1, tMoving, t, {});
       }
-      if (!boardSit) {
-        W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {});
-      }
+      W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {});
       if (landing && landing.phase === 'landed' && nearInteract()) {
         ctx.fillStyle = '#7dff3a';
         ctx.font = 'bold 16px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('▲ DRIVER SEAT', landing.x - camX, landing.y - 70);
+        ctx.fillText('▲ BOARD MOTHERSHIP', landing.x - camX, landing.y - 70);
         ctx.textAlign = 'left';
       }
-      if (boardSit && landing) {
+    } else if (mode === 'ship') {
+      const yieldAmt = boardSit && boardSit.alienYield != null ? boardSit.alienYield : 0;
+      const seatTaken = !!(boardSit && boardSit.seatTaken);
+      W.drawShipInterior(ctx, CW, CH, camX, t, {
+        alienYield: yieldAmt,
+        seatTaken: seatTaken,
+      });
+      if (!boardSit || boardSit.phase === 'yield') {
+        W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {});
+      }
+      if (!boardSit && nearInteract()) {
+        ctx.fillStyle = '#7dff3a';
+        ctx.font = 'bold 16px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText("▲ DRIVER'S SEAT", W.SHIP_HELM_X - camX, GROUND - 120);
+        ctx.textAlign = 'left';
+      }
+      if (boardSit) {
         ctx.fillStyle = '#7dff3a';
         ctx.font = 'bold 18px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
         if (boardSit.phase === 'takeoff') {
           ctx.fillText('Landing legs tucking in…', CW / 2, 90);
-          const ext = landing.legExtend != null ? landing.legExtend : 0;
+          const ext = 1 - (boardSit.tuck != null ? boardSit.tuck : 0);
           ctx.fillStyle = 'rgba(10,30,16,0.75)';
           ctx.fillRect(CW / 2 - 70, 102, 140, 12);
           ctx.fillStyle = '#88c8ff';
@@ -1407,8 +1488,10 @@
           ctx.fillStyle = '#c8e0ff';
           ctx.font = 'bold 10px Segoe UI, sans-serif';
           ctx.fillText(ext > 0.5 ? 'GEAR DOWN' : 'GEAR UP', CW / 2, 126);
-        } else {
+        } else if (boardSit.phase === 'sit') {
           ctx.fillText("Taking the driver's seat…", CW / 2, 90);
+        } else {
+          ctx.fillText('Aliens step aside…', CW / 2, 90);
         }
         ctx.textAlign = 'left';
       }
