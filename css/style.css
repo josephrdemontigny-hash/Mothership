@@ -368,3 +368,10 @@ html, body {
   #btn-interact { min-height: 40px !important; }
   #btn-beam { min-height: 48px !important; }
 }
+
+.play-count {
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+  opacity: 0.75;
+  letter-spacing: 0.04em;
+}
