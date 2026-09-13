@@ -3442,6 +3442,52 @@
     ctx.textAlign = 'left';
   }
 
+
+  const flySkylineImg = new Image();
+  let flySkylineReady = false;
+  flySkylineImg.onload = function () { flySkylineReady = true; };
+  flySkylineImg.src = 'assets/fly-skyline.jpeg';
+
+  /** Sunset Cheam skyline photo behind Chilliwack flight */
+  function drawFlySkylineBackdrop(ctx, w, h, groundY, scrollX) {
+    // Soft fill under photo while loading / letterbox
+    const dusk = ctx.createLinearGradient(0, 0, 0, groundY);
+    dusk.addColorStop(0, '#4a1a28');
+    dusk.addColorStop(0.35, '#c45a28');
+    dusk.addColorStop(0.7, '#e8a040');
+    dusk.addColorStop(1, '#2a3040');
+    ctx.fillStyle = dusk;
+    ctx.fillRect(0, 0, w, groundY);
+
+    if (flySkylineReady && flySkylineImg.naturalWidth) {
+      const img = flySkylineImg;
+      const iw = img.naturalWidth;
+      const ih = img.naturalHeight;
+      // Cover the sky band (above ground); slight parallax
+      const bandH = groundY;
+      const scale = Math.max(w / iw, bandH / ih) * 1.08;
+      const dw = iw * scale;
+      const dh = ih * scale;
+      const parallax = -((scrollX * 0.12) % Math.max(1, dw - w));
+      const dx = parallax - (dw - w) * 0.15;
+      const dy = groundY - dh + 8; // sit mountains on the horizon line
+      ctx.drawImage(img, dx, dy, dw, dh);
+      // If parallax left a gap, draw a second tile
+      if (dx + dw < w) {
+        ctx.drawImage(img, dx + dw - 1, dy, dw, dh);
+      }
+      if (dx > 0) {
+        ctx.drawImage(img, dx - dw + 1, dy, dw, dh);
+      }
+      // Soft blend into ground strip
+      const fade = ctx.createLinearGradient(0, groundY - 28, 0, groundY);
+      fade.addColorStop(0, 'rgba(40,50,60,0)');
+      fade.addColorStop(1, 'rgba(40,50,60,0.35)');
+      ctx.fillStyle = fade;
+      ctx.fillRect(0, groundY - 28, w, 28);
+    }
+  }
+
   function drawFlyScene(ctx, w, h, fly, t) {
     const scrollX = fly.scrollX || 0;
     const shakeX = fly.shakeX || 0;
@@ -3450,9 +3496,9 @@
     ctx.save();
     ctx.translate(shakeX, shakeY);
 
-    drawSky(ctx, w, h, t);
     const groundY = h * 0.78;
-    drawMountains(ctx, w, groundY - 40, scrollX);
+    // User sunset Cheam photo as flight backdrop (replaces procedural sky/mountains)
+    drawFlySkylineBackdrop(ctx, w, h, groundY, scrollX);
 
     // ground bands
     ctx.fillStyle = '#5a9a3a';
