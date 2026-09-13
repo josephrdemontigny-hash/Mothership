@@ -1,6 +1,7 @@
 /**
  * Tiny Web Audio beep engine + theme music for Mothership.
- * Mute persists in localStorage. Theme starts on cassette insert (not boarding).
+ * Mute persists in localStorage. Theme starts on cockpit cassette insert;
+ * keeps playing through fly + results; stops on title / new game only.
  */
 (function (global) {
   const STORAGE_KEY = 'mothership_muted';

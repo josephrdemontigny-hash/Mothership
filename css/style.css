@@ -27,10 +27,14 @@ html, body {
   position: relative;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   background: radial-gradient(ellipse at 50% 20%, #1a3a28 0%, #0a1a0f 70%);
+  /* leave room so absolute #touch isn't clipped by browser UI */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
 }
 
 #game {
@@ -118,6 +122,25 @@ html, body {
 }
 
 #prompt-label:empty { display: none; }
+
+.inv-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 3px 10px;
+  background: rgba(10, 30, 16, 0.85);
+  border: 1px solid var(--lime);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--lime);
+  box-shadow: 0 0 10px rgba(125, 255, 58, 0.2);
+}
+.inv-item.used {
+  border-color: var(--lime-dim);
+  color: #9bc87a;
+}
 
 #mute-btn {
   pointer-events: auto;
@@ -247,15 +270,17 @@ html, body {
   font-size: 14px;
 }
 
-/* Touch controls */
+/* Touch controls — sit above iOS Safari chrome / home indicator */
 #touch {
   position: absolute;
-  bottom: 12px;
+  /* safe-area + extra clearance for Safari toolbar / home bar */
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px) + 56px);
   left: 0; right: 0;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
   padding: 0 16px;
+  padding-bottom: 0;
   z-index: 8;
   pointer-events: none;
   max-width: 960px;
@@ -322,4 +347,18 @@ html, body {
 @media (orientation: portrait) and (max-width: 700px) {
   .panel { padding: 20px; }
   #hud { font-size: 12px; }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  /* Phone landscape: still clear Safari bottom chrome */
+  #touch {
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px) + 48px);
+  }
+  #touch button {
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 18px;
+  }
+  #btn-interact { min-height: 40px !important; }
+  #btn-beam { min-height: 48px !important; }
 }

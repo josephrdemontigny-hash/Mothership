@@ -80,6 +80,9 @@
 
   const SHED_WORLD_W = 560;
   const SHED_DOOR_X = 490;
+  /** Visible cassette prop in shed (on clutter near amp) */
+  const SHED_CASSETTE_X = 318;
+  const SHED_CASSETTE_Y_OFF = 42; // above floor
 
   function rand(a, b) {
     return a + Math.random() * (b - a);
@@ -588,6 +591,45 @@
   }
 
   // ——— Shed props ———
+  /** Compact cassette tape prop (world or screen coords) */
+  function drawCassetteProp(ctx, x, y, opts) {
+    opts = opts || {};
+    const s = opts.scale || 1;
+    const glow = !!opts.glow;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(s, s);
+    if (glow) {
+      ctx.fillStyle = 'rgba(125,255,58,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(0, 2, 28, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#2a1a3a';
+    ctx.fillRect(-22, -12, 44, 24);
+    ctx.strokeStyle = '#7dff3a';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(-22, -12, 44, 24);
+    ctx.fillStyle = '#c4a35a';
+    ctx.fillRect(-18, -8, 36, 10);
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(-8, 4, 5, 0, Math.PI * 2);
+    ctx.arc(8, 4, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#7dff3a';
+    ctx.font = 'bold 7px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('MOTHERSHIP', 0, -1);
+    if (opts.label) {
+      ctx.fillStyle = '#e8ffe0';
+      ctx.font = 'bold 10px Segoe UI, sans-serif';
+      ctx.fillText(opts.label, 0, -18);
+    }
+    ctx.restore();
+    ctx.textAlign = 'left';
+  }
+
   function drawShelf(ctx, x, y) {
     ctx.fillStyle = '#8a6a40';
     ctx.fillRect(x, y, 80, 7);
@@ -733,8 +775,10 @@
     drawSmokePuffs(ctx, x + 42, y - 44, t, 2.1);
   }
 
-  function drawShed(ctx, w, h, camX, t) {
+  function drawShed(ctx, w, h, camX, t, opts) {
+    opts = opts || {};
     const floorY = h * 0.72;
+    const cassetteTaken = !!opts.cassetteTaken;
 
     ctx.fillStyle = '#3a2a1a';
     ctx.fillRect(0, 0, w, h);
@@ -792,11 +836,24 @@
     drawCouch(ctx, 360 - camX, floorY);
     drawChillTable(ctx, 400 - camX, floorY - 4, t);
 
-    // clutter boxes
+    // clutter boxes (cassette sits on these until grabbed)
     ctx.fillStyle = '#8a6a40';
     ctx.fillRect(320 - camX, floorY - 22, 28, 22);
     ctx.fillStyle = '#6a5040';
     ctx.fillRect(335 - camX, floorY - 36, 22, 14);
+
+    if (!cassetteTaken) {
+      const cx = SHED_CASSETTE_X - camX;
+      const cy = floorY - SHED_CASSETTE_Y_OFF;
+      drawCassetteProp(ctx, cx, cy, { glow: true, label: 'CASSETTE' });
+      // bob hint
+      const bob = Math.sin(t * 0.008) * 3;
+      ctx.fillStyle = '#7dff3a';
+      ctx.font = 'bold 12px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('▲ GRAB', cx, cy - 28 + bob);
+      ctx.textAlign = 'left';
+    }
 
     // floor
     ctx.fillStyle = '#6a5040';
@@ -1095,7 +1152,7 @@
     ctx.textAlign = 'left';
   }
 
-  /** Cockpit cassette beat — dash + Zakk inserting tape */
+  /** Cockpit cassette beat — visible deck on dash + insert animation */
   function drawCassetteScene(ctx, w, h, cas, t) {
     // dark cockpit interior
     const g = ctx.createLinearGradient(0, 0, 0, h);
@@ -1126,42 +1183,93 @@
     ctx.lineWidth = 8;
     ctx.strokeRect(80, 40, w - 160, h - 200);
 
-    // dash cassette deck
+    // dash panel + cassette deck (always visible hardware)
     const dx = w / 2;
     const dy = h - 95;
+    ctx.fillStyle = '#1a2e1c';
+    ctx.fillRect(80, h - 150, w - 160, 28);
+    // knobs / gauges on dash
+    for (let i = 0; i < 5; i++) {
+      const kx = 110 + i * 40;
+      ctx.fillStyle = '#0a140c';
+      ctx.beginPath();
+      ctx.arc(kx, h - 136, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#4a6a4a';
+      ctx.stroke();
+    }
+    for (let i = 0; i < 5; i++) {
+      const kx = w - 110 - i * 40;
+      ctx.fillStyle = '#0a140c';
+      ctx.beginPath();
+      ctx.arc(kx, h - 136, 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // cassette player / deck housing
     ctx.fillStyle = '#0e1a12';
-    ctx.fillRect(dx - 90, dy - 30, 180, 55);
+    ctx.fillRect(dx - 100, dy - 38, 200, 68);
     ctx.strokeStyle = '#7dff3a';
     ctx.lineWidth = 2;
-    ctx.strokeRect(dx - 90, dy - 30, 180, 55);
+    ctx.strokeRect(dx - 100, dy - 38, 200, 68);
+    ctx.fillStyle = '#9bc87a';
+    ctx.font = 'bold 9px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('CASSETTE DECK', dx, dy - 24);
+    // play / eject LEDs
+    ctx.fillStyle = cas.inserted ? '#7dff3a' : '#334433';
+    ctx.beginPath();
+    ctx.arc(dx + 78, dy - 24, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ff6644';
+    ctx.beginPath();
+    ctx.arc(dx + 90, dy - 24, 4, 0, Math.PI * 2);
+    ctx.fill();
 
     // slot
     ctx.fillStyle = '#050a06';
-    ctx.fillRect(dx - 50, dy - 8, 70, 14);
+    ctx.fillRect(dx - 55, dy - 6, 80, 16);
     ctx.strokeStyle = '#4a6a4a';
-    ctx.strokeRect(dx - 50, dy - 8, 70, 14);
+    ctx.lineWidth = 2;
+    ctx.strokeRect(dx - 55, dy - 6, 80, 16);
+    // slot lips
+    ctx.fillStyle = '#1a2a1a';
+    ctx.fillRect(dx - 55, dy - 8, 80, 3);
+    ctx.fillRect(dx - 55, dy + 8, 80, 3);
 
-    // cassette tape (animates into slot)
+    // cassette tape: held near deck, then animates into slot
     const insert = cas.insertProgress || 0; // 0..1
-    const tapeX = dx - 40 + insert * 25;
-    const tapeY = dy - 40 + insert * 38;
-    ctx.save();
-    ctx.translate(tapeX, tapeY);
-    ctx.rotate(-0.4 + insert * 0.4);
-    ctx.fillStyle = '#2a1a3a';
-    ctx.fillRect(-22, -12, 44, 24);
-    ctx.fillStyle = '#c4a35a';
-    ctx.fillRect(-18, -8, 36, 10);
-    ctx.fillStyle = '#111';
-    ctx.beginPath();
-    ctx.arc(-8, 4, 5, 0, Math.PI * 2);
-    ctx.arc(8, 4, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#7dff3a';
-    ctx.font = 'bold 7px Segoe UI, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('MOTHERSHIP', 0, -1);
-    ctx.restore();
+    const held = !!cas.hasTape && !cas.inserted;
+    const inserting = !!cas.inserting || (cas.inserted && insert < 1);
+    if (held || inserting || (cas.inserted && insert >= 1)) {
+      let tapeX, tapeY, rot;
+      if (cas.inserted && insert >= 1 && !cas.inserting) {
+        // fully seated in slot (mostly hidden)
+        tapeX = dx - 15;
+        tapeY = dy + 2;
+        rot = 0;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(dx - 55, dy - 6, 80, 16);
+        ctx.clip();
+        drawCassetteProp(ctx, tapeX, tapeY, { scale: 0.85 });
+        ctx.restore();
+      } else {
+        tapeX = dx - 40 + insert * 25;
+        tapeY = (held && !inserting ? dy - 55 : dy - 40) + insert * 38;
+        rot = -0.4 + insert * 0.4;
+        ctx.save();
+        ctx.translate(tapeX, tapeY);
+        ctx.rotate(rot);
+        drawCassetteProp(ctx, 0, 0, { scale: 1 });
+        ctx.restore();
+      }
+    } else if (!cas.hasTape) {
+      ctx.fillStyle = '#ff8866';
+      ctx.font = '11px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('(no tape — go grab one in the shed)', dx, dy + 4);
+    }
 
     // Zakk at dash (left), Tayler passenger (right)
     drawZakk(ctx, dx - 70, h - 40, 1, false, t, { scale: 0.85, noLabel: false, smoking: false });
@@ -1169,14 +1277,16 @@
 
     // prompt
     ctx.fillStyle = 'rgba(10,30,16,0.85)';
-    ctx.fillRect(w / 2 - 160, 55, 320, 36);
+    ctx.fillRect(w / 2 - 180, 55, 360, 36);
     ctx.strokeStyle = '#7dff3a';
-    ctx.strokeRect(w / 2 - 160, 55, 320, 36);
+    ctx.strokeRect(w / 2 - 180, 55, 360, 36);
     ctx.fillStyle = '#e8ffe0';
     ctx.font = 'bold 14px Segoe UI, sans-serif';
     ctx.textAlign = 'center';
-    if (!cas.inserted) {
-      ctx.fillText('Press E / Space — insert cassette', w / 2, 78);
+    if (!cas.hasTape) {
+      ctx.fillText('No cassette — you left it in the shed!', w / 2, 78);
+    } else if (!cas.inserted) {
+      ctx.fillText('E / Space / USE — insert cassette into deck', w / 2, 78);
     } else {
       ctx.fillText('Cassette in! Theme online…', w / 2, 78);
     }
@@ -1475,6 +1585,8 @@
     SHED_GAGS,
     SHED_WORLD_W,
     SHED_DOOR_X,
+    SHED_CASSETTE_X,
+    drawCassetteProp,
     rand,
     pick,
     burst,

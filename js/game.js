@@ -1,6 +1,6 @@
 /**
  * Mothership — Chilliwack skies
- * Flow: Shed → Yard → BoardCutscene → Cassette → Fly (beam integrated)
+ * Flow: Shed (grab cassette) → Yard → BoardCutscene → Cassette insert → Fly
  * Pilots: Zakk (char-ref-2) & Tayler (char-ref-1)
  */
 (function () {
@@ -35,6 +35,7 @@
     btnTitle: document.getElementById('btn-title'),
     btnBeam: document.getElementById('btn-beam'),
     btnInteract: document.getElementById('btn-interact'),
+    invCassette: document.getElementById('inv-cassette'),
   };
 
   const keys = Object.create(null);
@@ -65,6 +66,8 @@
   let cutscene = null;
   let cassette = null;
   let fly = null;
+  let hasCassette = false; // inventory: grabbed in shed
+  let tapeInDeck = false; // inserted in cockpit deck this run
 
   function getHigh() {
     return parseInt(localStorage.getItem(HS_KEY) || '0', 10) || 0;
@@ -101,6 +104,15 @@
     } else {
       el.district.classList.add('hidden');
     }
+    syncInvHud();
+  }
+
+  function syncInvHud() {
+    if (!el.invCassette) return;
+    const show = hasCassette && mode !== 'title' && mode !== 'results';
+    el.invCassette.classList.toggle('hidden', !show);
+    el.invCassette.classList.toggle('used', !!tapeInDeck);
+    el.invCassette.textContent = tapeInDeck ? '📼 In deck' : '📼 Cassette';
   }
 
   function setPrompt(text) {
@@ -132,6 +144,9 @@
     fly = null;
     cassette = null;
     cutscene = null;
+    hasCassette = false;
+    tapeInDeck = false;
+    syncInvHud();
     enterShed();
   }
 
@@ -145,8 +160,8 @@
     tayler = { x: 420, y: GROUND };
     showScreen('play');
     syncHud();
-    setPrompt('← → walk · Space jump · ↑/E leave shed');
-    showFlash(W.pick(W.SHED_GAGS), 160);
+    setPrompt('Grab the cassette, then leave through EXIT');
+    showFlash('Find & grab the cassette — then EXIT', 150);
   }
 
   function enterYard() {
@@ -213,13 +228,19 @@
       insertProgress: 0,
       inserting: false,
       doneTimer: 0,
+      hasTape: !!hasCassette,
     };
     Audio.play('ui');
-    // Theme does NOT start yet — cassette gate
+    // Theme does NOT start yet — insert gate
     showScreen('play');
     syncHud();
-    setPrompt('Press E / Space — insert cassette');
-    showFlash('Cockpit online. Pop in the tape, Zakk.', 120);
+    if (hasCassette) {
+      setPrompt('E / Space / USE — insert cassette into deck');
+      showFlash('Cockpit online. Slide the tape into the deck.', 120);
+    } else {
+      setPrompt('No cassette — somehow empty-handed');
+      showFlash('…you forgot the cassette?!', 120);
+    }
   }
 
   function enterFly() {
@@ -264,7 +285,7 @@
 
   function endMission() {
     Audio.play('gameOver');
-    Audio.stopTheme();
+    // Theme keeps playing through results until title / new game
     mode = 'results';
     const high = getHigh();
     const isNew = score > high;
@@ -403,6 +424,10 @@
     Audio.play('ui');
     Audio.stopTheme();
     mode = 'title';
+    hasCassette = false;
+    tapeInDeck = false;
+    cassette = null;
+    syncInvHud();
     showScreen('title');
     el.titleHigh.textContent = 'High Score: ' + getHigh();
   });
@@ -493,9 +518,19 @@
     camX = Math.max(0, Math.min(Math.max(0, worldW - CW), avatar.x - CW * 0.4));
   }
 
+  function nearCassetteProp() {
+    if (mode !== 'shed' || !avatar || hasCassette) return false;
+    return Math.abs(avatar.x - W.SHED_CASSETTE_X) < 48;
+  }
+
+  function nearDoor() {
+    if (mode !== 'shed' || !avatar) return false;
+    return Math.abs(avatar.x - W.SHED_DOOR_X) < 50;
+  }
+
   function nearInteract() {
     if (mode === 'shed') {
-      return Math.abs(avatar.x - W.SHED_DOOR_X) < 50;
+      return nearCassetteProp() || nearDoor();
     }
     if (mode === 'yard' && landing && landing.phase === 'landed') {
       return Math.abs(avatar.x - landing.x) < 80;
@@ -511,15 +546,39 @@
       showFlash(W.pick(W.SHED_GAGS), 100);
     }
 
-    if (nearInteract()) {
-      setPrompt('↑ / E / USE — Leave the shed');
+    if (nearCassetteProp()) {
+      setPrompt('↑ / E / USE — Grab cassette tape');
       if (wantsInteract()) {
-        enterYard();
-        return;
+        hasCassette = true;
+        Audio.play('ui');
+        Audio.play('cassette');
+        showFlash('Cassette acquired!', 130);
+        syncInvHud();
+        W.burst(particles, W.SHED_CASSETTE_X - camX, GROUND - 42, '#7dff3a', 10);
+        W.addFloater(floaters, W.SHED_CASSETTE_X - camX, GROUND - 60, '📼 GOT IT', '#7dff3a');
+      }
+    } else if (nearDoor()) {
+      if (!hasCassette) {
+        setPrompt('Need the cassette first! Grab it near the amp');
+        prevInteractHeld = interactHeld();
+        if (wantsInteract()) {
+          showFlash('Door locked vibe — grab the cassette first!', 100);
+          Audio.play('hit');
+        }
+      } else {
+        setPrompt('↑ / E / USE — Leave the shed');
+        if (wantsInteract()) {
+          enterYard();
+          return;
+        }
       }
     } else {
       prevInteractHeld = interactHeld();
-      setPrompt('← → walk · Space jump · hang with Tayler · EXIT →');
+      if (!hasCassette) {
+        setPrompt('← → walk · find cassette near amp · then EXIT →');
+      } else {
+        setPrompt('← → walk · Space jump · hang with Tayler · EXIT →');
+      }
     }
   }
 
@@ -612,14 +671,23 @@
   }
 
   function updateCassette() {
+    cassette.hasTape = !!hasCassette;
+
+    if (!hasCassette) {
+      setPrompt('No cassette held — restart and grab it in the shed');
+      prevInteractHeld = interactHeld() || beamHeld();
+      return;
+    }
+
     if (!cassette.inserted) {
-      setPrompt('Press E / Space — insert cassette');
+      setPrompt('E / Space / USE — insert cassette into deck');
       if (wantsInteract()) {
         cassette.inserting = true;
         cassette.inserted = true;
         cassette.insertProgress = 0;
         Audio.play('cassette');
         showFlash('Click. Clunk. Theme engaged.', 90);
+        syncInvHud();
       } else {
         prevInteractHeld = interactHeld() || beamHeld();
       }
@@ -630,11 +698,13 @@
       if (cassette.insertProgress >= 1) {
         cassette.inserting = false;
         cassette.doneTimer = 1;
-        // START THEME now — respect mute
+        // START THEME now — respect mute; plays rest of run
         Audio.unlock();
         Audio.playTheme();
         Audio.play('power');
+        tapeInDeck = true;
         showFlash('Mothership theme: ON. Flight controls unlocked!', 110);
+        syncInvHud();
       }
     }
 
@@ -832,17 +902,17 @@
     }
 
     if (mode === 'shed') {
-      W.drawShed(ctx, CW, CH, camX, t);
+      W.drawShed(ctx, CW, CH, camX, t, { cassetteTaken: hasCassette });
       if (tayler) {
         W.drawTayler(ctx, tayler.x - camX, tayler.y, 1, false, t, { seated: true, smoking: true });
       }
       const smoking = Math.abs(avatar.vx) < 0.5;
       W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, { smoking: smoking });
-      if (nearInteract()) {
-        ctx.fillStyle = '#7dff3a';
+      if (nearDoor()) {
+        ctx.fillStyle = hasCassette ? '#7dff3a' : '#ff8866';
         ctx.font = 'bold 16px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('▲ ENTER', W.SHED_DOOR_X - camX, GROUND - 150);
+        ctx.fillText(hasCassette ? '▲ ENTER' : '▲ NEED CASSETTE', W.SHED_DOOR_X - camX, GROUND - 150);
         ctx.textAlign = 'left';
       }
     } else if (mode === 'yard') {
