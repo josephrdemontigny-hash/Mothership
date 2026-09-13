@@ -82,6 +82,8 @@
 
   const SHED_WORLD_W = 1520;
   const SHED_DOOR_X = 1420;
+  /** World X of shed exterior door in the yard (matches drawYard sx+34) */
+  const YARD_SHED_DOOR_X = 254;
   /** Walkable mothership bridge / control deck */
   const SHIP_WORLD_W = 980;
   /** Driver's seat / helm interact X */
@@ -461,12 +463,14 @@
       ctx.textAlign = 'left';
     } else if (stage === 'light') {
       // Zakk lights — lighter at Zakk; joint unlit until ~0.45 then cherry ramps
+      // Smoke only after mid-light (litAmt); no pre-lit plumes
       const litAmt = p < 0.45 ? 0 : Math.min(1, (p - 0.45) / 0.55);
       drawJoint(ctx, taylerX + 24, handY, -0.45, { lit: litAmt > 0 ? litAmt : false });
       const zSide = zakkX < taylerX ? -1 : 1;
       drawLighterFlame(ctx, zakkX + zSide * 26, zakkY - 36, t);
-      if (litAmt > 0.2) {
-        drawSmokePuffs(ctx, taylerX + 42, handY - 8, t, 0.6 + litAmt * 1.0);
+      if (litAmt > 0.35) {
+        // tiny tip ember plume only once actually lit — not mouth smoke
+        drawSmokePuffs(ctx, taylerX + 42, handY - 8, t, 0.45 + litAmt * 0.55);
       }
       ctx.fillStyle = '#ffe8a0';
       ctx.font = 'bold 11px Segoe UI, sans-serif';
@@ -474,17 +478,18 @@
       ctx.fillText('Zakk lights it', (taylerX + zakkX) / 2, handY - 26);
       ctx.textAlign = 'left';
     } else if (stage === 'smoke' || stage === 'pass' || stage === 'watch') {
-      // Smoke the joint — handoff + both puffing
+      // Smoke the joint — handoff; cherry + optional tip ember only.
+      // Big mouth plumes are Up-driven on drawZakk (puffing), not free ambient here.
       const handoff = Math.min(1, p * 1.35);
       const jx = taylerX + 24 + (zakkX - taylerX - 10) * Math.min(1, handoff);
       const jy = handY - Math.sin(Math.min(1, handoff) * Math.PI) * 18;
       if (handoff < 0.95) {
         drawJoint(ctx, jx, jy, -0.3 + handoff * 0.2, { lit: true });
-        drawSmokePuffs(ctx, jx + 14, jy - 6, t, 1.6);
+        // soft tip wisps during pass — not character mouth smoke
+        drawSmokePuffs(ctx, jx + 14, jy - 6, t, 0.7);
       } else {
         drawJoint(ctx, zakkX + (zakkX < taylerX ? -22 : 22), zakkY - 32, -0.5, { lit: true });
-        drawSmokePuffs(ctx, zakkX + 18, zakkY - 40, t, 2.2);
-        drawSmokePuffs(ctx, taylerX + 20, taylerY - 52, t + 200, 1.6);
+        // idle hold after handoff: cherry only (mouth smoke via Up / puffing on Zakk)
       }
       ctx.fillStyle = '#e8ffe0';
       ctx.font = 'bold 12px Segoe UI, sans-serif';
@@ -643,17 +648,28 @@
     ctx.restore();
 
     if (opts.smoking) {
-      const jx = x + facing * 22 * scale;
-      const jy = y - 20 * scale;
       const jointLit = !!opts.jointLit;
-      drawJoint(ctx, jx, jy, facing > 0 ? -0.5 : Math.PI + 0.5, { lit: jointLit });
-      if (jointLit) {
-        const smokeMul = opts.heavySmoke ? 2.2 : 1.4;
-        drawSmokePuffs(ctx, jx + facing * 14, jy - 6, t, smokeMul);
-        if (opts.heavySmoke) {
-          drawSmokePuffs(ctx, jx + facing * 8, jy - 18, t + 400, 1.6);
-        }
+      const puffing = !!opts.puffing && jointLit;
+      const puffProg = opts.puffProg != null ? opts.puffProg : (puffing ? 1 : 0);
+      // Idle hold: joint at hand, cherry only. Puffing: rise to lips + mouth smoke.
+      let jx = x + facing * 22 * scale;
+      let jy = y - 20 * scale;
+      let jang = facing > 0 ? -0.5 : Math.PI + 0.5;
+      if (puffing) {
+        const rise = 0.55 + puffProg * 0.45;
+        jx = x + facing * (22 - 12 * rise) * scale;
+        jy = y - (20 + 38 * rise) * scale;
+        jang = facing > 0 ? (-0.5 + 0.38 * rise) : (Math.PI + 0.5 - 0.38 * rise);
       }
+      drawJoint(ctx, jx, jy, jang, { lit: jointLit });
+      if (puffing) {
+        const mouthX = x + facing * 6 * scale;
+        const mouthY = y - 56 * scale;
+        const mul = 1.6 + puffProg * 1.0;
+        drawSmokePuffs(ctx, mouthX + facing * 10, mouthY, t, mul);
+        drawSmokePuffs(ctx, mouthX + facing * 4, mouthY - 12, t + 280, 1.2 + puffProg * 0.6);
+      }
+      // No ambient / heavySmoke plumes while idle-holding a lit joint
     }
 
     if (!opts.noLabel) {
@@ -811,13 +827,11 @@
       const jx = x + facing * 22 * scale;
       const jy = y - (seated ? 16 : 20) * scale;
       const jointLit = !!opts.jointLit;
+      const puffing = !!opts.puffing && jointLit;
       drawJoint(ctx, jx, jy, facing > 0 ? -0.55 : Math.PI + 0.55, { lit: jointLit });
-      if (jointLit) {
-        const smokeMul = opts.heavySmoke ? 2.0 : 0.8;
-        drawSmokePuffs(ctx, jx + facing * 14, jy - 6, t, smokeMul);
-        if (opts.heavySmoke) {
-          drawSmokePuffs(ctx, jx + facing * 6, jy - 16, t + 300, 1.5);
-        }
+      // Ambient plumes off — only draw smoke when explicitly puffing
+      if (puffing) {
+        drawSmokePuffs(ctx, jx + facing * 10, jy - 10, t, 1.4);
       }
     }
 
@@ -1075,7 +1089,8 @@
     ctx.fillRect(x + 8, y - 40, 84, 14);
   }
 
-  function drawChillTable(ctx, x, y, t) {
+  function drawChillTable(ctx, x, y, t, opts) {
+    opts = opts || {};
     ctx.fillStyle = '#6a4a30';
     ctx.fillRect(x, y - 32, 58, 7);
     ctx.fillRect(x + 4, y - 25, 5, 25);
@@ -1089,7 +1104,10 @@
     ctx.fillRect(x + 24, y - 40, 3, 5);
     ctx.fillRect(x + 30, y - 39, 3, 4);
     drawJoint(ctx, x + 10, y - 40, -0.2, { lit: false });
-    drawSmokePuffs(ctx, x + 42, y - 44, t, 2.1);
+    // Mute ashtray plumes during unlit roll/sesh so they don't read as joint smoke
+    if (opts.ambientSmoke !== false) {
+      drawSmokePuffs(ctx, x + 42, y - 44, t, 2.1);
+    }
   }
 
   /** Classic copper/bronze El Camino — barn-find project car (side view) */
@@ -1946,7 +1964,11 @@
     // Mid-shed walk: mostly open (Camino tail → stereo)
     propAt(820 - camX, function () { drawLawnmower(ctx, 820 - camX, floorY - 8); });
     propAt(900 - camX, function () { drawCouch(ctx, 900 - camX, floorY); });
-    propAt(950 - camX, function () { drawChillTable(ctx, 950 - camX, floorY - 4, t); });
+    propAt(950 - camX, function () {
+      // ashSmoke false during unlit roll/sesh; true (or omitted default) otherwise
+      const ashOn = opts.ashSmoke != null ? !!opts.ashSmoke : true;
+      drawChillTable(ctx, 950 - camX, floorY - 4, t, { ambientSmoke: ashOn });
+    });
     propAt(1020 - camX, function () { drawLawnChair(ctx, 1020 - camX, floorY); });
     propAt(1080 - camX, function () { drawAmp(ctx, 1080 - camX, floorY); });
 
@@ -2675,6 +2697,12 @@
     ctx.fill();
     ctx.fillStyle = '#2a1a10';
     ctx.fillRect(sx + 22, groundY - 40, 24, 40);
+    // back-into-shed prompt marker
+    ctx.fillStyle = '#7dff3a';
+    ctx.font = 'bold 11px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('← SHED', sx + 34, groundY - 48);
+    ctx.textAlign = 'left';
 
     // fence
     ctx.strokeStyle = '#8a6a40';
@@ -3424,8 +3452,8 @@
     ctx.fillRect(0, h * 0.7, w, h * 0.3);
     drawClayUFO(ctx, w / 2 + Math.sin(t * 0.001) * 40, 118 + Math.cos(t * 0.0007) * 12, 1.72, t, true, { showPilots: true, legExtend: 0 });
     // brothers on title
-    drawZakk(ctx, w / 2 - 80, h * 0.7, 1, false, t, { smoking: true, jointLit: true });
-    drawTayler(ctx, w / 2 + 90, h * 0.7, -1, false, t, { smoking: true, jointLit: true });
+    drawZakk(ctx, w / 2 - 80, h * 0.7, 1, false, t, { smoking: true, jointLit: true, puffing: true, puffProg: 0.85 });
+    drawTayler(ctx, w / 2 + 90, h * 0.7, -1, false, t, { smoking: true, jointLit: true, puffing: true });
     ctx.fillStyle = 'rgba(5,20,10,0.35)';
     ctx.fillRect(0, 0, w, h);
   }
@@ -3441,6 +3469,7 @@
     SHED_GAGS,
     SHED_WORLD_W,
     SHED_DOOR_X,
+    YARD_SHED_DOOR_X,
     SHIP_WORLD_W,
     SHIP_HELM_X,
     SHED_CASSETTE_X,

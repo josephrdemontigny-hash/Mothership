@@ -93,6 +93,10 @@
   let jointTimer = 0;
   /** UFO landing auto-anim after smoke (separate from press steps) */
   let ufoLanding = false;
+  /** Mouth-puff frames remaining (Up while holding lit joint) */
+  let puffTimer = 0;
+  /** Previous frame Up-held for puff edge detect */
+  let prevUpHeld = false;
   /** Brief sit + takeoff after taking driver's seat (ship mode) */
   let boardSit = null;
   /** Guard double-insert on title stereo */
@@ -153,6 +157,8 @@
       el.btnInteract.textContent = step.btn;
     } else if (mode === 'shed' && nearDoor() && ufoLanded()) {
       el.btnInteract.textContent = 'EXIT';
+    } else if (mode === 'yard' && nearYardShedDoor()) {
+      el.btnInteract.textContent = 'ENTER';
     } else if (mode === 'yard' && nearInteract()) {
       el.btnInteract.textContent = 'BOARD';
     } else if (mode === 'ship' && nearInteract() && !boardSit) {
@@ -411,6 +417,8 @@
     jointStepIndex = 0;
     jointTimer = 0;
     ufoLanding = false;
+    puffTimer = 0;
+    prevUpHeld = false;
     titleInserting = false;
     syncInvHud();
     enterShed();
@@ -435,6 +443,26 @@
     syncInteractBtn();
     setPrompt('Walk up to Tayler — get high with T');
     showFlash('Theme on. Hang with Tayler by the Camino.', 130);
+  }
+
+  /** From backyard — re-enter shed without resetting sesh / landing progress */
+  function returnToShed() {
+    mode = 'shed';
+    interactQueued = false;
+    jumpQueued = false;
+    prevInteractHeld = true;
+    boardSit = null;
+    Audio.play('ui');
+    if (!tayler) tayler = { x: 940, y: GROUND };
+    avatar = makeAvatar(Math.max(80, W.SHED_DOOR_X - 55), GROUND);
+    camX = Math.max(0, Math.min(Math.max(0, W.SHED_WORLD_W - CW), avatar.x - CW * 0.4));
+    showScreen('play');
+    syncHud();
+    syncInteractBtn();
+    showFlash('Back in the shed.', 80);
+    if (ufoLanded()) setPrompt('← → walk · EXIT → out back');
+    else if (ufoLanding) setPrompt('Watch the window — wait for it to land…');
+    else setPrompt('Hang in the shed · EXIT → when ready');
   }
 
   function enterYard() {
@@ -571,6 +599,8 @@
     jointStepIndex = 0;
     jointTimer = 0;
     ufoLanding = false;
+    puffTimer = 0;
+    prevUpHeld = false;
     tapeInStereo = true;
     particles = [];
     floaters = [];
@@ -651,8 +681,47 @@
     return false;
   }
 
+  function upHeld() {
+    return !!(keys['arrowup'] || keys['w'] || touchDirs.up);
+  }
+
+  /** Zakk holds a lit joint — Up drives mouth-puff instead of generic interact */
+  function canPuffJoint() {
+    if (mode !== 'shed') return false;
+    if (smokeDone || ufoLanding) return true;
+    // After light complete: awaiting / in smoke step
+    if (jointStage === 'smoke') {
+      if (jointPhase === 'anim') {
+        const idx = jointStageIndex('smoke');
+        const dur = idx >= 0 ? JOINT_STEPS[idx].dur : 64;
+        // After handoff (~70% of smoke anim)
+        return jointTimer / Math.max(1, dur) >= 0.7;
+      }
+      return true;
+    }
+    if (jointPhase === 'await' && jointStepIndex >= 3) return true;
+    return false;
+  }
+
+  function zakkPuffing() {
+    return puffTimer > 0 && canPuffJoint();
+  }
+
+  function puffProg() {
+    if (puffTimer <= 0) return 0;
+    // Peak mid-puff (~32 frames)
+    const p = puffTimer / 32;
+    return Math.max(0, Math.min(1, p > 0.5 ? (1 - (p - 0.5) * 2) * 0.3 + 0.7 : p * 2));
+  }
+
   function interactHeld() {
-    return !!(keys['e'] || keys['enter'] || keys['arrowup'] || keys['w'] || touchDirs.up);
+    const useKeys = !!(keys['e'] || keys['enter']);
+    const upKeys = upHeld();
+    // While holding lit joint (and not at open exit door), Up is for puffing
+    if (canPuffJoint() && !(nearDoor() && ufoLanded())) {
+      return useKeys;
+    }
+    return !!(useKeys || upKeys);
   }
 
   function wantsInteract() {
@@ -661,6 +730,32 @@
     const edge = held && !prevInteractHeld;
     prevInteractHeld = held;
     return edge;
+  }
+
+  /** Tick / edge-start mouth puff from Up while Zakk has lit joint */
+  function updatePuffInput() {
+    if (puffTimer > 0) puffTimer--;
+    if (!canPuffJoint()) {
+      prevUpHeld = upHeld();
+      return;
+    }
+    // At open exit door, Up stays interact — skip puff steal
+    if (nearDoor() && ufoLanded()) {
+      prevUpHeld = upHeld();
+      return;
+    }
+    const up = upHeld();
+    if (up) {
+      if (!prevUpHeld) {
+        puffTimer = 32;
+        Audio.play('smoke');
+      } else if (puffTimer < 6) {
+        // sustain while held
+        puffTimer = 28;
+        if (Math.random() < 0.35) Audio.play('smoke');
+      }
+    }
+    prevUpHeld = up;
   }
 
   function beamHeld() {
@@ -697,7 +792,10 @@
       }
     }
     if ((k === 'arrowup' || k === 'w') && (mode === 'shed' || mode === 'yard' || mode === 'ship')) {
-      interactQueued = true;
+      // Lit-joint Up → mouth puff (handled in updatePuffInput); keep Up-as-interact otherwise
+      if (!(mode === 'shed' && canPuffJoint() && !(nearDoor() && ufoLanded()))) {
+        interactQueued = true;
+      }
     }
 
     if ((e.code === 'Space' || k === ' ')) {
@@ -751,6 +849,8 @@
     jointStepIndex = 0;
     jointTimer = 0;
     ufoLanding = false;
+    puffTimer = 0;
+    prevUpHeld = false;
     boardSit = null;
     syncInvHud();
     resetStereoTitleUI();
@@ -855,6 +955,11 @@
     return Math.abs(avatar.x - W.SHED_DOOR_X) < 50;
   }
 
+  function nearYardShedDoor() {
+    if (mode !== 'yard' || !avatar) return false;
+    return Math.abs(avatar.x - W.YARD_SHED_DOOR_X) < 55;
+  }
+
   function nearTaylerSesh() {
     if (mode !== 'shed' || !avatar || !tayler) return false;
     if (smokeDone || ufoLanding) return false;
@@ -900,6 +1005,7 @@
 
   // ——— Updates ———
   function updateShed() {
+    updatePuffInput();
     // Press-to-advance joint: get high → roll → light → smoke → UFO lands
     if (jointPhase === 'anim' && jointStage && !smokeDone) {
       jointTimer++;
@@ -976,7 +1082,11 @@
     if (nearTaylerSesh()) {
       const step = currentJointPrompt();
       if (step) {
-        setPrompt('↑ / E / USE — ' + step.prompt);
+        if (canPuffJoint() && step.id === 'smoke') {
+          setPrompt('↑ puff · E / USE — ' + step.prompt);
+        } else {
+          setPrompt('↑ / E / USE — ' + step.prompt);
+        }
         if (wantsInteract()) {
           beginJointStep(step);
         }
@@ -1004,13 +1114,16 @@
       }
     } else {
       prevInteractHeld = interactHeld();
-      if (!smokeDone && !ufoLanding) {
+      if (canPuffJoint() && !smokeDone && !ufoLanding) {
+        const step = currentJointPrompt();
+        setPrompt(step ? '↑ puff · walk to Tayler — ' + step.prompt : '↑ puff');
+      } else if (!smokeDone && !ufoLanding) {
         const step = currentJointPrompt();
         setPrompt(step ? 'Walk to Tayler — ' + step.prompt : 'Walk up to Tayler');
       } else if (!ufoLanded()) {
-        setPrompt('Watch the window — wait for it to land…');
+        setPrompt(canPuffJoint() ? '↑ puff · watch the window — landing…' : 'Watch the window — wait for it to land…');
       } else {
-        setPrompt('← → walk · UFO landed · EXIT →');
+        setPrompt(canPuffJoint() ? '↑ puff · ← → walk · EXIT →' : '← → walk · UFO landed · EXIT →');
       }
     }
     syncInteractBtn();
@@ -1026,6 +1139,17 @@
       else if (tayler.x > tx + 4) tayler.x -= 1.2;
     }
 
+    // Prefer shed door when near it (left side) over boarding
+    if (nearYardShedDoor()) {
+      setPrompt('↑ / E / USE — enter the shed');
+      if (wantsInteract()) {
+        returnToShed();
+        return;
+      }
+      syncInteractBtn();
+      return;
+    }
+
     if (landing && landing.phase === 'landed') {
       if (nearInteract()) {
         setPrompt('↑ / E / USE — board the mothership');
@@ -1038,9 +1162,13 @@
         }
       } else {
         prevInteractHeld = interactHeld();
-        setPrompt('Walk to the UFO — board the mothership');
+        setPrompt('← shed · mothership →  Walk to board');
       }
+    } else {
+      prevInteractHeld = interactHeld();
+      setPrompt('← → walk · enter shed on the left');
     }
+    syncInteractBtn();
   }
 
   function updateShip() {
@@ -1310,6 +1438,18 @@
     }
 
     if (mode === 'shed') {
+      // Lit only after mid light progress, or smoke / done / landing
+      let lightProg = 0;
+      if (jointStage === 'light' && jointPhase === 'anim') {
+        const li = jointStageIndex('light');
+        const ld = li >= 0 ? JOINT_STEPS[li].dur : 42;
+        lightProg = Math.min(1, jointTimer / Math.max(1, ld));
+      }
+      const jointLit = smokeDone || ufoLanding || jointStage === 'smoke' ||
+        (jointStage === 'light' && lightProg >= 0.45) ||
+        (jointPhase === 'await' && jointStepIndex >= 3);
+      // Mute ashtray ambient during active unlit sesh (reads as joint smoke)
+      const inUnlitSesh = !jointLit && (smoking || jointPhase === 'await' || jointPhase === 'anim');
       W.drawShed(ctx, CW, CH, camX, t, {
         cassetteTaken: true,
         tapeInStereo: true,
@@ -1317,39 +1457,45 @@
         doorLocked: !ufoLanded(),
         smoking: smoking || ufoLanding,
         smokeProgress: smokeProgress,
+        jointLit: jointLit,
+        ashSmoke: !inUnlitSesh,
       });
       // Sesh anim owns the joint prop — avoid double-drawing on characters
       const seshOwnsJoint = (jointPhase === 'anim' || ufoLanding) && !!jointStage &&
         (jointStage === 'gethigh' || jointStage === 'roll' || jointStage === 'light' || jointStage === 'smoke');
-      let lightProg = 0;
-      if (jointStage === 'light' && jointPhase === 'anim') {
-        const li = jointStageIndex('light');
-        const ld = li >= 0 ? JOINT_STEPS[li].dur : 42;
-        lightProg = Math.min(1, jointTimer / Math.max(1, ld));
-      }
-      // Lit only after mid light progress, or smoke / done / landing
-      const jointLit = smokeDone || ufoLanding || jointStage === 'smoke' ||
-        (jointStage === 'light' && lightProg >= 0.45) ||
-        (jointPhase === 'await' && jointStepIndex >= 3);
-      const showCharJoint = !seshOwnsJoint && (
-        smokeDone || ufoLanding ||
+      // During late smoke anim (post-handoff), let Zakk draw joint for Up-puff
+      const smokeAnimLate = jointStage === 'smoke' && jointPhase === 'anim' && (() => {
+        const idx = jointStageIndex('smoke');
+        const dur = idx >= 0 ? JOINT_STEPS[idx].dur : 64;
+        return jointTimer / Math.max(1, dur) >= 0.7;
+      })();
+      const showCharJoint = (!seshOwnsJoint || smokeAnimLate) && (
+        smokeDone || ufoLanding || smokeAnimLate ||
         (jointPhase === 'await' && jointStepIndex >= 2) ||
         (jointStage === 'smoke' && jointPhase !== 'anim')
       );
+      const isPuffing = zakkPuffing();
+      const pProg = puffProg();
       if (tayler) {
+        // Tayler holds through roll/light await; after pass Zakk has it (no free plumes)
+        const taylerHolds = showCharJoint && !smokeAnimLate &&
+          !(smokeDone || ufoLanding || jointStage === 'smoke' || jointStepIndex >= 3);
         W.drawTayler(ctx, tayler.x - camX, tayler.y, 1, false, t, {
           seated: true,
-          smoking: showCharJoint,
+          smoking: taylerHolds,
           jointLit: jointLit,
-          heavySmoke: smokeDone || ufoLanding || (jointStage === 'smoke' && jointLit),
+          puffing: false,
+          heavySmoke: false,
         });
       }
       W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {
-        smoking: showCharJoint && (smokeDone || ufoLanding || jointStage === 'smoke' || jointStepIndex >= 3),
+        smoking: showCharJoint && (smokeDone || ufoLanding || jointStage === 'smoke' || jointStepIndex >= 3 || smokeAnimLate),
         jointLit: jointLit,
-        heavySmoke: smokeDone || ufoLanding || jointStage === 'smoke',
+        puffing: isPuffing,
+        puffProg: pProg,
+        heavySmoke: false,
       });
-      if ((jointPhase === 'anim' || ufoLanding) && jointStage && tayler) {
+      if ((jointPhase === 'anim' || ufoLanding) && jointStage && tayler && !smokeAnimLate) {
         const idx = jointStageIndex(jointStage);
         const stage = idx >= 0 ? JOINT_STEPS[idx] : { dur: 64 };
         const stageProg = jointPhase === 'anim'
@@ -1450,7 +1596,13 @@
         W.drawTayler(ctx, tayler.x - camX, tayler.y, 1, tMoving, t, {});
       }
       W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {});
-      if (landing && landing.phase === 'landed' && nearInteract()) {
+      if (nearYardShedDoor()) {
+        ctx.fillStyle = '#7dff3a';
+        ctx.font = 'bold 16px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('▲ ENTER SHED', W.YARD_SHED_DOOR_X - camX, GROUND - 100);
+        ctx.textAlign = 'left';
+      } else if (landing && landing.phase === 'landed' && nearInteract()) {
         ctx.fillStyle = '#7dff3a';
         ctx.font = 'bold 16px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
