@@ -3443,49 +3443,141 @@
   }
 
 
-  const flySkylineImg = new Image();
-  let flySkylineReady = false;
-  flySkylineImg.onload = function () { flySkylineReady = true; };
-  flySkylineImg.src = 'assets/fly-skyline.jpeg';
+  /**
+   * Drawn sunset + Cheam ridgeline (traced from user photo shape — no image load).
+   * nx = 0..1 across span; peak = height above ground as fraction of groundY (higher = taller).
+   * Left sharp pyramid = Cheam; saddle; broader companion right; treeline base.
+   */
+  const CHEAM_RIDGE = [
+    [0.00, 0.08], [0.06, 0.12], [0.12, 0.18], [0.18, 0.28], [0.24, 0.40],
+    [0.30, 0.52], [0.34, 0.62], [0.37, 0.72], [0.395, 0.82], // approach Cheam
+    [0.42, 0.90], // Cheam summit (sharp)
+    [0.445, 0.70], [0.47, 0.52], [0.50, 0.40], // east face drop into saddle
+    [0.54, 0.36], // saddle
+    [0.58, 0.48], [0.62, 0.58], [0.66, 0.64], [0.70, 0.66], // broad companion
+    [0.74, 0.60], [0.78, 0.48], [0.84, 0.34], [0.90, 0.22], [0.96, 0.14], [1.00, 0.10],
+  ];
 
-  /** Sunset Cheam skyline photo behind Chilliwack flight */
   function drawFlySkylineBackdrop(ctx, w, h, groundY, scrollX) {
-    // Soft fill under photo while loading / letterbox
-    const dusk = ctx.createLinearGradient(0, 0, 0, groundY);
-    dusk.addColorStop(0, '#4a1a28');
-    dusk.addColorStop(0.35, '#c45a28');
-    dusk.addColorStop(0.7, '#e8a040');
-    dusk.addColorStop(1, '#2a3040');
-    ctx.fillStyle = dusk;
+    // —— Fiery sunset sky (match photo palette) ——
+    const sky = ctx.createLinearGradient(0, 0, 0, groundY);
+    sky.addColorStop(0, '#3a1848');
+    sky.addColorStop(0.2, '#8a2848');
+    sky.addColorStop(0.42, '#d94a28');
+    sky.addColorStop(0.62, '#f07828');
+    sky.addColorStop(0.82, '#f8c060');
+    sky.addColorStop(1, '#fff0c0');
+    ctx.fillStyle = sky;
     ctx.fillRect(0, 0, w, groundY);
 
-    if (flySkylineReady && flySkylineImg.naturalWidth) {
-      const img = flySkylineImg;
-      const iw = img.naturalWidth;
-      const ih = img.naturalHeight;
-      // Cover the sky band (above ground); slight parallax
-      const bandH = groundY;
-      const scale = Math.max(w / iw, bandH / ih) * 1.08;
-      const dw = iw * scale;
-      const dh = ih * scale;
-      const parallax = -((scrollX * 0.12) % Math.max(1, dw - w));
-      const dx = parallax - (dw - w) * 0.15;
-      const dy = groundY - dh + 8; // sit mountains on the horizon line
-      ctx.drawImage(img, dx, dy, dw, dh);
-      // If parallax left a gap, draw a second tile
-      if (dx + dw < w) {
-        ctx.drawImage(img, dx + dw - 1, dy, dw, dh);
-      }
-      if (dx > 0) {
-        ctx.drawImage(img, dx - dw + 1, dy, dw, dh);
-      }
-      // Soft blend into ground strip
-      const fade = ctx.createLinearGradient(0, groundY - 28, 0, groundY);
-      fade.addColorStop(0, 'rgba(40,50,60,0)');
-      fade.addColorStop(1, 'rgba(40,50,60,0.35)');
-      ctx.fillStyle = fade;
-      ctx.fillRect(0, groundY - 28, w, 28);
+    // Horizontal streaked clouds
+    for (let i = 0; i < 7; i++) {
+      const cy = groundY * (0.08 + i * 0.09);
+      const band = ctx.createLinearGradient(0, cy - 10, 0, cy + 14);
+      const a = 0.18 + (i % 3) * 0.06;
+      band.addColorStop(0, 'rgba(255,120,80,0)');
+      band.addColorStop(0.45, 'rgba(220,60,40,' + a + ')');
+      band.addColorStop(0.7, 'rgba(255,160,60,' + (a * 0.85) + ')');
+      band.addColorStop(1, 'rgba(255,200,120,0)');
+      ctx.fillStyle = band;
+      ctx.fillRect(0, cy - 8, w, 22);
     }
+    // Bright horizon glow behind peaks
+    const glow = ctx.createRadialGradient(w * 0.42, groundY * 0.72, 4, w * 0.42, groundY * 0.78, w * 0.55);
+    glow.addColorStop(0, 'rgba(255,245,200,0.55)');
+    glow.addColorStop(0.45, 'rgba(255,180,80,0.2)');
+    glow.addColorStop(1, 'rgba(255,120,40,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, groundY * 0.45, w, groundY * 0.55);
+
+    // —— Mountain silhouette (exact Cheam shape) with gentle parallax ——
+    const span = w * 1.35;
+    const shift = -((scrollX * 0.08) % span);
+    function drawRidge(ox, baseAlpha) {
+      const maxPeak = groundY * 0.58;
+      ctx.beginPath();
+      ctx.moveTo(ox - 20, groundY + 4);
+      for (let i = 0; i < CHEAM_RIDGE.length; i++) {
+        const nx = CHEAM_RIDGE[i][0];
+        const peak = CHEAM_RIDGE[i][1];
+        const x = ox + nx * span;
+        const y = groundY - peak * maxPeak;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(ox + span + 20, groundY + 4);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(12,14,22,' + baseAlpha + ')';
+      ctx.fill();
+
+      // Snow on upper Cheam + companion (only near summits)
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(ox - 20, groundY + 4);
+      for (let i = 0; i < CHEAM_RIDGE.length; i++) {
+        const nx = CHEAM_RIDGE[i][0];
+        const peak = CHEAM_RIDGE[i][1];
+        ctx.lineTo(ox + nx * span, groundY - peak * maxPeak);
+      }
+      ctx.lineTo(ox + span + 20, groundY + 4);
+      ctx.closePath();
+      ctx.clip();
+      // Cheam snow cap
+      const cheamX = ox + 0.42 * span;
+      const cheamY = groundY - 0.90 * maxPeak;
+      ctx.fillStyle = 'rgba(236,244,255,0.88)';
+      ctx.beginPath();
+      ctx.moveTo(cheamX - 28, cheamY + 48);
+      ctx.lineTo(cheamX, cheamY + 2);
+      ctx.lineTo(cheamX + 22, cheamY + 42);
+      ctx.closePath();
+      ctx.fill();
+      // east face shade
+      ctx.fillStyle = 'rgba(8,10,18,0.35)';
+      ctx.beginPath();
+      ctx.moveTo(cheamX, cheamY + 2);
+      ctx.lineTo(cheamX + 22, cheamY + 42);
+      ctx.lineTo(cheamX + 8, cheamY + 55);
+      ctx.closePath();
+      ctx.fill();
+      // companion snow
+      const compX = ox + 0.68 * span;
+      const compY = groundY - 0.66 * maxPeak;
+      ctx.fillStyle = 'rgba(230,238,248,0.75)';
+      ctx.beginPath();
+      ctx.moveTo(compX - 36, compY + 28);
+      ctx.lineTo(compX - 8, compY + 4);
+      ctx.lineTo(compX + 40, compY + 22);
+      ctx.lineTo(compX + 20, compY + 36);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    drawRidge(shift - span * 0.15, 0.92);
+    // second tile for seamless parallax
+    drawRidge(shift - span * 0.15 + span, 0.92);
+
+    // Foreground evergreen treeline (dark silhouette under peaks)
+    ctx.fillStyle = '#0a0c10';
+    ctx.beginPath();
+    ctx.moveTo(-10, groundY + 2);
+    const treeBase = groundY - 18;
+    for (let x = -10; x <= w + 20; x += 14) {
+      const th = 22 + ((x * 3 + scrollX * 0.2) % 17);
+      const tip = treeBase - th;
+      ctx.lineTo(x, treeBase);
+      ctx.lineTo(x + 7, tip);
+      ctx.lineTo(x + 14, treeBase);
+    }
+    ctx.lineTo(w + 20, groundY + 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Soft blend into ground
+    const fade = ctx.createLinearGradient(0, groundY - 20, 0, groundY);
+    fade.addColorStop(0, 'rgba(20,24,30,0)');
+    fade.addColorStop(1, 'rgba(20,24,30,0.4)');
+    ctx.fillStyle = fade;
+    ctx.fillRect(0, groundY - 20, w, 20);
   }
 
   function drawFlyScene(ctx, w, h, fly, t) {
@@ -3497,7 +3589,7 @@
     ctx.translate(shakeX, shakeY);
 
     const groundY = h * 0.78;
-    // User sunset Cheam photo as flight backdrop (replaces procedural sky/mountains)
+    // Drawn sunset + Cheam silhouette (from user photo shape)
     drawFlySkylineBackdrop(ctx, w, h, groundY, scrollX);
 
     // ground bands
