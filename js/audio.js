@@ -166,6 +166,13 @@
       setTimeout(() => tone(150, 0.2, 'sawtooth', 0.07), 120);
       setTimeout(() => tone(100, 0.35, 'triangle', 0.06), 260);
     },
+    explode() {
+      tone(60, 0.25, 'sawtooth', 0.14);
+      setTimeout(() => tone(40, 0.35, 'square', 0.12), 60);
+      setTimeout(() => tone(90, 0.2, 'sawtooth', 0.1), 140);
+      setTimeout(() => tone(30, 0.5, 'triangle', 0.08), 220);
+      setTimeout(() => tone(120, 0.15, 'square', 0.06), 400);
+    },
     landing() {
       tone(180, 0.1, 'triangle', 0.06);
       setTimeout(() => tone(240, 0.12, 'triangle', 0.05), 80);

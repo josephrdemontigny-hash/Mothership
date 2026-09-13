@@ -35,6 +35,8 @@
     btnAgain: document.getElementById('btn-again'),
     btnTitle: document.getElementById('btn-title'),
     btnBeam: document.getElementById('btn-beam'),
+    btnDestruct: document.getElementById('btn-destruct'),
+    hudDestruct: document.getElementById('hud-destruct'),
     btnInteract: document.getElementById('btn-interact'),
     carStereo: document.getElementById('car-stereo'),
     menuCassette: document.getElementById('menu-cassette'),
@@ -210,6 +212,8 @@
   function syncBeamUi() {
     const flying = mode === 'fly';
     if (el.btnBeam) el.btnBeam.classList.toggle('hidden', !flying);
+    if (el.btnDestruct) el.btnDestruct.classList.toggle('hidden', !flying);
+    if (el.hudDestruct) el.hudDestruct.classList.toggle('hidden', !flying);
     if (el.beamed) {
       const wrap = document.getElementById('beamed-label');
       if (wrap) wrap.classList.toggle('hidden', !flying);
@@ -462,6 +466,8 @@
   }
 
   function enterFly() {
+    selfDestructing = false;
+    destructTimer = 0;
     mode = 'fly';
     interactQueued = false;
     beamQueued = false;
@@ -499,7 +505,7 @@
     for (let i = 0; i < 5; i++) spawnFlyTarget(300 + i * 200);
     showScreen('play');
     syncHud();
-    setPrompt('←→↑↓ fly (you drive the scroll) · Space / USE beam · Enter end');
+    setPrompt('←→↑↓ fly · Space/USE beam · 💥 self destruct · Enter end');
     showFlash('Free flight over Chilliwack. Beam humans — not pets!', 140);
   }
 
@@ -519,6 +525,57 @@
     el.titleHigh.textContent = 'High Score: ' + getHigh();
     setPrompt('');
   }
+
+  let selfDestructing = false;
+  let destructTimer = 0;
+
+  function goToTitleMenu() {
+    Audio.stopTheme();
+    selfDestructing = false;
+    destructTimer = 0;
+    mode = 'title';
+    fly = null;
+    landing = null;
+    boardSit = null;
+    avatar = null;
+    tayler = null;
+    smoking = false;
+    smokeProgress = 0;
+    smokeDone = false;
+    windowUfo = 0;
+    jointStage = null;
+    jointPhase = null;
+    jointStepIndex = 0;
+    jointTimer = 0;
+    ufoLanding = false;
+    tapeInStereo = true;
+    particles = [];
+    floaters = [];
+    flashMsg = null;
+    syncInvHud();
+    resetStereoTitleUI();
+    showScreen('title');
+    el.titleHigh.textContent = 'High Score: ' + getHigh();
+    fetchPlayCount();
+    setPrompt('');
+  }
+
+  function triggerSelfDestruct() {
+    if (mode !== 'fly' || !fly || selfDestructing) return;
+    selfDestructing = true;
+    destructTimer = 0;
+    Audio.play('explode');
+    showFlash('SELF DESTRUCT — see you in the tape deck', 90);
+    setPrompt('💥 BOOM');
+    // big explosion FX
+    for (let i = 0; i < 5; i++) {
+      W.burst(particles, fly.ufoX + (Math.random() - 0.5) * 40, fly.ufoY + (Math.random() - 0.5) * 30, '#ff6622', 18);
+      W.burst(particles, fly.ufoX, fly.ufoY, '#ffe088', 12);
+    }
+    fly.shake = 40;
+    fly.hitFlash = 50;
+  }
+
 
   function districtPropKinds() {
     const id = W.DISTRICTS[fly.districtIndex % W.DISTRICTS.length].id;
@@ -630,6 +687,9 @@
     if (k === 'enter' && mode === 'fly') {
       endMission();
     }
+    if ((k === 'x' || k === 'delete' || k === 'backspace') && mode === 'fly') {
+      triggerSelfDestruct();
+    }
   });
 
   window.addEventListener('keyup', (e) => {
@@ -716,6 +776,18 @@
   }
   el.btnInteract.addEventListener('touchstart', onInteractPointer, { passive: false });
   el.btnInteract.addEventListener('mousedown', onInteractPointer);
+
+  function onDestructPointer(e) {
+    e.preventDefault();
+    triggerSelfDestruct();
+  }
+  if (el.btnDestruct) {
+    el.btnDestruct.addEventListener('touchstart', onDestructPointer, { passive: false });
+    el.btnDestruct.addEventListener('mousedown', onDestructPointer);
+  }
+  if (el.hudDestruct) {
+    el.hudDestruct.addEventListener('click', () => triggerSelfDestruct());
+  }
 
   // ——— Physics ———
   function updateSideScroller(worldW) {
@@ -1137,6 +1209,19 @@
   }
 
   function update() {
+    if (selfDestructing) {
+      destructTimer++;
+      if (fly) {
+        fly.shake = Math.max(fly.shake, 28);
+        fly.hitFlash = Math.max(fly.hitFlash, 24);
+        if (destructTimer % 4 === 0) {
+          W.burst(particles, fly.ufoX + (Math.random() - 0.5) * 80, fly.ufoY + (Math.random() - 0.5) * 50, '#ff4422', 10);
+          W.burst(particles, fly.ufoX, fly.ufoY, '#ffcc66', 8);
+        }
+      }
+      if (destructTimer > 55) goToTitleMenu();
+      return;
+    }
     if (mode === 'shed') updateShed();
     else if (mode === 'yard') updateYard();
     else if (mode === 'fly') updateFly();

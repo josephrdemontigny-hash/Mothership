@@ -699,3 +699,29 @@ html, body {
   .tape-title { font-size: 11px; }
   .stereo-knob { width: 40px; }
 }
+
+#btn-destruct {
+  min-height: 44px;
+  padding: 0.45rem 0.7rem;
+  border: 2px solid #ff4466;
+  background: rgba(80, 10, 20, 0.85);
+  color: #ff8899;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  border-radius: 10px;
+  font-size: 0.72rem;
+}
+#btn-destruct.hidden { display: none !important; }
+#btn-destruct:active { background: #ff2244; color: #fff; }
+.hud-destruct {
+  margin-left: 0.35rem;
+  border: 1px solid #ff4466;
+  background: rgba(60, 8, 16, 0.9);
+  color: #ff7788;
+  border-radius: 8px;
+  padding: 0.15rem 0.4rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+.hud-destruct.hidden { display: none !important; }
+.hud-destruct:hover { background: #ff2244; color: #fff; }
