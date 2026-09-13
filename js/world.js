@@ -2305,17 +2305,38 @@
       }
     }
     if (opts.showPilots) {
-      ctx.fillStyle = 'rgba(16,20,24,0.88)';
-      ctx.beginPath(); ctx.arc(-8, -16, 5, 0, Math.PI * 2); ctx.arc(8, -16, 5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#5a4a3a'; ctx.fillRect(-12, -21, 8, 2.5);
-      ctx.fillStyle = '#8a2040'; ctx.fillRect(4, -21, 8, 2.5);
+      // Menacing dome pilots — sickly green, slanted black eyes (not cute)
+      for (const px of [-9, 9]) {
+        ctx.fillStyle = '#2a6a32';
+        ctx.beginPath();
+        ctx.ellipse(px, -15, 6.5, 7.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#0a0c10';
+        ctx.beginPath();
+        ctx.ellipse(px - 2.2, -16, 2.4, 3.6, -0.35, 0, Math.PI * 2);
+        ctx.ellipse(px + 2.2, -16, 2.4, 3.6, 0.35, 0, Math.PI * 2);
+        ctx.fill();
+        // cold red pinpricks
+        ctx.fillStyle = '#ff2244';
+        ctx.beginPath();
+        ctx.arc(px - 1.6, -16.5, 0.7, 0, Math.PI * 2);
+        ctx.arc(px + 2.8, -16.5, 0.7, 0, Math.PI * 2);
+        ctx.fill();
+        // thin frown
+        ctx.strokeStyle = '#143818';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(px - 2.5, -10.5);
+        ctx.lineTo(px + 2.5, -10.5);
+        ctx.stroke();
+      }
     }
     ctx.restore();
   }
 
 
   /**
-   * Cheesy clay green alien (Wes Anderson / alien-band vibe).
+   * Menacing greys/greens — gaunt, slanted eyes, no cute smile.
    * Feet at (x,y). facing: 1 right / -1 left.
    * opts: seated, yield (stepped aside), scale, bob
    */
@@ -2324,107 +2345,143 @@
     const scale = opts.scale != null ? opts.scale : 1.15;
     const seated = !!opts.seated;
     const yieldAmt = opts.yield != null ? opts.yield : 0;
-    const bob = Math.sin((t || 0) * 0.006 + (opts.seed || 0)) * (seated ? 1.2 : 2.5);
+    const bob = Math.sin((t || 0) * 0.004 + (opts.seed || 0)) * (seated ? 0.6 : 1.4);
     ctx.save();
     ctx.translate(x + yieldAmt * facing * 28, y);
     ctx.scale(facing * scale, scale);
 
     // shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.beginPath();
-    ctx.ellipse(0, 0, 12, 3.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, 11, 3.2, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    const skin = '#6dff7a';
-    const skinLo = '#3a9a48';
+    const skin = '#3d7a42';
+    const skinLo = '#1e4424';
+    const skinHi = '#4a8f50';
     const bodyTop = seated ? -36 : -42;
 
     // skinny legs / boots
-    ctx.fillStyle = '#2a2030';
+    ctx.fillStyle = '#121018';
     if (seated) {
-      ctx.fillRect(-10, -6, 8, 7);
-      ctx.fillRect(2, -6, 8, 7);
+      ctx.fillRect(-10, -6, 7, 7);
+      ctx.fillRect(3, -6, 7, 7);
     } else {
-      ctx.fillRect(-9, -8, 7, 9);
-      ctx.fillRect(2, -8, 7, 9);
+      ctx.fillRect(-8, -8, 6, 9);
+      ctx.fillRect(2, -8, 6, 9);
     }
-    // jumpsuit pants
-    ctx.fillStyle = '#3a2a48';
+    // dark jumpsuit pants
+    ctx.fillStyle = '#1a1524';
     if (seated) {
       ctx.fillRect(-11, -20, 22, 16);
     } else {
-      ctx.fillRect(-9, -28, 7, 22);
-      ctx.fillRect(2, -28, 7, 22);
+      ctx.fillRect(-8, -28, 6, 22);
+      ctx.fillRect(2, -28, 6, 22);
     }
-    // torso jumpsuit
-    ctx.fillStyle = '#4a3458';
-    ctx.fillRect(-12, bodyTop, 24, seated ? 20 : 22);
-    // chrome belt
-    ctx.fillStyle = '#c8d4de';
-    ctx.fillRect(-12, bodyTop + (seated ? 14 : 16), 24, 3);
-    // badge
-    ctx.fillStyle = '#88ffcc';
+    // torso — charcoal flight suit
+    ctx.fillStyle = '#221a30';
+    ctx.fillRect(-11, bodyTop, 22, seated ? 20 : 22);
+    // dull metal belt
+    ctx.fillStyle = '#5a6068';
+    ctx.fillRect(-11, bodyTop + (seated ? 14 : 16), 22, 3);
+    // cold insignia
+    ctx.fillStyle = '#a01028';
     ctx.beginPath();
-    ctx.arc(6, bodyTop + 8, 3, 0, Math.PI * 2);
+    ctx.moveTo(5, bodyTop + 5);
+    ctx.lineTo(9, bodyTop + 8);
+    ctx.lineTo(5, bodyTop + 11);
+    ctx.lineTo(1, bodyTop + 8);
+    ctx.closePath();
     ctx.fill();
 
-    // arms
+    // long thin arms
     ctx.fillStyle = skin;
-    ctx.fillRect(-16, bodyTop + 2, 5, 14);
-    ctx.fillRect(11, bodyTop + 2, 5, 14);
+    ctx.fillRect(-15, bodyTop + 2, 4, 16);
+    ctx.fillRect(11, bodyTop + 2, 4, 16);
     ctx.fillStyle = skinLo;
-    ctx.fillRect(-16, bodyTop + 12, 5, 4);
-    ctx.fillRect(11, bodyTop + 12, 5, 4);
+    ctx.fillRect(-15, bodyTop + 14, 4, 4);
+    ctx.fillRect(11, bodyTop + 14, 4, 4);
+    // claw fingertips
+    ctx.fillStyle = '#0e1a10';
+    ctx.fillRect(-16, bodyTop + 17, 2, 4);
+    ctx.fillRect(-13, bodyTop + 17, 2, 4);
+    ctx.fillRect(11, bodyTop + 17, 2, 4);
+    ctx.fillRect(14, bodyTop + 17, 2, 4);
 
-    // neck
+    // long neck
     ctx.fillStyle = skin;
-    ctx.fillRect(-3, bodyTop - 6, 6, 8);
+    ctx.fillRect(-2.5, bodyTop - 8, 5, 10);
 
-    // big clay head (oversized)
+    // gaunt oversized head (narrower chin)
     ctx.fillStyle = skin;
     ctx.beginPath();
-    ctx.ellipse(0, bodyTop - 18 + bob * 0.15, 14, 16, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, bodyTop - 20 + bob * 0.12, 13, 17, 0, 0, Math.PI * 2);
     ctx.fill();
-    // head highlight
-    ctx.fillStyle = 'rgba(200,255,180,0.35)';
+    // hollow cheek shade
+    ctx.fillStyle = 'rgba(10,30,14,0.35)';
     ctx.beginPath();
-    ctx.ellipse(-4, bodyTop - 24 + bob * 0.15, 5, 6, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(-7, bodyTop - 14, 3.5, 5, 0.2, 0, Math.PI * 2);
+    ctx.ellipse(7, bodyTop - 14, 3.5, 5, -0.2, 0, Math.PI * 2);
     ctx.fill();
-
-    // huge black oval eyes (comic alien)
-    ctx.fillStyle = '#0a0c10';
+    // cold highlight
+    ctx.fillStyle = 'rgba(120,180,100,0.15)';
     ctx.beginPath();
-    ctx.ellipse(-5.5, bodyTop - 18 + bob * 0.1, 4.2, 5.5, -0.15, 0, Math.PI * 2);
-    ctx.ellipse(5.5, bodyTop - 18 + bob * 0.1, 4.2, 5.5, 0.15, 0, Math.PI * 2);
-    ctx.fill();
-    // eye gleam
-    ctx.fillStyle = '#e8fff0';
-    ctx.beginPath();
-    ctx.arc(-4, bodyTop - 20, 1.2, 0, Math.PI * 2);
-    ctx.arc(7, bodyTop - 20, 1.2, 0, Math.PI * 2);
+    ctx.ellipse(-3, bodyTop - 26 + bob * 0.1, 4, 5, -0.2, 0, Math.PI * 2);
     ctx.fill();
 
-    // tiny smile
-    ctx.strokeStyle = '#2a6a30';
-    ctx.lineWidth = 1.2;
+    // large slanted black eyes (angry / predatory)
+    const ey = bodyTop - 19 + bob * 0.08;
+    ctx.fillStyle = '#050608';
     ctx.beginPath();
-    ctx.arc(0, bodyTop - 10, 3.5, 0.15, Math.PI - 0.15);
+    ctx.ellipse(-5.5, ey, 5.2, 6.8, -0.4, 0, Math.PI * 2);
+    ctx.ellipse(5.5, ey, 5.2, 6.8, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    // red pupils
+    ctx.fillStyle = '#ff1a2e';
+    ctx.beginPath();
+    ctx.arc(-4.2, ey - 0.5, 1.1, 0, Math.PI * 2);
+    ctx.arc(6.6, ey - 0.5, 1.1, 0, Math.PI * 2);
+    ctx.fill();
+    // brow ridge
+    ctx.strokeStyle = skinLo;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-10, ey - 7);
+    ctx.lineTo(-2, ey - 5);
+    ctx.moveTo(2, ey - 5);
+    ctx.lineTo(10, ey - 7);
     ctx.stroke();
 
-    // antennae optional
+    // thin frown / slit mouth (not a smile)
+    ctx.strokeStyle = '#0e2012';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(-4, bodyTop - 8);
+    ctx.quadraticCurveTo(0, bodyTop - 6, 4, bodyTop - 8);
+    ctx.stroke();
+
+    // spiky dark antennae (not cute pink tips)
     if (!opts.noAntenna) {
       ctx.strokeStyle = skinLo;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.6;
       ctx.beginPath();
-      ctx.moveTo(-6, bodyTop - 32);
-      ctx.lineTo(-9, bodyTop - 40);
-      ctx.moveTo(6, bodyTop - 32);
-      ctx.lineTo(9, bodyTop - 40);
+      ctx.moveTo(-5, bodyTop - 35);
+      ctx.lineTo(-11, bodyTop - 46);
+      ctx.moveTo(5, bodyTop - 35);
+      ctx.lineTo(11, bodyTop - 46);
       ctx.stroke();
-      ctx.fillStyle = '#ff66aa';
+      ctx.fillStyle = '#8a1020';
       ctx.beginPath();
-      ctx.arc(-9, bodyTop - 41, 2, 0, Math.PI * 2);
-      ctx.arc(9, bodyTop - 41, 2, 0, Math.PI * 2);
+      ctx.moveTo(-11, bodyTop - 46);
+      ctx.lineTo(-13, bodyTop - 50);
+      ctx.lineTo(-9, bodyTop - 48);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(11, bodyTop - 46);
+      ctx.lineTo(13, bodyTop - 50);
+      ctx.lineTo(9, bodyTop - 48);
+      ctx.closePath();
       ctx.fill();
     }
 
@@ -2689,7 +2746,7 @@
     ctx.fillStyle = 'rgba(200,230,210,0.55)';
     ctx.font = '11px Segoe UI, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Mothership bridge — Chilliwack below · aliens still flying', w / 2, 22);
+    ctx.fillText('Mothership bridge — Chilliwack below · crew watching', w / 2, 22);
     ctx.textAlign = 'left';
   }
 
