@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tesla Shop Apprentice — Hole in the Wall</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Title / Name screen -->
+    <section id="screen-title" class="screen active">
+      <div class="title-card">
+        <div class="pigeon-row" aria-hidden="true">🐦 🐦</div>
+        <h1>HOLE IN THE WALL</h1>
+        <p class="subtitle">Tesla EV Repair · Apprentice Shift</p>
+        <p class="blurb">
+          Not a gleaming Service Center. Grease on the concrete. Pigeons in the rafters.
+          Three techs, one parts guy, front desk that never sleeps — Kim, Ryan, and Jordan Sham check the cars in.
+          They will call you rook. Earn it.
+        </p>
+        <label for="player-name">Your name</label>
+        <input id="player-name" type="text" maxlength="24" placeholder="Apprentice" autocomplete="off" />
+        <button id="btn-start" class="btn primary">Clock In</button>
+        <p class="hint">Click locations to move · Talk to FOH for jobs · Lot → bay → techs (keys 1–9)</p>
+      </div>
+    </section>
+
+    <!-- Main game -->
+    <section id="screen-game" class="screen">
+      <header class="top-bar">
+        <div class="brand">
+          <span class="brand-mark">⚡</span>
+          <span>Hole in the Wall</span>
+        </div>
+        <div id="status-location" class="status-pill">Shop Floor</div>
+        <button id="btn-help" class="btn ghost" title="Help">?</button>
+      </header>
+
+      <div class="layout">
+        <aside class="map-panel" aria-label="Shop map">
+          <h2>Shop Map</h2>
+          <div id="shop-schematic" class="schematic" aria-label="Top-down shop schematic">
+            <div class="sch-label sch-west">LOT (W)</div>
+            <div class="sch-lot" data-loc="lot" title="Customer Lot">🅿️</div>
+            <div class="sch-shop">
+              <div class="sch-west-col">
+                <div class="sch-cell" data-loc="office" title="Front Office">FOH</div>
+                <div class="sch-cell" data-loc="parts" title="Parts — Moe">Parts</div>
+                <div class="sch-cell tiny" data-loc="floor" title="Shop Floor">Floor</div>
+              </div>
+              <div class="sch-bays">
+                <div class="sch-bay" data-loc="nima" title="Far Left Bay — Nima">Nima</div>
+                <div class="sch-bay" data-loc="won" title="Middle Bay — Won Song">Won</div>
+                <div class="sch-bay" data-loc="rolando" title="Far Right Bay — Rolando">Rolando</div>
+              </div>
+            </div>
+            <div class="sch-label sch-east">BAYS (E)</div>
+          </div>
+          <nav id="location-nav" class="location-nav"></nav>
+          <p class="map-footnote">🐦 Pigeons · 🛢️ Grease · 🔧 Chaos</p>
+        </aside>
+
+        <main class="stage">
+          <div id="scene-art" class="scene-art" aria-hidden="true"></div>
+          <h2 id="scene-title">Shop Floor</h2>
+          <div id="narration" class="narration"></div>
+          <div id="dialogue" class="dialogue hidden"></div>
+          <div id="actions" class="actions"></div>
+        </main>
+
+        <aside class="status-panel" aria-label="Status">
+          <h2>Status</h2>
+          <div class="status-block">
+            <h3>Active Job</h3>
+            <div id="status-job">None — talk to Kim, Ryan, or Jordan</div>
+          </div>
+          <div class="status-block">
+            <h3>Inventory</h3>
+            <ul id="status-inventory"><li class="muted">Empty pockets</li></ul>
+          </div>
+          <div class="status-block">
+            <h3>Rep</h3>
+            <ul id="status-rep"></ul>
+          </div>
+          <div class="status-block ambient">
+            <h3>Ambient</h3>
+            <p id="ambient-line">A pigeon coos in the rafters.</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- Help modal -->
+    <div id="modal-help" class="modal hidden" role="dialog" aria-labelledby="help-title">
+      <div class="modal-card">
+        <h2 id="help-title">How to play</h2>
+        <ol>
+          <li>Go to the <strong>Front Office</strong> and talk to <strong>Kim</strong>, <strong>Ryan</strong>, or <strong>Jordan Sham</strong>. They name the <em>repair type</em> upfront (brake service, water leak, etc.).</li>
+          <li>Take the ticket to the <strong>Customer Lot</strong> (west), get the vehicle, and bring it into the right bay (east wall).</li>
+          <li>Talk to the right tech. Wrong specialty = insults + redirect.</li>
+          <li>If parts are needed, the <strong>tech radios Moe</strong> — <strong>wait at the bay</strong> for delivery (or visit Parts for flavour).</li>
+          <li>Finish the repair, survive the backhanded praise, pull the next job. Clear all five to end the shift.</li>
+        </ol>
+        <p class="hint">Keys: 1–9 jump to map spots · Esc closes this</p>
+        <button id="btn-close-help" class="btn primary">Got it</button>
+      </div>
+    </div>
+
+    <!-- Win overlay -->
+    <div id="modal-win" class="modal hidden" role="dialog">
+      <div class="modal-card win">
+        <div class="pigeon-row" aria-hidden="true">🐦🎉🐦</div>
+        <h2>Shift Complete</h2>
+        <p id="win-text"></p>
+        <button id="btn-replay" class="btn primary">Clock in again</button>
+      </div>
+    </div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>
