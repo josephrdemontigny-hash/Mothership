@@ -8,6 +8,9 @@
   const W = MothershipWorld;
   const Audio = window.MothershipAudio;
   const HS_KEY = 'mothership_highscore';
+  const LB_KEY = 'mothership_leaderboard_v1';
+  const NAME_KEY = 'mothership_last_name';
+  const LB_MAX = 10;
 
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -43,6 +46,15 @@
     cassetteSlot: document.getElementById('cassette-slot'),
     stereoDisplay: document.getElementById('stereo-display'),
     slotHint: document.getElementById('slot-hint'),
+    titleLbList: document.getElementById('title-lb-list'),
+    titleLbEmpty: document.getElementById('title-lb-empty'),
+    resultsLbList: document.getElementById('results-lb-list'),
+    resultsLbEmpty: document.getElementById('results-lb-empty'),
+    saveScoreWrap: document.getElementById('save-score-wrap'),
+    saveScoreLabel: document.getElementById('save-score-label'),
+    scoreName: document.getElementById('score-name'),
+    btnSaveScore: document.getElementById('btn-save-score'),
+    saveScoreMsg: document.getElementById('save-score-msg'),
   };
 
   const keys = Object.create(null);
@@ -180,6 +192,167 @@
   }
   function setHigh(n) {
     localStorage.setItem(HS_KEY, String(n));
+  }
+
+  /** Strip tags / junk; keep letters, numbers, spaces; trim; cap length. */
+  function sanitizeName(raw) {
+    return String(raw == null ? '' : raw)
+      .replace(/<[^>]*>/g, '')
+      .replace(/[^A-Za-z0-9 ]+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 12);
+  }
+
+  function isValidName(name) {
+    return typeof name === 'string' && name.length >= 3 && name.length <= 12 && /^[A-Za-z0-9 ]+$/.test(name);
+  }
+
+  function loadBoard() {
+    try {
+      const raw = localStorage.getItem(LB_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) return [];
+      return arr
+        .map((e) => ({
+          name: sanitizeName(e && e.name) || '???',
+          score: Math.max(0, Math.floor(Number(e && e.score) || 0)),
+          ts: Number(e && e.ts) || 0,
+        }))
+        .filter((e) => e.score > 0 && e.name.length >= 1)
+        .sort((a, b) => b.score - a.score || a.ts - b.ts)
+        .slice(0, LB_MAX);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function persistBoard(entries) {
+    const trimmed = (entries || []).slice(0, LB_MAX);
+    localStorage.setItem(LB_KEY, JSON.stringify(trimmed));
+    // Keep personal-best key in sync with board top (never invent remote scores).
+    const top = trimmed.length ? trimmed[0].score : 0;
+    if (top > getHigh()) setHigh(top);
+  }
+
+  function syncHighFromBoard() {
+    const board = loadBoard();
+    if (board.length && board[0].score > getHigh()) setHigh(board[0].score);
+  }
+
+  function renderOneBoard(listEl, emptyEl, highlightTs) {
+    if (!listEl) return;
+    const entries = loadBoard();
+    listEl.textContent = '';
+    if (!entries.length) {
+      if (emptyEl) emptyEl.classList.remove('hidden');
+      return;
+    }
+    if (emptyEl) emptyEl.classList.add('hidden');
+    for (let i = 0; i < entries.length; i++) {
+      const e = entries[i];
+      const li = document.createElement('li');
+      li.className = 'lb-row' + (highlightTs != null && e.ts === highlightTs ? ' lb-row--new' : '');
+      const rank = document.createElement('span');
+      rank.className = 'lb-rank';
+      rank.textContent = String(i + 1);
+      const name = document.createElement('span');
+      name.className = 'lb-name';
+      name.textContent = e.name;
+      const sc = document.createElement('span');
+      sc.className = 'lb-score';
+      sc.textContent = String(e.score);
+      li.appendChild(rank);
+      li.appendChild(name);
+      li.appendChild(sc);
+      listEl.appendChild(li);
+    }
+  }
+
+  function renderLeaderboards(highlightTs) {
+    syncHighFromBoard();
+    renderOneBoard(el.titleLbList, el.titleLbEmpty, highlightTs);
+    renderOneBoard(el.resultsLbList, el.resultsLbEmpty, highlightTs);
+    if (el.titleHigh) el.titleHigh.textContent = 'High Score: ' + getHigh();
+  }
+
+  function setupResultsSaveUI() {
+    if (!el.saveScoreWrap) return;
+    if (el.saveScoreMsg) {
+      el.saveScoreMsg.textContent = '';
+      el.saveScoreMsg.classList.add('hidden');
+      el.saveScoreMsg.classList.remove('err');
+    }
+    if (score > 0) {
+      el.saveScoreWrap.classList.remove('hidden');
+      const board = loadBoard();
+      const wouldBeFirst = !board.length || score > board[0].score;
+      if (el.saveScoreLabel) {
+        el.saveScoreLabel.textContent = wouldBeFirst ? '★ NEW HIGH — SAVE SCORE' : 'SAVE SCORE';
+        el.saveScoreLabel.classList.toggle('new-high', wouldBeFirst);
+      }
+      if (el.scoreName) {
+        const last = localStorage.getItem(NAME_KEY) || '';
+        el.scoreName.value = last;
+        el.scoreName.disabled = false;
+      }
+      if (el.btnSaveScore) {
+        el.btnSaveScore.disabled = false;
+        el.btnSaveScore.textContent = 'SUBMIT';
+      }
+    } else {
+      el.saveScoreWrap.classList.add('hidden');
+    }
+  }
+
+  /** Returns { ok, isNewHigh, entry } or { ok:false, reason } */
+  function submitScoreToBoard() {
+    if (score <= 0) return { ok: false, reason: 'Score must be > 0' };
+    const clean = sanitizeName(el.scoreName ? el.scoreName.value : '');
+    if (!isValidName(clean)) {
+      return { ok: false, reason: 'Name: 3–12 letters, numbers, spaces' };
+    }
+    const entry = { name: clean, score: Math.floor(score), ts: Date.now() };
+    const board = loadBoard();
+    board.push(entry);
+    board.sort((a, b) => b.score - a.score || a.ts - b.ts);
+    const trimmed = board.slice(0, LB_MAX);
+    // Drop if didn't make top 10
+    const madeIt = trimmed.some((e) => e.ts === entry.ts && e.score === entry.score && e.name === entry.name);
+    if (!madeIt) {
+      return { ok: false, reason: 'Not quite top 10 — fly again!' };
+    }
+    persistBoard(trimmed);
+    localStorage.setItem(NAME_KEY, clean);
+    if (entry.score > getHigh()) setHigh(entry.score);
+    const isNewHigh = trimmed[0] && trimmed[0].ts === entry.ts;
+    return { ok: true, isNewHigh: !!isNewHigh, entry };
+  }
+
+  function onSaveScoreClick() {
+    if (!el.btnSaveScore || el.btnSaveScore.disabled) return;
+    const result = submitScoreToBoard();
+    if (!result.ok) {
+      if (el.saveScoreMsg) {
+        el.saveScoreMsg.textContent = result.reason || 'Could not save';
+        el.saveScoreMsg.classList.remove('hidden');
+        el.saveScoreMsg.classList.add('err');
+      }
+      return;
+    }
+    if (el.saveScoreMsg) {
+      el.saveScoreMsg.textContent = result.isNewHigh ? '★ NEW HIGH SAVED!' : 'SCORE SAVED';
+      el.saveScoreMsg.classList.remove('hidden', 'err');
+    }
+    if (el.btnSaveScore) {
+      el.btnSaveScore.disabled = true;
+      el.btnSaveScore.textContent = 'SAVED';
+    }
+    if (el.scoreName) el.scoreName.disabled = true;
+    if (el.resHigh) el.resHigh.textContent = String(getHigh());
+    if (el.titleHigh) el.titleHigh.textContent = 'High Score: ' + getHigh();
+    renderLeaderboards(result.entry.ts);
+    if (Audio && Audio.play) Audio.play('ui');
   }
 
   function updateMuteUI() {
@@ -574,6 +747,8 @@
       : W.pick(W.RESULTS_LINERS);
     showScreen('results');
     el.titleHigh.textContent = 'High Score: ' + getHigh();
+    setupResultsSaveUI();
+    renderLeaderboards(null);
     setPrompt('');
   }
 
@@ -609,6 +784,7 @@
     resetStereoTitleUI();
     showScreen('title');
     el.titleHigh.textContent = 'High Score: ' + getHigh();
+    renderLeaderboards(null);
     fetchPlayCount();
     setPrompt('');
   }
@@ -781,7 +957,15 @@
       updateMuteUI();
     }
     if ((k === 'enter' || k === ' ') && mode === 'title') insertCassetteAndStart();
-    if ((k === 'enter' || k === ' ') && mode === 'results') startGame();
+    if ((k === 'enter' || k === ' ') && mode === 'results') {
+      const ae = document.activeElement;
+      const typingName = el.scoreName && (ae === el.scoreName || (ae && ae.id === 'score-name'));
+      if (typingName) {
+        if (k === 'enter') onSaveScoreClick();
+        return;
+      }
+      startGame();
+    }
 
     if (k === 'e' || k === 'enter') {
       if (mode === 'fly') {
@@ -834,6 +1018,15 @@
   bindTitleInsert(el.cassetteSlot);
 
   el.btnAgain.addEventListener('click', startGame);
+  if (el.btnSaveScore) el.btnSaveScore.addEventListener('click', onSaveScoreClick);
+  if (el.scoreName) {
+    el.scoreName.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        onSaveScoreClick();
+      }
+    });
+  }
   el.btnTitle.addEventListener('click', () => {
     Audio.play('ui');
     Audio.stopTheme();
@@ -855,6 +1048,7 @@
     resetStereoTitleUI();
     showScreen('title');
     el.titleHigh.textContent = 'High Score: ' + getHigh();
+    renderLeaderboards(null);
     fetchPlayCount();
   });
   el.muteBtn.addEventListener('click', () => {
@@ -1675,6 +1869,7 @@
   }
 
   el.titleHigh.textContent = 'High Score: ' + getHigh();
+  renderLeaderboards(null);
   updateMuteUI();
   showScreen('title');
   syncBeamUi();

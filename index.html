@@ -80,6 +80,11 @@
           <span class="highscore" id="title-high">High Score: 0</span>
           <span class="play-count" id="play-count">Plays: …</span>
         </p>
+        <div class="leaderboard" id="title-leaderboard" aria-label="Leaderboard">
+          <h3 class="lb-title">LEADERBOARD</h3>
+          <ol class="lb-list" id="title-lb-list"></ol>
+          <p class="lb-empty" id="title-lb-empty">No scores yet — insert tape &amp; fly!</p>
+        </div>
       </div>
     </div>
 
@@ -91,6 +96,20 @@
         <p class="results-line">Score: <strong id="res-score">0</strong></p>
         <p class="results-line high" id="res-high-wrap">High Score: <strong id="res-high">0</strong></p>
         <p class="one-liner" id="res-liner">The mothership needs more fried chicken.</p>
+        <div class="save-score hidden" id="save-score-wrap">
+          <p class="save-score-label" id="save-score-label">SAVE SCORE</p>
+          <div class="save-score-row">
+            <input type="text" id="score-name" maxlength="12" minlength="3" placeholder="YOUR NAME" autocomplete="nickname" spellcheck="false" inputmode="text" aria-label="Name for leaderboard" />
+            <button type="button" id="btn-save-score" class="btn primary">SUBMIT</button>
+          </div>
+          <p class="save-score-hint">3–12 letters, numbers, spaces</p>
+          <p class="save-score-msg hidden" id="save-score-msg"></p>
+        </div>
+        <div class="leaderboard results-lb" id="results-leaderboard" aria-label="Leaderboard">
+          <h3 class="lb-title">LEADERBOARD</h3>
+          <ol class="lb-list" id="results-lb-list"></ol>
+          <p class="lb-empty" id="results-lb-empty">No scores yet</p>
+        </div>
         <button type="button" id="btn-again" class="btn primary">FLY AGAIN</button>
         <button type="button" id="btn-title" class="btn">TITLE</button>
       </div>
