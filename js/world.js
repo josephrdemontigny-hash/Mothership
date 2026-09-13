@@ -122,14 +122,11 @@
   /** Gold '67 El Camino (side view) center X — walk path in FRONT of the car */
   const SHED_CAMINO_X = 360;
   /** Driver door / seat offset from car center (local, nose-left space) */
-  const CAMINO_DOOR_DX = -30;
-  /** Approx half-length for exit / bounds checks (photo sprite ~500px wide) */
-  const CAMINO_HALF_W = 250;
-  /** Life-size photo sprite at scale 1 */
-  const CAMINO_DRAW_W = 500;
-  const CAMINO_DRAW_H = 153;
+  const CAMINO_DOOR_DX = -55;
+  /** Approx half-length for exit / bounds checks (canvas car ~460px wide) */
+  const CAMINO_HALF_W = 230;
   /** Side-window rect in local nose-left space — driver is clipped here */
-  const CAMINO_WIN = { x: -61, y: -120, w: 78, h: 37 };
+  const CAMINO_WIN = { x: -100, y: -102, w: 78, h: 30 };
   /** Large framed backyard window on back wall (world X of glass left edge) */
   const SHED_WINDOW_X = 720;
   const SHED_WINDOW_W = 380;
@@ -1161,13 +1158,8 @@
     }
   }
 
-  const elCaminoSprite = new Image();
-  let elCaminoSpriteReady = false;
-  elCaminoSprite.onload = function () { elCaminoSpriteReady = true; };
-  elCaminoSprite.src = 'assets/elcamino-side.png';
-
   /**
-   * 1967 Chevy El Camino — photo sprite (gold side profile).
+   * 1967 Chevy El Camino — simple stylized canvas side view (comic/game).
    * Local space is nose-left; facingRight flips.
    * opts: dusty, scale, facingRight, wheelRot, drawDriver(ctx), noLabel
    */
@@ -1176,98 +1168,292 @@
     const dusty = !!opts.dusty;
     const facingRight = !!opts.facingRight;
     const wheelRot = opts.wheelRot != null ? opts.wheelRot : 0;
-    const dw = CAMINO_DRAW_W;
-    const dh = CAMINO_DRAW_H;
     ctx.save();
     ctx.translate(x, y);
     const s = opts.scale != null ? opts.scale : 1;
     ctx.scale(s, s);
     if (facingRight) ctx.scale(-1, 1);
 
-    // Ground contact shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.38)';
-    ctx.beginPath();
-    ctx.ellipse(4, 4, dw * 0.46, 12, 0, 0, Math.PI * 2);
-    ctx.fill();
+    const goldHi = dusty ? '#d4b06a' : '#f0d090';
+    const goldMid = dusty ? '#c09848' : '#d4a84e';
+    const goldLo = dusty ? '#8a6830' : '#a87828';
+    const goldDeep = dusty ? '#5a4420' : '#6e4e18';
 
-    if (elCaminoSpriteReady && elCaminoSprite.naturalWidth) {
-      ctx.drawImage(elCaminoSprite, -dw / 2, -dh, dw, dh);
-    } else {
-      // Fallback gold silhouette until the photo loads
-      const gold = ctx.createLinearGradient(-dw / 2, -dh, dw / 2, 0);
-      gold.addColorStop(0, dusty ? '#8a6830' : '#a87828');
-      gold.addColorStop(0.45, dusty ? '#d4b06a' : '#f0d090');
-      gold.addColorStop(1, dusty ? '#c09848' : '#d4a84e');
-      ctx.fillStyle = gold;
-      ctx.beginPath();
-      ctx.moveTo(-dw / 2 + 8, -28);
-      ctx.lineTo(-dw / 2 + 18, -62);
-      ctx.lineTo(-dw * 0.12, -70);
-      ctx.lineTo(-dw * 0.08, -dh + 8);
-      ctx.lineTo(dw * 0.06, -dh + 6);
-      ctx.lineTo(dw * 0.12, -68);
-      ctx.lineTo(dw / 2 - 12, -64);
-      ctx.lineTo(dw / 2 - 4, -26);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = '#111';
-      ctx.beginPath();
-      ctx.arc(-dw * 0.20, -22, 22, 0, Math.PI * 2);
-      ctx.arc(dw * 0.23, -22, 22, 0, Math.PI * 2);
-      ctx.fill();
+    function paint(x0, y0, x1, y1) {
+      const g = ctx.createLinearGradient(x0, y0, x1, y1);
+      g.addColorStop(0, goldDeep);
+      g.addColorStop(0.35, goldLo);
+      g.addColorStop(0.55, goldHi);
+      g.addColorStop(0.8, goldMid);
+      g.addColorStop(1, goldDeep);
+      return g;
+    }
+    function chrome(x0, y0, x1, y1) {
+      const g = ctx.createLinearGradient(x0, y0, x1, y1);
+      g.addColorStop(0, dusty ? '#6a6a72' : '#8a8a94');
+      g.addColorStop(0.35, dusty ? '#d0d0d8' : '#f4f4fa');
+      g.addColorStop(0.55, '#ffffff');
+      g.addColorStop(1, dusty ? '#505058' : '#606068');
+      return g;
     }
 
-    // Driver: head/shoulders only, fully clipped to the side-window glass
+    // Ground shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(0, 4, 210, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // —— Open bed (coupe-utility rear) ——
+    ctx.fillStyle = paint(40, -90, 210, -30);
+    ctx.beginPath();
+    ctx.moveTo(36, -38);
+    ctx.lineTo(42, -82);
+    ctx.lineTo(200, -80);
+    ctx.lineTo(210, -36);
+    ctx.closePath();
+    ctx.fill();
+    // bed rail chrome lip
+    ctx.fillStyle = chrome(48, -84, 196, -76);
+    ctx.fillRect(48, -82, 148, 4);
+    // dark bed floor
+    ctx.fillStyle = 'rgba(40,28,10,0.5)';
+    ctx.fillRect(52, -78, 140, 26);
+    // wheel-well hump in bed
+    ctx.fillStyle = goldLo;
+    ctx.beginPath();
+    ctx.ellipse(128, -52, 28, 12, 0, Math.PI, 0);
+    ctx.fill();
+
+    // —— Cabin lower + rocker ——
+    ctx.fillStyle = paint(-190, -90, 50, -20);
+    ctx.beginPath();
+    ctx.moveTo(-188, -34);
+    ctx.lineTo(-176, -68);
+    ctx.lineTo(-42, -84);
+    ctx.lineTo(48, -82);
+    ctx.lineTo(56, -36);
+    ctx.closePath();
+    ctx.fill();
+
+    // door crease + handle
+    ctx.strokeStyle = 'rgba(255,230,170,0.25)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-38, -78);
+    ctx.lineTo(-38, -38);
+    ctx.stroke();
+    ctx.fillStyle = chrome(-24, -56, -8, -48);
+    ctx.fillRect(-22, -54, 12, 3.5);
+
+    // —— Long hood ——
+    ctx.fillStyle = paint(-240, -70, -170, -20);
+    ctx.beginPath();
+    ctx.moveTo(-188, -34);
+    ctx.lineTo(-188, -66);
+    ctx.lineTo(-228, -68);
+    ctx.lineTo(-242, -58);
+    ctx.lineTo(-246, -28);
+    ctx.lineTo(-188, -28);
+    ctx.closePath();
+    ctx.fill();
+    // hood highlight stripe
+    ctx.fillStyle = dusty ? 'rgba(255,245,210,0.12)' : 'rgba(255,250,220,0.26)';
+    ctx.beginPath();
+    ctx.moveTo(-226, -66);
+    ctx.lineTo(-192, -64);
+    ctx.lineTo(-192, -46);
+    ctx.lineTo(-228, -44);
+    ctx.closePath();
+    ctx.fill();
+
+    // Bench seat (behind glass)
+    ctx.fillStyle = dusty ? 'rgba(160,120,70,0.5)' : 'rgba(196,150,90,0.6)';
+    ctx.fillRect(-118, -74, 72, 12);
+    ctx.fillStyle = 'rgba(80,50,25,0.35)';
+    ctx.fillRect(-116, -72, 68, 3);
+
+    // Driver — clipped to side-window glass only (head-in-window)
+    const w = CAMINO_WIN;
     if (typeof opts.drawDriver === 'function') {
       ctx.save();
       ctx.beginPath();
-      const w = CAMINO_WIN;
-      ctx.moveTo(w.x + 6, w.y + w.h);
-      ctx.lineTo(w.x + 2, w.y + 8);
-      ctx.lineTo(w.x + 14, w.y);
-      ctx.lineTo(w.x + w.w - 4, w.y + 1);
-      ctx.lineTo(w.x + w.w, w.y + w.h - 2);
-      ctx.closePath();
+      ctx.rect(w.x, w.y, w.w, w.h);
       ctx.clip();
-      ctx.globalAlpha = 0.55;
       opts.drawDriver(ctx);
-      ctx.restore();
-      // glass tint so the bust reads as behind glass, not stuck through the door
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(w.x + 6, w.y + w.h);
-      ctx.lineTo(w.x + 2, w.y + 8);
-      ctx.lineTo(w.x + 14, w.y);
-      ctx.lineTo(w.x + w.w - 4, w.y + 1);
-      ctx.lineTo(w.x + w.w, w.y + w.h - 2);
-      ctx.closePath();
-      const glass = ctx.createLinearGradient(w.x, w.y, w.x + w.w, w.y + w.h);
-      glass.addColorStop(0, 'rgba(170,200,220,0.18)');
-      glass.addColorStop(0.5, 'rgba(40,70,90,0.12)');
-      glass.addColorStop(1, 'rgba(20,40,55,0.22)');
-      ctx.fillStyle = glass;
-      ctx.fill();
       ctx.restore();
     }
 
-    // Subtle tire spin when rolling (photo wheels already look right at rest)
-    if (wheelRot && Math.abs(wheelRot) > 0.15) {
-      const spin = wheelRot;
-      const wr = 26;
-      [[-100, -24], [116, -24]].forEach(function (pt) {
-        ctx.save();
-        ctx.translate(pt[0], pt[1]);
-        ctx.rotate(spin);
-        ctx.strokeStyle = 'rgba(0,0,0,0.22)';
-        ctx.lineWidth = 3;
+    // —— Roof (gold, short coupe cabin) ——
+    ctx.fillStyle = paint(-145, -108, 30, -78);
+    ctx.beginPath();
+    ctx.moveTo(-148, -78);
+    ctx.lineTo(-134, -104);
+    ctx.lineTo(-8, -106);
+    ctx.lineTo(30, -82);
+    ctx.lineTo(-38, -82);
+    ctx.closePath();
+    ctx.fill();
+    // roof highlight
+    ctx.fillStyle = dusty ? 'rgba(255,255,240,0.08)' : 'rgba(255,255,250,0.16)';
+    ctx.beginPath();
+    ctx.moveTo(-126, -102);
+    ctx.lineTo(-16, -104);
+    ctx.lineTo(-14, -96);
+    ctx.lineTo(-124, -94);
+    ctx.closePath();
+    ctx.fill();
+
+    // Side + windshield glass (over driver)
+    const glassG = ctx.createLinearGradient(w.x, w.y, w.x + w.w, w.y + w.h);
+    glassG.addColorStop(0, dusty ? 'rgba(120,150,170,0.45)' : 'rgba(160,200,230,0.42)');
+    glassG.addColorStop(0.45, 'rgba(220,235,245,0.2)');
+    glassG.addColorStop(1, dusty ? 'rgba(80,110,130,0.42)' : 'rgba(70,110,140,0.42)');
+    ctx.fillStyle = glassG;
+    ctx.beginPath();
+    ctx.moveTo(-138, -80);
+    ctx.lineTo(-128, -100);
+    ctx.lineTo(-16, -102);
+    ctx.lineTo(-10, -82);
+    ctx.closePath();
+    ctx.fill();
+    // rear cab glass
+    ctx.fillStyle = dusty ? 'rgba(100,130,150,0.35)' : 'rgba(140,180,210,0.42)';
+    ctx.fillRect(-6, -100, 28, 14);
+    // chrome window trim
+    ctx.strokeStyle = dusty ? '#b8b8c0' : '#e8e8f0';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(-138, -80);
+    ctx.lineTo(-128, -100);
+    ctx.lineTo(-16, -102);
+    ctx.lineTo(-10, -82);
+    ctx.closePath();
+    ctx.stroke();
+    // B-pillar
+    ctx.strokeStyle = dusty ? '#c0c0c8' : '#f0f0f6';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-12, -102);
+    ctx.lineTo(-8, -82);
+    ctx.stroke();
+
+    // —— Front bumper + grille + headlight ——
+    ctx.fillStyle = chrome(-250, -38, -220, -12);
+    ctx.beginPath();
+    ctx.moveTo(-250, -34);
+    ctx.lineTo(-222, -36);
+    ctx.lineTo(-220, -14);
+    ctx.lineTo(-252, -16);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = dusty ? '#c88820' : '#ffaa28';
+    ctx.fillRect(-246, -22, 10, 4);
+    // grille
+    ctx.fillStyle = '#1a1a1e';
+    ctx.fillRect(-226, -58, 24, 22);
+    ctx.strokeStyle = dusty ? '#b8b8c0' : '#e0e0e8';
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-224, -56 + i * 4);
+      ctx.lineTo(-204, -56 + i * 4);
+      ctx.stroke();
+    }
+    // stacked headlight hint
+    function lamp(hx, hy, r) {
+      ctx.fillStyle = dusty ? '#b0b0b8' : '#e8e8f0';
+      ctx.beginPath();
+      ctx.arc(hx, hy, r + 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      const hg = ctx.createRadialGradient(hx - 1, hy - 1, 1, hx, hy, r);
+      hg.addColorStop(0, '#fff8e0');
+      hg.addColorStop(0.55, '#ffe8a0');
+      hg.addColorStop(1, '#6a5a30');
+      ctx.fillStyle = hg;
+      ctx.beginPath();
+      ctx.arc(hx, hy, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    lamp(-230, -62, 6);
+    lamp(-230, -40, 6);
+
+    // Rocker + chrome side strip
+    ctx.fillStyle = goldDeep;
+    ctx.fillRect(-220, -38, 420, 14);
+    ctx.fillStyle = chrome(-210, -34, 190, -28);
+    ctx.fillRect(-214, -32, 408, 3);
+
+    // Rear bumper + taillight
+    ctx.fillStyle = chrome(198, -36, 220, -14);
+    ctx.fillRect(198, -34, 18, 16);
+    ctx.fillStyle = dusty ? '#a02020' : '#e02828';
+    ctx.fillRect(204, -66, 7, 24);
+
+    // Side mirror
+    ctx.fillStyle = chrome(-152, -84, -136, -74);
+    ctx.fillRect(-150, -82, 9, 4);
+
+    // 396 badge
+    ctx.fillStyle = chrome(-92, -68, -66, -56);
+    ctx.fillRect(-90, -66, 24, 8);
+    ctx.fillStyle = '#1a1a20';
+    ctx.font = 'bold 6px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('396', -78, -60);
+
+    // —— Wheels ——
+    function wheel(wx) {
+      ctx.fillStyle = '#0c0c0e';
+      ctx.beginPath();
+      ctx.arc(wx, -24, 24, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#2a2a30';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.arc(wx, -24, 20, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.save();
+      ctx.translate(wx, -24);
+      ctx.rotate(wheelRot);
+      // chrome rim
+      ctx.strokeStyle = dusty ? '#c0c0c8' : '#f0f0f6';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, 15, 0, Math.PI * 2);
+      ctx.stroke();
+      const hub = ctx.createRadialGradient(-2, -2, 1, 0, 0, 12);
+      hub.addColorStop(0, dusty ? '#e0e0e8' : '#ffffff');
+      hub.addColorStop(0.45, dusty ? '#a0a0a8' : '#d0d0d8');
+      hub.addColorStop(1, '#3a3a42');
+      ctx.fillStyle = hub;
+      ctx.beginPath();
+      ctx.arc(0, 0, 11, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = dusty ? 'rgba(200,200,210,0.8)' : 'rgba(245,245,250,0.95)';
+      ctx.lineWidth = 1.6;
+      for (let a = 0; a < 6; a++) {
+        const ang = a * (Math.PI / 3);
         ctx.beginPath();
-        ctx.arc(0, 0, wr, -0.4, 0.4);
+        ctx.moveTo(Math.cos(ang) * 3, Math.sin(ang) * 3);
+        ctx.lineTo(Math.cos(ang) * 10, Math.sin(ang) * 10);
         ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(0, 0, wr, Math.PI - 0.4, Math.PI + 0.4);
-        ctx.stroke();
-        ctx.restore();
-      });
+      }
+      ctx.fillStyle = dusty ? '#8a2020' : '#c02828';
+      ctx.beginPath();
+      ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    wheel(-128);
+    wheel(128);
+
+    // light AO under rocker
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.fillRect(-210, -26, 400, 5);
+
+    if (dusty) {
+      ctx.fillStyle = 'rgba(180,160,120,0.08)';
+      ctx.fillRect(-246, -110, 460, 90);
     }
 
     if (!opts.noLabel) {

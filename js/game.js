@@ -152,11 +152,11 @@
 
   function makeCaminoDriverDraw() {
     return function (ctx) {
-      // Bust only — drawElCamino clips to the side-window path.
-      // y/scale place head+shoulders in the glass, not through the door.
-      W.drawZakk(ctx, W.CAMINO_DOOR_DX + 6, -78, -1, false, t, {
+      // Head-in-window: drawElCamino clips to CAMINO_WIN so only cabin glass shows Zakk.
+      // Feet/body stay below the clip; scale keeps the head readable at game size.
+      W.drawZakk(ctx, W.CAMINO_DOOR_DX + 4, -70, -1, false, t, {
         seated: true,
-        scale: 0.4,
+        scale: 0.46,
         noLabel: true,
         noShadow: true,
         smoking: false,
