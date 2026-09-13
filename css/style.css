@@ -1,0 +1,276 @@
+/* Mothership — Chilliwack skies */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0a1a0f;
+  --panel: #122818;
+  --lime: #7dff3a;
+  --lime-dim: #4aa820;
+  --cream: #f4ffe8;
+  --warn: #ff6b3d;
+  --sky: #6ec8ff;
+  --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--cream);
+  font-family: var(--font);
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#game-wrap {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at 50% 20%, #1a3a28 0%, #0a1a0f 70%);
+}
+
+#game {
+  display: block;
+  max-width: 100vw;
+  max-height: 100vh;
+  width: auto;
+  height: auto;
+  background: #4ab0e8;
+  border-radius: 4px;
+  box-shadow: 0 0 0 3px var(--lime-dim), 0 12px 40px rgba(0,0,0,0.5);
+  image-rendering: auto;
+}
+
+.hidden { display: none !important; }
+
+/* HUD */
+#hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 10px 14px;
+  pointer-events: none;
+  font-size: 14px;
+  text-shadow: 0 1px 3px #000;
+  z-index: 5;
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+#hud .hud-left, #hud .hud-right {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#hud .hud-right { align-items: flex-end; pointer-events: auto; }
+
+#hud strong { color: var(--lime); font-size: 18px; }
+
+#district {
+  background: rgba(10, 30, 16, 0.75);
+  border: 1px solid var(--lime-dim);
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--lime);
+}
+
+#mute-btn {
+  pointer-events: auto;
+  background: rgba(10,30,16,0.8);
+  border: 1px solid var(--lime-dim);
+  color: var(--cream);
+  border-radius: 8px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 4px;
+}
+
+/* Screens */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  background: rgba(5, 18, 10, 0.55);
+  padding: 16px;
+}
+
+.panel {
+  background: linear-gradient(160deg, #1a3a24 0%, #0e2214 100%);
+  border: 3px solid var(--lime);
+  border-radius: 16px;
+  padding: 28px 32px;
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 0 30px rgba(125, 255, 58, 0.25), inset 0 0 40px rgba(0,0,0,0.3);
+}
+
+.title-panel h1 {
+  font-size: clamp(2.4rem, 8vw, 3.4rem);
+  letter-spacing: 0.12em;
+  color: var(--lime);
+  text-shadow: 0 0 20px rgba(125,255,58,0.6), 2px 2px 0 #1a5010;
+  line-height: 1.1;
+  margin: 4px 0 6px;
+}
+
+.band-credit {
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #9bc87a;
+}
+
+.subtitle {
+  font-size: 1.15rem;
+  color: var(--sky);
+  font-style: italic;
+  margin-bottom: 14px;
+}
+
+.flavour {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #c8e0b8;
+  margin-bottom: 20px;
+}
+
+.hint {
+  margin-top: 14px;
+  font-size: 11px;
+  color: #7a9a6a;
+}
+
+.highscore {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--lime);
+}
+
+.btn {
+  display: inline-block;
+  margin: 6px 4px;
+  padding: 12px 28px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  border: 2px solid var(--lime-dim);
+  background: #1a3018;
+  color: var(--cream);
+  cursor: pointer;
+  transition: transform 0.1s, background 0.15s;
+}
+
+.btn:hover, .btn:focus {
+  background: #244820;
+  transform: scale(1.04);
+}
+
+.btn.primary {
+  background: var(--lime);
+  color: #0a1a0f;
+  border-color: #a8ff70;
+  box-shadow: 0 0 16px rgba(125,255,58,0.4);
+}
+
+.btn.primary:hover { background: #a0ff55; }
+
+.results-panel h2 {
+  color: var(--warn);
+  letter-spacing: 0.1em;
+  margin-bottom: 16px;
+  font-size: 1.6rem;
+}
+
+.results-line {
+  font-size: 16px;
+  margin: 6px 0;
+}
+
+.results-line.high { color: var(--lime); margin-top: 10px; }
+
+.one-liner {
+  margin: 16px 0;
+  font-style: italic;
+  color: #9bc87a;
+  font-size: 14px;
+}
+
+/* Touch controls */
+#touch {
+  position: absolute;
+  bottom: 12px;
+  left: 0; right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 16px;
+  z-index: 8;
+  pointer-events: none;
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+#touch button {
+  pointer-events: auto;
+  background: rgba(20, 50, 28, 0.75);
+  border: 2px solid var(--lime-dim);
+  color: var(--lime);
+  border-radius: 12px;
+  font-size: 20px;
+  min-width: 52px;
+  min-height: 52px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#touch button:active { background: rgba(80, 160, 50, 0.6); }
+
+.pad {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pad-mid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#btn-beam {
+  min-width: 88px !important;
+  min-height: 64px !important;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  font-size: 16px !important;
+  background: rgba(125, 255, 58, 0.25) !important;
+  border-color: var(--lime) !important;
+}
+
+@media (min-width: 900px) and (pointer: fine) {
+  #touch { display: none !important; }
+}
+
+@media (orientation: portrait) and (max-width: 700px) {
+  .panel { padding: 20px; }
+  #hud { font-size: 12px; }
+}

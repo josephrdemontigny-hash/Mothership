@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Mothership — Chilliwack Skies</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="game-wrap">
+    <canvas id="game" width="960" height="540"></canvas>
+
+    <!-- HUD overlay -->
+    <div id="hud" class="hidden">
+      <div class="hud-left">
+        <span id="score-label">SCORE <strong id="score">0</strong></span>
+        <span id="beamed-label">BEAMED <strong id="beamed">0</strong></span>
+      </div>
+      <div class="hud-center">
+        <span id="district">Downtown / Yale Road</span>
+      </div>
+      <div class="hud-right">
+        <span id="lives-label">LIVES <strong id="lives">3</strong></span>
+        <button type="button" id="mute-btn" title="Mute">🔊</button>
+      </div>
+    </div>
+
+    <!-- Title screen -->
+    <div id="screen-title" class="screen">
+      <div class="panel title-panel">
+        <p class="band-credit">Zakk &amp; Taylor present…</p>
+        <h1>MOTHERSHIP</h1>
+        <p class="subtitle">Chilliwack skies</p>
+        <p class="flavour">
+          The band dressed as green B-movie aliens.<br />
+          The UFO is clay. The mission is nonsense.<br />
+          Beam up Chilliwack — leave the microplastics.
+        </p>
+        <button type="button" id="btn-start" class="btn primary">START BEAMING</button>
+        <p class="hint">Arrows / WASD · Space to beam · M mute</p>
+        <p class="highscore" id="title-high">High Score: 0</p>
+      </div>
+    </div>
+
+    <!-- Results screen -->
+    <div id="screen-results" class="screen hidden">
+      <div class="panel results-panel">
+        <h2>MISSION ABORTED</h2>
+        <p class="results-line">Beamed: <strong id="res-beamed">0</strong> Chilliwackians</p>
+        <p class="results-line">Score: <strong id="res-score">0</strong></p>
+        <p class="results-line high" id="res-high-wrap">High Score: <strong id="res-high">0</strong></p>
+        <p class="one-liner" id="res-liner">The mothership needs more fried chicken.</p>
+        <button type="button" id="btn-again" class="btn primary">FLY AGAIN</button>
+        <button type="button" id="btn-title" class="btn">TITLE</button>
+      </div>
+    </div>
+
+    <!-- Touch controls -->
+    <div id="touch" class="hidden">
+      <div class="pad" id="pad-left">
+        <button type="button" data-dir="left" aria-label="Left">◀</button>
+        <div class="pad-mid">
+          <button type="button" data-dir="up" aria-label="Up">▲</button>
+          <button type="button" data-dir="down" aria-label="Down">▼</button>
+        </div>
+        <button type="button" data-dir="right" aria-label="Right">▶</button>
+      </div>
+      <button type="button" id="btn-beam" aria-label="Beam">BEAM</button>
+    </div>
+  </div>
+
+  <script src="js/audio.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

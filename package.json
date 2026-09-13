@@ -1,0 +1,12 @@
+{
+  "name": "mothership",
+  "version": "1.0.0",
+  "description": "Arcade flyer MVP — beam up Chilliwack from a clay UFO. Inspired by Retrofit’s “Mothership”.",
+  "private": true,
+  "scripts": {
+    "start": "npx --yes serve -l 5173 .",
+    "dev": "npx --yes serve -l 5173 ."
+  },
+  "keywords": ["game", "canvas", "chilliwack", "arcade"],
+  "license": "MIT"
+}
