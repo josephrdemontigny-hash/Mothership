@@ -828,28 +828,73 @@ html, body {
 }
 #btn-destruct.hidden { display: none !important; }
 #btn-destruct:active { background: #ff2244; color: #fff; }
+/* Self-destruct — top-left corner, clear of mute / beam / USE */
 .hud-destruct {
-  margin-left: 0.35rem;
+  position: absolute;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  left: calc(10px + env(safe-area-inset-left, 0px));
+  z-index: 14;
+  margin: 0;
   border: 2px solid #ff4466;
-  background: rgba(90, 8, 18, 0.95);
+  background: rgba(50, 6, 12, 0.82);
   color: #ff99aa;
   border-radius: 10px;
-  padding: 0.35rem 0.65rem;
+  padding: 0.4rem 0.55rem;
   cursor: pointer;
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   white-space: nowrap;
-  box-shadow: 0 0 12px rgba(255, 40, 60, 0.35);
-  z-index: 12;
+  opacity: 0.72;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
 }
 .hud-destruct.hidden { display: none !important; }
 .hud-destruct:hover,
 .hud-destruct:focus-visible {
+  opacity: 1;
   background: #ff2244;
   color: #fff;
   outline: none;
-  box-shadow: 0 0 16px rgba(255, 60, 80, 0.55);
+  box-shadow: 0 0 14px rgba(255, 60, 80, 0.45);
+}
+
+/* Mobile SD — top-left, not stacked with BEAM */
+.btn-destruct-safe,
+#btn-destruct.btn-destruct-safe {
+  position: absolute;
+  top: calc(52px + env(safe-area-inset-top, 0px));
+  left: calc(10px + env(safe-area-inset-left, 0px));
+  z-index: 14;
+  min-width: 52px !important;
+  min-height: 40px !important;
+  padding: 0.35rem 0.55rem !important;
+  border: 2px solid #ff4466 !important;
+  background: rgba(50, 6, 12, 0.82) !important;
+  color: #ff8899 !important;
+  font-weight: 800 !important;
+  font-size: 0.7rem !important;
+  letter-spacing: 0.04em;
+  border-radius: 10px !important;
+  opacity: 0.75;
+  pointer-events: auto;
+}
+#btn-destruct.btn-destruct-safe.hidden,
+.btn-destruct-safe.hidden { display: none !important; }
+#btn-destruct.btn-destruct-safe:active {
+  opacity: 1;
+  background: #ff2244 !important;
+  color: #fff !important;
+}
+
+
+@media (hover: none), (pointer: coarse) {
+  /* Phone / tablet: use corner touch SD only */
+  #hud-destruct { display: none !important; }
+}
+@media (min-width: 900px) and (pointer: fine) {
+  /* Desktop: only corner HUD bomb; hide duplicate touch SD */
+  #btn-destruct.btn-destruct-safe { display: none !important; }
 }
 
 

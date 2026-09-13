@@ -24,9 +24,11 @@
       <div class="hud-right">
         <span id="prompt-label"></span>
         <button type="button" id="mute-btn" title="Mute">🔊</button>
-        <button type="button" id="hud-destruct" class="hud-destruct hidden" title="Self destruct (X)">💥 SELF DESTRUCT</button>
       </div>
     </div>
+
+    <!-- Self-destruct: far from beam/USE (top-left corner, fly only) -->
+    <button type="button" id="hud-destruct" class="hud-destruct hidden" title="Self destruct (X) — hold away from flight controls">💥</button>
 
     <!-- Title: restomod dash stereo + cassette insert -->
     <div id="screen-title" class="screen">
@@ -128,9 +130,11 @@
       <div class="touch-actions">
         <button type="button" id="btn-interact" aria-label="Interact">USE</button>
         <button type="button" id="btn-beam" aria-label="Beam">BEAM</button>
-        <button type="button" id="btn-destruct" class="hidden" aria-label="Self destruct">💥 SELF DESTRUCT</button>
       </div>
     </div>
+
+    <!-- Touch self-destruct: opposite corner from BEAM (top-left), fly only -->
+    <button type="button" id="btn-destruct" class="btn-destruct-safe hidden" aria-label="Self destruct">💥 SD</button>
   </div>
 
   <audio id="theme-audio" src="assets/mothership-theme.mp3" playsinline webkit-playsinline loop preload="auto"></audio>
