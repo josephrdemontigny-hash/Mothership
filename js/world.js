@@ -1,6 +1,6 @@
 /**
  * Mothership — Chilliwack scenes, drawing helpers, flavour copy.
- * Modes: Shed / Yard / Fly (side-scroller + beam). Stereo starts theme; staged joint with Tayler then UFO lands.
+ * Modes: Shed / Yard / Fly (side-scroller + beam). Theme starts on title cassette insert; press-step joint with Tayler then UFO lands.
  * Fly scroll is player-driven. No cockpit cassette.
  * Flight: North→South Chilliwack; Mt. Cheam (Lhílheqey) fixed EAST = LEFT of skyline.
  * Characters: Zakk (char-ref-2 all-black) & Tayler (char-ref-1 backwards cap).
@@ -451,7 +451,7 @@
 
   /**
    * Staged joint sesh props between Tayler (left/seated) and Zakk.
-   * stage: 'paper' | 'roll' | 'light' | 'pass' | 'watch'
+   * stage: 'paper' | 'gethigh' | 'roll' | 'light' | 'smoke' | 'pass' | 'watch'
    * stageProg: 0..1 within stage
    */
   function drawJointSesh(ctx, taylerX, taylerY, zakkX, zakkY, stage, stageProg, t) {
@@ -459,54 +459,59 @@
     const midX = (taylerX + zakkX) / 2;
     const handY = taylerY - 48;
 
-    if (stage === 'paper') {
-      drawRollingPaper(ctx, taylerX + 28, handY - 4, 0.6 + p * 0.4);
+    if (stage === 'paper' || stage === 'gethigh') {
+      drawRollingPaper(ctx, taylerX + 28, handY - 4, 0.55 + p * 0.35);
       drawWeedPinch(ctx, taylerX + 18, handY + 8, t);
-      // cheesy sparkle
       ctx.fillStyle = 'rgba(200,255,140,' + (0.35 + p * 0.4) + ')';
       ctx.font = 'bold 11px Segoe UI, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('📄 + 🌿', taylerX + 24, handY - 22);
+      ctx.fillText(stage === 'gethigh' ? 'get high with T' : '📄 + 🌿', taylerX + 24, handY - 22);
       ctx.textAlign = 'left';
     } else if (stage === 'roll') {
-      // paper curling into joint
+      // paper curling into joint (paper + weed animation)
       const curl = 1 - p;
       if (curl > 0.15) drawRollingPaper(ctx, taylerX + 26, handY, curl);
       drawJoint(ctx, taylerX + 22, handY + 2, -0.35, { len: 8 + p * 12, lit: false });
       drawWeedPinch(ctx, taylerX + 14, handY + 10 - p * 6, t);
-      // roll motion arcs
       ctx.strokeStyle = 'rgba(232,255,224,' + (0.25 + p * 0.35) + ')';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.arc(taylerX + 26, handY + 2, 14, -1.2, -1.2 + p * 2.4);
       ctx.stroke();
+      ctx.fillStyle = '#e8ffe0';
+      ctx.font = 'bold 11px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('roll joint', taylerX + 26, handY - 24);
+      ctx.textAlign = 'left';
     } else if (stage === 'light') {
       drawJoint(ctx, taylerX + 24, handY, -0.45, { lit: 0.5 + p * 0.5 });
       drawLighterFlame(ctx, taylerX + 40, handY + 6, t);
       if (p > 0.35) {
         drawSmokePuffs(ctx, taylerX + 42, handY - 8, t, 1.2);
       }
-    } else if (stage === 'pass') {
-      // joint travels from Tayler → Zakk
-      const jx = taylerX + 24 + (zakkX - taylerX - 10) * p;
-      const jy = handY - Math.sin(p * Math.PI) * 18;
-      drawJoint(ctx, jx, jy, -0.3 + p * 0.2, { lit: true });
-      drawSmokePuffs(ctx, jx + 14, jy - 6, t, 1.5);
-      // handoff sparkles
-      ctx.fillStyle = 'rgba(255,220,120,' + (0.4 + Math.sin(t * 0.05) * 0.2) + ')';
-      ctx.beginPath();
-      ctx.arc(jx + 8, jy - 10, 2.5, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillStyle = '#ffe8a0';
+      ctx.font = 'bold 11px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('light the joint', taylerX + 30, handY - 26);
+      ctx.textAlign = 'left';
+    } else if (stage === 'smoke' || stage === 'pass' || stage === 'watch') {
+      // Smoke the joint — handoff + both puffing
+      const handoff = Math.min(1, p * 1.35);
+      const jx = taylerX + 24 + (zakkX - taylerX - 10) * Math.min(1, handoff);
+      const jy = handY - Math.sin(Math.min(1, handoff) * Math.PI) * 18;
+      if (handoff < 0.95) {
+        drawJoint(ctx, jx, jy, -0.3 + handoff * 0.2, { lit: true });
+        drawSmokePuffs(ctx, jx + 14, jy - 6, t, 1.6);
+      } else {
+        drawJoint(ctx, zakkX + (zakkX < taylerX ? -22 : 22), zakkY - 32, -0.5, { lit: true });
+        drawSmokePuffs(ctx, zakkX + 18, zakkY - 40, t, 2.2);
+        drawSmokePuffs(ctx, taylerX + 20, taylerY - 52, t + 200, 1.6);
+      }
       ctx.fillStyle = '#e8ffe0';
       ctx.font = 'bold 12px Segoe UI, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('🙌 PASS', midX, handY - 36);
+      ctx.fillText('Smoke the joint', midX, handY - 36);
       ctx.textAlign = 'left';
-    } else if (stage === 'watch') {
-      // Zakk holds lit joint; light smoke from both
-      drawJoint(ctx, zakkX + (zakkX < taylerX ? -22 : 22), zakkY - 32, -0.5, { lit: true });
-      drawSmokePuffs(ctx, zakkX + 18, zakkY - 40, t, 2.0);
-      drawSmokePuffs(ctx, taylerX + 20, taylerY - 52, t + 200, 1.4);
     }
   }
 
@@ -2092,7 +2097,7 @@
     ctx.fillStyle = '#f0e0c0';
     ctx.font = '11px Segoe UI, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText("Mom's Shed — plywood · El Camino · stereo", w / 2, 16);
+    ctx.fillText("Mom's Shed — plywood · El Camino · Tayler", w / 2, 16);
     ctx.textAlign = 'left';
   }
 

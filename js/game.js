@@ -1,7 +1,7 @@
 /**
  * Mothership — Chilliwack skies
- * Flow: title → shed (grab→stereo→joint sequence→land) → yard (board/sit→legs tuck) → fly → results
- * (no cockpit cassette / boarding cutscene). Pilots: Zakk & Tayler
+ * Flow: title (insert cassette → playTheme) → shed (Tayler press steps → UFO land) → yard (board/sit→legs tuck) → fly → results
+ * Pilots: Zakk & Tayler. Theme starts on menu cassette insert (iOS-safe gesture).
  * Fly scroll is player-driven (no auto-scroll). Landing legs extend on ground, tuck on takeoff.
  */
 (function () {
@@ -32,12 +32,15 @@
     resLiner: document.getElementById('res-liner'),
     muteBtn: document.getElementById('mute-btn'),
     touch: document.getElementById('touch'),
-    btnStart: document.getElementById('btn-start'),
     btnAgain: document.getElementById('btn-again'),
     btnTitle: document.getElementById('btn-title'),
     btnBeam: document.getElementById('btn-beam'),
     btnInteract: document.getElementById('btn-interact'),
-    invCassette: document.getElementById('inv-cassette'),
+    carStereo: document.getElementById('car-stereo'),
+    menuCassette: document.getElementById('menu-cassette'),
+    cassetteSlot: document.getElementById('cassette-slot'),
+    stereoDisplay: document.getElementById('stereo-display'),
+    slotHint: document.getElementById('slot-hint'),
   };
 
   const keys = Object.create(null);
@@ -65,56 +68,101 @@
   let tayler = null;
   let landing = null;
   let fly = null;
-  let hasCassette = false;
-  /** Cassette inserted in shed stereo — theme playing */
-  let tapeInStereo = false;
-  /** Shared sesh with Tayler active (staged joint sequence) */
+  /** Theme already started from menu cassette insert */
+  let tapeInStereo = true;
+  /** Shared sesh with Tayler (press-to-advance steps) */
   let smoking = false;
   /** Overall 0..1 progress across joint stages (HUD bar) */
   let smokeProgress = 0;
   /** Finished joint + UFO land gate complete */
   let smokeDone = false;
-  /** 0..1 UFO fly-in in shed window; advances ONLY during WATCH stage */
+  /** 0..1 UFO fly-in in shed window; advances after Smoke step */
   let windowUfo = 0;
   /**
-   * Joint sequence stage after USE near Tayler:
-   * 'paper' | 'roll' | 'light' | 'pass' | 'watch' | null
+   * Joint step id while animating / awaiting next press:
+   * 'gethigh' | 'roll' | 'light' | 'smoke' | null
    */
   let jointStage = null;
-  /** Frames elapsed in current joint stage */
+  /** 'await' = show next button · 'anim' = playing stage · null = not started */
+  let jointPhase = null;
+  /** Index of next / current JOINT_STEPS entry */
+  let jointStepIndex = 0;
+  /** Frames elapsed in current joint stage animation */
   let jointTimer = 0;
+  /** UFO landing auto-anim after smoke (separate from press steps) */
+  let ufoLanding = false;
   /** Brief sit + takeoff (legs tuck) after boarding in yard */
   let boardSit = null;
+  /** Guard double-insert on title stereo */
+  let titleInserting = false;
 
-  /** Staged joint beat timings + prompts (cheesy comedy, not graphic) */
-  const JOINT_STAGES = [
-    { id: 'paper', dur: 48, prompt: 'ROLL', label: 'Tayler pulls paper + weed…' },
-    { id: 'roll', dur: 52, prompt: 'ROLL', label: 'Quick roll…' },
-    { id: 'light', dur: 42, prompt: 'LIGHT', label: 'Flick — lit!' },
-    { id: 'pass', dur: 50, prompt: 'PASS', label: 'Pass it to Zakk…' },
-    { id: 'watch', dur: 110, prompt: 'WATCH', label: 'Watch the window…' },
+  /**
+   * Press-required Tayler sesh (not one long auto-cutscene).
+   * Labels match UX copy casually.
+   */
+  const JOINT_STEPS = [
+    { id: 'gethigh', dur: 34, prompt: 'get high with T', label: 'Start the sesh…', btn: 'get high with T' },
+    { id: 'roll', dur: 55, prompt: 'roll joint', label: 'Tayler rolls — paper + weed…', btn: 'roll joint' },
+    { id: 'light', dur: 42, prompt: 'light the joint', label: 'Flick — lit!', btn: 'light the joint' },
+    { id: 'smoke', dur: 64, prompt: 'Smoke the joint', label: 'Puff puff…', btn: 'Smoke the joint' },
   ];
 
   function jointStageIndex(id) {
-    for (let i = 0; i < JOINT_STAGES.length; i++) {
-      if (JOINT_STAGES[i].id === id) return i;
+    for (let i = 0; i < JOINT_STEPS.length; i++) {
+      if (JOINT_STEPS[i].id === id) return i;
     }
     return -1;
   }
 
   function jointOverallProgress() {
-    if (!jointStage) return smokeDone ? 1 : 0;
-    const idx = jointStageIndex(jointStage);
-    if (idx < 0) return 0;
+    if (smokeDone) return 1;
+    if (!jointStage && jointPhase == null) return 0;
+    const idx = jointStepIndex;
     let done = 0;
     let total = 0;
-    for (let i = 0; i < JOINT_STAGES.length; i++) {
-      total += JOINT_STAGES[i].dur;
-      if (i < idx) done += JOINT_STAGES[i].dur;
+    for (let i = 0; i < JOINT_STEPS.length; i++) {
+      total += JOINT_STEPS[i].dur;
+      if (i < idx) done += JOINT_STEPS[i].dur;
     }
-    const cur = JOINT_STAGES[idx];
-    done += Math.min(cur.dur, jointTimer);
+    if (jointPhase === 'anim' && jointStage) {
+      const cur = JOINT_STEPS[jointStageIndex(jointStage)];
+      if (cur) done += Math.min(cur.dur, jointTimer);
+    }
+    // UFO landing adds a little tail progress
+    total += 90;
+    if (ufoLanding || smokeDone) done += Math.min(90, windowUfo * 90);
     return Math.max(0, Math.min(1, done / total));
+  }
+
+  function currentJointPrompt() {
+    if (smokeDone || ufoLanding) return null;
+    const step = JOINT_STEPS[jointStepIndex];
+    return step || null;
+  }
+
+  function syncInteractBtn() {
+    if (!el.btnInteract) return;
+    if (mode === 'fly') {
+      el.btnInteract.textContent = 'USE';
+      return;
+    }
+    const step = (mode === 'shed' && nearTaylerForPrompt()) ? currentJointPrompt() : null;
+    if (step && jointPhase !== 'anim') {
+      el.btnInteract.textContent = step.btn;
+    } else if (mode === 'shed' && nearDoor() && ufoLanded()) {
+      el.btnInteract.textContent = 'EXIT';
+    } else if (mode === 'yard' && nearInteract()) {
+      el.btnInteract.textContent = 'SIT';
+    } else {
+      el.btnInteract.textContent = 'USE';
+    }
+  }
+
+  function nearTaylerForPrompt() {
+    if (mode !== 'shed' || !avatar || !tayler) return false;
+    if (smokeDone || ufoLanding) return false;
+    if (jointPhase === 'anim') return false;
+    return Math.abs(avatar.x - tayler.x) < 72;
   }
 
   function getHigh() {
@@ -155,14 +203,7 @@
   }
 
   function syncInvHud() {
-    if (!el.invCassette) return;
-    // Holding cassette until inserted in stereo; then show playing briefly / hide after fly
-    const holding = hasCassette && !tapeInStereo;
-    const playing = tapeInStereo && (mode === 'shed' || mode === 'yard');
-    const show = (holding || playing) && mode !== 'title' && mode !== 'results';
-    el.invCassette.classList.toggle('hidden', !show);
-    el.invCassette.classList.toggle('used', !!tapeInStereo);
-    el.invCassette.textContent = tapeInStereo ? '📼 Playing' : '📼 Cassette';
+    // Cassette hunt removed — theme starts from title stereo insert.
   }
 
   /** Beam touch control + fly-only HUD bits — hidden until fly. */
@@ -285,12 +326,66 @@
     return lastPlayCount;
   }
 
-  function startGame() {
+  function resetStereoTitleUI() {
+    titleInserting = false;
+    if (el.carStereo) {
+      el.carStereo.classList.remove('inserting', 'inserted', 'playing');
+    }
+    if (el.stereoDisplay) {
+      el.stereoDisplay.innerHTML =
+        '<span class="stereo-eq" aria-hidden="true"></span><span class="stereo-lcd">INSERT TAPE</span>';
+    }
+    if (el.slotHint) el.slotHint.classList.remove('hidden');
+  }
+
+  function setStereoPlayingUI() {
+    if (el.carStereo) {
+      el.carStereo.classList.add('inserted', 'playing');
+      el.carStereo.classList.remove('inserting');
+    }
+    if (el.stereoDisplay) {
+      el.stereoDisplay.innerHTML =
+        '<span class="stereo-eq" aria-hidden="true"></span><span class="stereo-lcd">▶ MOTHERSHIP</span>';
+    }
+  }
+
+  /**
+   * Title cassette insert — same user gesture starts theme (iOS-safe) + begins the run.
+   * recordPlay fires on insert/start.
+   */
+  function insertCassetteAndStart() {
+    if (mode !== 'title' || titleInserting) return;
+    titleInserting = true;
     gestureUnlock();
     Audio.warm();
-    Audio.stopTheme();
+    // Must stay in this gesture stack:
+    Audio.playTheme();
+    Audio.play('cassette');
     Audio.play('ui');
     recordPlay();
+    if (el.carStereo) {
+      el.carStereo.classList.add('inserting');
+      el.carStereo.classList.remove('inserted', 'playing');
+    }
+    if (el.stereoDisplay) {
+      el.stereoDisplay.innerHTML =
+        '<span class="stereo-eq" aria-hidden="true"></span><span class="stereo-lcd">LOADING…</span>';
+    }
+    setTimeout(function () {
+      setStereoPlayingUI();
+      beginRun(true);
+    }, 520);
+  }
+
+  /** Start / restart a run. Theme already playing when fromTitleInsert. */
+  function beginRun(fromTitleInsert) {
+    if (!fromTitleInsert) {
+      gestureUnlock();
+      Audio.warm();
+      Audio.playTheme();
+      Audio.play('ui');
+      recordPlay();
+    }
     score = 0;
     beamed = 0;
     particles = [];
@@ -299,16 +394,24 @@
     fly = null;
     landing = null;
     boardSit = null;
-    hasCassette = false;
-    tapeInStereo = false;
+    tapeInStereo = true;
     smoking = false;
     smokeProgress = 0;
     smokeDone = false;
     windowUfo = 0;
     jointStage = null;
+    jointPhase = null;
+    jointStepIndex = 0;
     jointTimer = 0;
+    ufoLanding = false;
+    titleInserting = false;
     syncInvHud();
     enterShed();
+  }
+
+  /** Results "FLY AGAIN" — gesture-safe theme restart */
+  function startGame() {
+    beginRun(false);
   }
 
   function enterShed() {
@@ -317,13 +420,14 @@
     jumpQueued = false;
     prevInteractHeld = true;
     camX = 0;
-    // Start at Camino nose — walk past life-sized car → cassette → stereo → exit
-    avatar = makeAvatar(200, GROUND);
+    // Spawn in the shed by the El Camino
+    avatar = makeAvatar(220, GROUND);
     tayler = { x: 940, y: GROUND };
     showScreen('play');
     syncHud();
-    setPrompt('Grab the cassette · play it on the stereo · then roll with Tayler');
-    showFlash('Grab the cassette and play it on the stereo!', 150);
+    syncInteractBtn();
+    setPrompt('Walk up to Tayler — get high with T');
+    showFlash('Theme on. Hang with Tayler by the Camino.', 130);
   }
 
   function enterYard() {
@@ -502,18 +606,18 @@
       Audio.toggle();
       updateMuteUI();
     }
-    if ((k === 'enter' || k === ' ') && mode === 'title') startGame();
+    if ((k === 'enter' || k === ' ') && mode === 'title') insertCassetteAndStart();
     if ((k === 'enter' || k === ' ') && mode === 'results') startGame();
 
-    if (k === 'e' || k === 'enter' || k === 'arrowup' || k === 'w') {
-      tryPlayStereoFromGesture();
-    }
     if (k === 'e' || k === 'enter') {
       if (mode === 'fly') {
         if (k === 'e') beamQueued = true;
-      } else {
+      } else if (mode === 'shed' || mode === 'yard') {
         interactQueued = true;
       }
+    }
+    if ((k === 'arrowup' || k === 'w') && (mode === 'shed' || mode === 'yard')) {
+      interactQueued = true;
     }
 
     if ((e.code === 'Space' || k === ' ')) {
@@ -533,30 +637,43 @@
   });
 
   canvas.addEventListener('click', () => {
-    if (mode === 'title') startGame();
-    else if (mode === 'shed' || mode === 'yard') {
-      if (!tryPlayStereoFromGesture()) interactQueued = true;
-    }
+    if (mode === 'title') insertCassetteAndStart();
+    else if (mode === 'shed' || mode === 'yard') interactQueued = true;
   });
 
-  el.btnStart.addEventListener('click', startGame);
+  function bindTitleInsert(node) {
+    if (!node) return;
+    const go = (e) => {
+      e.preventDefault();
+      insertCassetteAndStart();
+    };
+    node.addEventListener('click', go);
+    node.addEventListener('touchstart', go, { passive: false });
+  }
+  bindTitleInsert(el.menuCassette);
+  bindTitleInsert(el.cassetteSlot);
+
   el.btnAgain.addEventListener('click', startGame);
   el.btnTitle.addEventListener('click', () => {
     Audio.play('ui');
     Audio.stopTheme();
     mode = 'title';
-    hasCassette = false;
-    tapeInStereo = false;
+    tapeInStereo = true;
     smoking = false;
     smokeProgress = 0;
     smokeDone = false;
     windowUfo = 0;
     jointStage = null;
+    jointPhase = null;
+    jointStepIndex = 0;
     jointTimer = 0;
+    ufoLanding = false;
     boardSit = null;
     syncInvHud();
+    resetStereoTitleUI();
     showScreen('title');
     el.titleHigh.textContent = 'High Score: ' + getHigh();
+    fetchPlayCount();
   });
   el.muteBtn.addEventListener('click', () => {
     gestureUnlock();
@@ -595,7 +712,7 @@
       beamQueued = true;
       return;
     }
-    if (!tryPlayStereoFromGesture()) interactQueued = true;
+    interactQueued = true;
   }
   el.btnInteract.addEventListener('touchstart', onInteractPointer, { passive: false });
   el.btnInteract.addEventListener('mousedown', onInteractPointer);
@@ -638,36 +755,6 @@
     camX = Math.max(0, Math.min(Math.max(0, worldW - CW), avatar.x - CW * 0.4));
   }
 
-  function nearCassetteProp() {
-    if (mode !== 'shed' || !avatar || hasCassette || tapeInStereo) return false;
-    return Math.abs(avatar.x - W.SHED_CASSETTE_X) < 48;
-  }
-
-  function nearStereo() {
-    if (mode !== 'shed' || !avatar || !hasCassette || tapeInStereo) return false;
-    return Math.abs(avatar.x - W.SHED_STEREO_X) < 55;
-  }
-
-  /**
-   * Must run inside the user-gesture stack (keydown / touchstart / mousedown).
-   * playTheme() calls el.play() synchronously — do not defer to rAF / wantsInteract.
-   */
-  function tryPlayStereoFromGesture() {
-    if (mode !== 'shed' || !avatar || !hasCassette || tapeInStereo) return false;
-    if (Math.abs(avatar.x - W.SHED_STEREO_X) >= 55) return false;
-    hasCassette = false;
-    tapeInStereo = true;
-    // Music starts here (iOS gesture-safe). UFO does NOT land until smoke with Tayler.
-    Audio.unlock();
-    Audio.playTheme();
-    Audio.play('cassette');
-    showFlash('Theme on! Roll with Tayler — then watch the window…', 130);
-    syncInvHud();
-    W.burst(particles, W.SHED_STEREO_X - camX + 30, GROUND - 50, '#7dff3a', 12);
-    W.addFloater(floaters, W.SHED_STEREO_X - camX + 30, GROUND - 70, '♪ PLAYING', '#7dff3a');
-    return true;
-  }
-
   function nearDoor() {
     if (mode !== 'shed' || !avatar) return false;
     return Math.abs(avatar.x - W.SHED_DOOR_X) < 50;
@@ -675,7 +762,9 @@
 
   function nearTaylerSesh() {
     if (mode !== 'shed' || !avatar || !tayler) return false;
-    if (!tapeInStereo || smokeDone || smoking) return false;
+    if (smokeDone || ufoLanding) return false;
+    if (jointPhase === 'anim') return false;
+    // Allow starting / advancing steps while near Tayler
     return Math.abs(avatar.x - tayler.x) < 72;
   }
 
@@ -685,7 +774,7 @@
 
   function nearInteract() {
     if (mode === 'shed') {
-      return nearCassetteProp() || nearStereo() || nearTaylerSesh() || nearDoor();
+      return nearTaylerSesh() || nearDoor();
     }
     if (mode === 'yard' && landing && landing.phase === 'landed' && !boardSit) {
       return Math.abs(avatar.x - landing.x) < 110;
@@ -693,123 +782,119 @@
     return false;
   }
 
+  function beginJointStep(step) {
+    smoking = true;
+    jointPhase = 'anim';
+    jointStage = step.id;
+    jointTimer = 0;
+    Audio.play('ui');
+    showFlash(step.prompt, 90);
+    W.burst(particles, tayler.x - camX, GROUND - 50, '#c8e8a0', 10);
+    W.addFloater(floaters, tayler.x - camX, GROUND - 80, step.prompt, '#c8e8a0');
+    if (step.id === 'light') {
+      // sfx during anim
+    }
+    if (step.id === 'smoke') {
+      Audio.play('smoke');
+    }
+    syncInteractBtn();
+  }
+
   // ——— Updates ———
   function updateShed() {
-    // Staged joint sequence: ROLL → LIGHT → PASS → WATCH (UFO only on WATCH)
-    if (smoking && !smokeDone && jointStage) {
+    // Press-to-advance joint: get high → roll → light → smoke → UFO lands
+    if (jointPhase === 'anim' && jointStage && !smokeDone) {
       jointTimer++;
       const idx = jointStageIndex(jointStage);
-      const stage = JOINT_STAGES[idx];
-      const stageProg = Math.min(1, jointTimer / stage.dur);
+      const stage = JOINT_STEPS[idx];
+      const stageProg = Math.min(1, jointTimer / Math.max(1, stage.dur));
       smokeProgress = jointOverallProgress();
-
-      if (jointStage === 'watch') {
-        windowUfo = Math.min(1, stageProg);
-        if (Math.random() < 0.035) Audio.play('smoke');
-      } else {
-        windowUfo = 0;
-        if (jointStage === 'light' && jointTimer === 8) Audio.play('smoke');
-        if (jointStage === 'pass' && jointTimer === 6) Audio.play('ui');
-        if (jointStage === 'roll' && jointTimer === 4) Audio.play('ui');
-      }
-
       setPrompt(stage.prompt + ' — ' + stage.label);
 
+      if (jointStage === 'light' && jointTimer === 8) Audio.play('smoke');
+      if (jointStage === 'roll' && jointTimer === 4) Audio.play('ui');
+      if (jointStage === 'smoke' && jointTimer === 10) Audio.play('smoke');
+      if (jointStage === 'smoke' && Math.random() < 0.03) Audio.play('smoke');
+
       if (jointTimer >= stage.dur) {
-        if (idx >= JOINT_STAGES.length - 1) {
-          smoking = false;
-          smokeDone = true;
-          windowUfo = 1;
-          smokeProgress = 1;
-          jointStage = null;
-          jointTimer = 0;
+        if (idx >= JOINT_STEPS.length - 1) {
+          // After Smoke — UFO appears / lands in the shed window
+          jointPhase = null;
+          jointStage = 'smoke';
+          smoking = true;
+          ufoLanding = true;
+          windowUfo = 0.02;
           Audio.play('landing');
-          Audio.play('power');
-          showFlash('Mothership landed! Head for EXIT →', 130);
-          W.addFloater(floaters, tayler.x - camX, GROUND - 90, 'LANDED', '#7dff3a');
+          showFlash('Dude… the window! Mothership inbound!', 120);
+          W.addFloater(floaters, tayler.x - camX, GROUND - 90, 'UFO!', '#7dff3a');
         } else {
-          const next = JOINT_STAGES[idx + 1];
-          jointStage = next.id;
+          jointStepIndex = idx + 1;
+          jointPhase = 'await';
+          jointStage = JOINT_STEPS[jointStepIndex].id;
           jointTimer = 0;
-          const flashes = {
-            roll: 'Rolling… classic shed craftsmanship',
-            light: 'Spark up — cheesy comedy mode',
-            pass: 'Pass it, Zakk!',
-            watch: 'Dude… the window!',
-          };
-          if (flashes[next.id]) showFlash(flashes[next.id], 90);
-          W.addFloater(floaters, tayler.x - camX, GROUND - 88, next.prompt, '#c8e8a0');
-          if (next.id === 'watch') {
-            Audio.play('smoke');
-            showFlash('WATCH — mothership inbound!', 110);
-          }
+          const next = JOINT_STEPS[jointStepIndex];
+          showFlash('▲ ' + next.prompt, 80);
+          syncInteractBtn();
         }
       }
 
       avatar.vx *= 0.45;
       updateSideScroller(W.SHED_WORLD_W);
+      syncInteractBtn();
+      return;
+    }
+
+    // Auto UFO land after smoke step (door unlocks when landed)
+    if (ufoLanding && !smokeDone) {
+      windowUfo = Math.min(1, windowUfo + 0.012);
+      smokeProgress = jointOverallProgress();
+      if (Math.random() < 0.03) Audio.play('smoke');
+      setPrompt('Watch the window — mothership landing…');
+      if (windowUfo >= 0.98) {
+        windowUfo = 1;
+        ufoLanding = false;
+        smokeDone = true;
+        smoking = false;
+        smokeProgress = 1;
+        jointStage = null;
+        jointPhase = null;
+        Audio.play('landing');
+        Audio.play('power');
+        showFlash('Mothership landed! Head for EXIT →', 130);
+        W.addFloater(floaters, tayler.x - camX, GROUND - 90, 'LANDED', '#7dff3a');
+      }
+      avatar.vx *= 0.55;
+      updateSideScroller(W.SHED_WORLD_W);
+      syncInteractBtn();
       return;
     }
 
     updateSideScroller(W.SHED_WORLD_W);
 
-    if (tayler && Math.abs(avatar.x - tayler.x) < 60 && Math.random() < 0.012 && !tapeInStereo) {
+    if (tayler && Math.abs(avatar.x - tayler.x) < 60 && Math.random() < 0.01 && jointPhase == null && !smokeDone) {
       showFlash(W.pick(W.SHED_GAGS), 100);
     }
 
-    if (nearCassetteProp()) {
-      setPrompt('↑ / E / USE — GRAB cassette');
-      if (wantsInteract()) {
-        hasCassette = true;
-        gestureUnlock();
-        Audio.warm();
-        Audio.play('ui');
-        Audio.play('cassette');
-        showFlash('Cassette acquired — play it on the stereo!', 130);
-        syncInvHud();
-        W.burst(particles, W.SHED_CASSETTE_X - camX, GROUND - 42, '#7dff3a', 10);
-        W.addFloater(floaters, W.SHED_CASSETTE_X - camX, GROUND - 60, '📼 GOT IT', '#7dff3a');
-      }
-    } else if (nearStereo()) {
-      setPrompt('↑ / E / USE — PLAY ON STEREO');
-      if (wantsInteract()) {
-        // Fallback if gesture helper missed (e.g. held ↑ after walking into range)
-        if (!tapeInStereo) tryPlayStereoFromGesture();
-      }
-    } else if (nearTaylerSesh()) {
-      setPrompt('↑ / E / USE — ROLL WITH TAYLER');
-      if (wantsInteract()) {
-        smoking = true;
-        jointStage = 'paper';
-        jointTimer = 0;
-        smokeProgress = 0.02;
-        windowUfo = 0; // mothership waits until PASS → WATCH
-        Audio.play('ui');
-        showFlash('ROLL — paper + weed. Then light, pass, watch!', 120);
-        W.burst(particles, tayler.x - camX, GROUND - 50, '#c8e8a0', 10);
-        W.addFloater(floaters, tayler.x - camX, GROUND - 80, 'ROLL', '#c8e8a0');
+    if (nearTaylerSesh()) {
+      const step = currentJointPrompt();
+      if (step) {
+        setPrompt('↑ / E / USE — ' + step.prompt);
+        if (wantsInteract()) {
+          beginJointStep(step);
+        }
       }
     } else if (nearDoor()) {
       if (!ufoLanded()) {
         let msg;
-        if (!tapeInStereo) {
-          msg = hasCassette
-            ? 'Play the cassette on the stereo first!'
-            : 'Grab the cassette · play it on the stereo';
-        } else if (!smokeDone && !smoking) {
-          msg = 'Roll with Tayler first — then the mothership lands';
+        if (!smokeDone && !ufoLanding) {
+          msg = 'Hang with Tayler first — then the mothership lands';
         } else {
           msg = 'Wait for it to land…';
         }
         setPrompt(msg);
         prevInteractHeld = interactHeld();
         if (wantsInteract()) {
-          showFlash(
-            !tapeInStereo
-              ? (hasCassette ? 'Stereo first — insert the tape!' : 'Grab the cassette first!')
-              : (!smokeDone ? 'ROLL WITH TAYLER first!' : 'Wait for it to land…'),
-            100
-          );
+          showFlash(!smokeDone ? 'get high with T first!' : 'Wait for it to land…', 100);
           Audio.play('hit');
         }
       } else {
@@ -821,18 +906,16 @@
       }
     } else {
       prevInteractHeld = interactHeld();
-      if (!hasCassette && !tapeInStereo) {
-        setPrompt('← → walk · GRAB cassette · PLAY ON STEREO');
-      } else if (hasCassette && !tapeInStereo) {
-        setPrompt('Take the cassette to the stereo — PLAY ON STEREO');
-      } else if (!smokeDone) {
-        setPrompt('ROLL WITH TAYLER · LIGHT · PASS · WATCH');
+      if (!smokeDone && !ufoLanding) {
+        const step = currentJointPrompt();
+        setPrompt(step ? 'Walk to Tayler — ' + step.prompt : 'Walk up to Tayler');
       } else if (!ufoLanded()) {
         setPrompt('Watch the window — wait for it to land…');
       } else {
         setPrompt('← → walk · UFO landed · EXIT →');
       }
     }
+    syncInteractBtn();
   }
 
   function updateYard() {
@@ -1094,74 +1177,102 @@
 
     if (mode === 'shed') {
       W.drawShed(ctx, CW, CH, camX, t, {
-        cassetteTaken: hasCassette || tapeInStereo,
-        tapeInStereo: tapeInStereo,
+        cassetteTaken: true,
+        tapeInStereo: true,
         windowUfo: windowUfo,
         doorLocked: !ufoLanded(),
-        smoking: smoking,
+        smoking: smoking || ufoLanding,
         smokeProgress: smokeProgress,
       });
       if (tayler) {
-        const afterPass = smokeDone || jointStage === 'watch' || jointStage === 'pass';
-        const taylerHoldsJoint = !smoking || jointStage === 'light' || afterPass || !jointStage;
+        const litOrLater = smokeDone || ufoLanding || jointStage === 'light' || jointStage === 'smoke';
         W.drawTayler(ctx, tayler.x - camX, tayler.y, 1, false, t, {
           seated: true,
-          smoking: taylerHoldsJoint && (jointStage === 'light' || jointStage === 'watch' || smokeDone || (!smoking && tapeInStereo)),
-          heavySmoke: smokeDone || jointStage === 'watch',
+          smoking: litOrLater,
+          heavySmoke: smokeDone || ufoLanding || jointStage === 'smoke',
         });
       }
-      const zakkIdle = Math.abs(avatar.vx) < 0.5;
-      const zakkHasJoint = smokeDone || jointStage === 'watch' || (jointStage === 'pass' && jointTimer > 28);
+      const zakkHasJoint = smokeDone || ufoLanding || jointStage === 'smoke' ||
+        (jointStage === 'smoke' && jointTimer > 20);
       W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {
-        smoking: zakkHasJoint || (!smoking && zakkIdle && tapeInStereo && smokeDone),
-        heavySmoke: zakkHasJoint && (jointStage === 'watch' || smokeDone),
+        smoking: zakkHasJoint || smokeDone,
+        heavySmoke: smokeDone || ufoLanding || jointStage === 'smoke',
       });
-      if (smoking && jointStage && tayler) {
+      if ((jointPhase === 'anim' || ufoLanding) && jointStage && tayler) {
         const idx = jointStageIndex(jointStage);
-        const stage = JOINT_STAGES[idx];
-        const stageProg = Math.min(1, jointTimer / Math.max(1, stage.dur));
+        const stage = idx >= 0 ? JOINT_STEPS[idx] : { dur: 64 };
+        const stageProg = jointPhase === 'anim'
+          ? Math.min(1, jointTimer / Math.max(1, stage.dur))
+          : 1;
+        const drawStage = jointStage === 'gethigh' ? 'paper' : jointStage;
         W.drawJointSesh(
           ctx,
           tayler.x - camX,
           tayler.y,
           avatar.x - camX,
           avatar.y,
-          jointStage,
+          drawStage,
           stageProg,
           t
         );
       }
       if (nearTaylerSesh()) {
-        const bob = Math.sin(t * 0.01) * 3;
-        ctx.fillStyle = '#7dff3a';
-        ctx.font = 'bold 15px Segoe UI, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('▲ ROLL WITH TAYLER', tayler.x - camX, GROUND - 118 + bob);
-        ctx.textAlign = 'left';
+        const step = currentJointPrompt();
+        if (step) {
+          const bob = Math.sin(t * 0.01) * 3;
+          ctx.fillStyle = '#7dff3a';
+          ctx.font = 'bold 15px Segoe UI, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('▲ ' + step.prompt, tayler.x - camX, GROUND - 118 + bob);
+          // On-canvas button chip
+          const label = step.btn;
+          ctx.font = 'bold 13px Segoe UI, sans-serif';
+          const tw = ctx.measureText(label).width;
+          const bx = tayler.x - camX - tw / 2 - 14;
+          const by = GROUND - 108 + bob;
+          ctx.fillStyle = 'rgba(10,30,16,0.88)';
+          ctx.strokeStyle = '#7dff3a';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          const rw = tw + 28, rh = 28, rr = 8;
+          ctx.moveTo(bx + rr, by);
+          ctx.arcTo(bx + rw, by, bx + rw, by + rh, rr);
+          ctx.arcTo(bx + rw, by + rh, bx, by + rh, rr);
+          ctx.arcTo(bx, by + rh, bx, by, rr);
+          ctx.arcTo(bx, by, bx + rw, by, rr);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#e8ffe0';
+          ctx.fillText(label, tayler.x - camX, by + 19);
+          ctx.textAlign = 'left';
+        }
       }
-      if (smoking && jointStage) {
-        const idx = jointStageIndex(jointStage);
-        const stage = JOINT_STAGES[idx];
+      if ((smoking || ufoLanding || jointPhase === 'await') && !smokeDone) {
+        const step = jointStage ? JOINT_STEPS[jointStageIndex(jointStage)] : currentJointPrompt();
+        const banner = jointPhase === 'await' && currentJointPrompt()
+          ? ('▲ ' + currentJointPrompt().prompt)
+          : (step ? (step.prompt + ' — ' + step.label) : '…');
         ctx.fillStyle = 'rgba(10,30,16,0.78)';
-        ctx.fillRect(CW / 2 - 150, 44, 300, 36);
+        ctx.fillRect(CW / 2 - 170, 44, 340, 36);
         ctx.strokeStyle = '#c8e8a0';
-        ctx.strokeRect(CW / 2 - 150, 44, 300, 36);
+        ctx.strokeRect(CW / 2 - 170, 44, 340, 36);
         ctx.fillStyle = '#e8ffe0';
-        ctx.font = 'bold 14px Segoe UI, sans-serif';
+        ctx.font = 'bold 13px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(stage.prompt + ' — ' + stage.label, CW / 2, 67);
+        ctx.fillText(banner, CW / 2, 67);
         ctx.textAlign = 'left';
-        const chips = ['ROLL', 'LIGHT', 'PASS', 'WATCH'];
-        const chipMap = { paper: 0, roll: 0, light: 1, pass: 2, watch: 3 };
-        const active = chipMap[jointStage] != null ? chipMap[jointStage] : 0;
+        const chips = ['get high', 'roll', 'light', 'smoke'];
+        const chipMap = { gethigh: 0, roll: 1, light: 2, smoke: 3 };
+        const active = chipMap[jointStage] != null ? chipMap[jointStage] : jointStepIndex;
         for (let i = 0; i < chips.length; i++) {
-          const cx = CW / 2 - 120 + i * 62;
+          const cx = CW / 2 - 150 + i * 76;
           ctx.fillStyle = i === active ? '#9dff6a' : 'rgba(80,100,70,0.7)';
-          ctx.fillRect(cx, 86, 56, 14);
+          ctx.fillRect(cx, 86, 70, 14);
           ctx.fillStyle = i === active ? '#102010' : '#c8e0b8';
           ctx.font = 'bold 9px Segoe UI, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText(chips[i], cx + 28, 96);
+          ctx.fillText(chips[i], cx + 35, 96);
         }
         ctx.textAlign = 'left';
         ctx.fillStyle = 'rgba(0,0,0,0.45)';
@@ -1175,8 +1286,7 @@
         ctx.textAlign = 'center';
         let doorLabel = '▲ ENTER';
         if (!ufoLanded()) {
-          if (!tapeInStereo) doorLabel = '▲ LOCKED';
-          else if (!smokeDone) doorLabel = '▲ ROLL WITH TAYLER';
+          if (!smokeDone && !ufoLanding) doorLabel = '▲ get high with T';
           else doorLabel = '▲ WAIT FOR LANDING';
         }
         ctx.fillText(doorLabel, W.SHED_DOOR_X - camX, GROUND - 170);
@@ -1249,6 +1359,7 @@
   updateMuteUI();
   showScreen('title');
   syncBeamUi();
+  fetchPlayCount();
   // Warm theme element on load (fetch only — play still needs a gesture)
   if (Audio && Audio.warm) Audio.warm();
   requestAnimationFrame(frame);

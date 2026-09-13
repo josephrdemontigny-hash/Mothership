@@ -1,7 +1,7 @@
 {
   "name": "mothership",
-  "version": "1.1.0",
-  "description": "Mothership — Chilliwack skies. Shed → yard → board → cassette → fly+beam. Zakk & Tayler.",
+  "version": "1.2.0",
+  "description": "Mothership — Chilliwack skies. Title cassette stereo → shed sesh with Tayler → yard board → fly+beam. Zakk & Tayler.",
   "private": true,
   "scripts": {
     "start": "npx --yes serve -l 5173 .",

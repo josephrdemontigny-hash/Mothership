@@ -16,7 +16,6 @@
       <div class="hud-left">
         <span id="score-label">SCORE <strong id="score">0</strong></span>
         <span id="beamed-label">BEAMED <strong id="beamed">0</strong></span>
-        <span id="inv-cassette" class="inv-item hidden" title="Cassette">📼 Cassette</span>
       </div>
       <div class="hud-center">
         <span id="mode-label">SHED</span>
@@ -28,15 +27,50 @@
       </div>
     </div>
 
-    <!-- Title screen -->
+    <!-- Title: vintage car stereo + cassette insert -->
     <div id="screen-title" class="screen">
-      <div class="panel title-panel">
-        <p class="band-credit">Retrofit presents:</p>
-        <h1>MOTHERSHIP</h1>
-        <p class="subtitle">the game</p>
-        <button type="button" id="btn-start" class="btn primary">START</button>
-        <p class="highscore" id="title-high">High Score: 0</p>
-        <p class="play-count" id="play-count">Plays: …</p>
+      <div class="stereo-wrap">
+        <div class="car-stereo" id="car-stereo" aria-label="Vintage car stereo">
+          <div class="stereo-face">
+            <div class="stereo-knob stereo-knob-l" aria-hidden="true">
+              <span class="knob-mark"></span>
+            </div>
+            <div class="stereo-mid">
+              <div class="stereo-brand">DELCO · AM/FM · STEREO</div>
+              <div class="stereo-display" id="stereo-display">
+                <span class="stereo-eq" aria-hidden="true"></span>
+                <span class="stereo-lcd">INSERT TAPE</span>
+              </div>
+              <div class="cassette-slot" id="cassette-slot">
+                <div class="slot-lip"></div>
+                <div class="slot-dark"></div>
+                <div class="slot-hint" id="slot-hint">▲ INSERT / START</div>
+              </div>
+              <div class="stereo-buttons" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
+            <div class="stereo-knob stereo-knob-r" aria-hidden="true">
+              <span class="knob-mark"></span>
+            </div>
+          </div>
+          <button type="button" id="menu-cassette" class="menu-cassette" aria-label="Insert cassette — Retrofit Mothership the game">
+            <span class="tape-shell">
+              <span class="tape-window">
+                <span class="reel reel-l"></span>
+                <span class="reel reel-r"></span>
+              </span>
+              <span class="tape-label">
+                <span class="tape-side">A</span>
+                <span class="tape-title">Retrofit — Mothership the game</span>
+              </span>
+            </span>
+          </button>
+        </div>
+        <p class="stereo-stats">
+          <span class="highscore" id="title-high">High Score: 0</span>
+          <span class="play-count" id="play-count">Plays: …</span>
+        </p>
       </div>
     </div>
 
