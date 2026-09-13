@@ -1,6 +1,6 @@
 /**
  * Tiny Web Audio beep engine + theme music for Mothership.
- * Mute persists in localStorage. Music respects mute and loops while aboard.
+ * Mute persists in localStorage. Theme starts on cassette insert (not boarding).
  */
 (function (global) {
   const STORAGE_KEY = 'mothership_muted';
@@ -9,7 +9,7 @@
   let ctx = null;
   let muted = localStorage.getItem(STORAGE_KEY) === '1';
   let musicEl = null;
-  let musicWanted = false; // true while aboard (cockpit/beam)
+  let musicWanted = false;
   let musicUnlocked = false;
 
   function ensureCtx() {
@@ -36,16 +36,13 @@
     const el = ensureMusic();
     if (!el) return;
     if (muted || !musicWanted) {
-      try {
-        el.pause();
-      } catch (_) { /* ignore */ }
+      try { el.pause(); } catch (_) { /* ignore */ }
       return;
     }
-    // Only attempt play after a user gesture unlocked audio
     if (!musicUnlocked) return;
     const p = el.play();
     if (p && typeof p.catch === 'function') {
-      p.catch(function () { /* autoplay still blocked — wait for next unlock */ });
+      p.catch(function () { /* wait for unlock */ });
     }
   }
 
@@ -98,6 +95,15 @@
       setTimeout(() => tone(240, 0.12, 'triangle', 0.05), 80);
       setTimeout(() => tone(120, 0.25, 'sawtooth', 0.04), 180);
     },
+    cassette() {
+      tone(180, 0.04, 'square', 0.05);
+      setTimeout(() => tone(90, 0.08, 'sawtooth', 0.06), 50);
+      setTimeout(() => tone(140, 0.06, 'triangle', 0.04), 120);
+      setTimeout(() => tone(400, 0.1, 'sine', 0.05), 200);
+    },
+    smoke() {
+      tone(160, 0.05, 'sine', 0.03);
+    },
   };
 
   global.MothershipAudio = {
@@ -105,9 +111,7 @@
       const fn = SFX[name];
       if (fn) fn();
     },
-    isMuted() {
-      return muted;
-    },
+    isMuted() { return muted; },
     setMuted(v) {
       muted = !!v;
       localStorage.setItem(STORAGE_KEY, muted ? '1' : '0');
@@ -121,7 +125,6 @@
       musicUnlocked = true;
       ensureCtx();
       ensureMusic();
-      // Nudge play/pause so browsers mark the element as user-activated
       const el = musicEl;
       if (el) {
         const wasWanted = musicWanted && !muted;
@@ -133,13 +136,11 @@
         });
       }
     },
-    /** Start (or resume) looping theme while aboard the ship. */
     playTheme() {
       musicWanted = true;
       ensureMusic();
       syncMusicPlayback();
     },
-    /** Stop theme (title / results / leaving mission). */
     stopTheme() {
       musicWanted = false;
       const el = musicEl;
@@ -150,15 +151,12 @@
         } catch (_) { /* ignore */ }
       }
     },
-    /** Pause without clearing wanted (used if needed). */
     pauseTheme() {
       const el = musicEl;
       if (el) {
         try { el.pause(); } catch (_) { /* ignore */ }
       }
     },
-    isThemeWanted() {
-      return musicWanted;
-    },
+    isThemeWanted() { return musicWanted; },
   };
 })(window);

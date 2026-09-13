@@ -1,50 +1,36 @@
 # Mothership — Chilliwack Skies
 
 Arcade comedy game inspired by Retrofit’s song **“Mothership”**.  
-You start in **mom’s shed** (chilling with Taylor), watch a clay UFO land in the backyard, board it, **fly** from the **cockpit**, then drop into **Beam Mode** to abduct Chilliwackians.
+You start in **mom’s shed** (chilling with Tayler), watch a clay UFO land in the backyard, **board together**, insert a **cassette** to start the theme, then **fly** over Chilliwack beaming locals.
 
-**Tone:** absurd cheesy comedy, green B-movie aliens (the band in bad costumes).  
-**Pilots (copy/UI):** Zakk & Taylor (T).
+**Tone:** absurd cheesy comedy.  
+**Pilots:** **Zakk** (all-black western, flat cap, aviators, mustache) & **Tayler** (backwards maroon cap, aviators, plaid, stubble).
 
 ## How to run
 
 No build step. Vanilla HTML / CSS / JS + Canvas.
 
-**Option A — open the file**
-
-```bash
-open index.html
-# or double-click index.html in a file browser
-```
-
-**Option B — static server (recommended)**
-
 ```bash
 cd mothership
 npm start
-# or: npm run dev
 # then open http://localhost:5173
 ```
 
-Or any static server:
+Or: `npx serve .` / `python3 -m http.server 8080` / open `index.html`.
 
-```bash
-npx serve .
-python3 -m http.server 8080
-```
-
-Works in modern Chrome / Safari; phone landscape is supported (on-screen pad + USE / BEAM).
+Works in modern Chrome / Safari; phone landscape supported (pad + USE / BEAM).
 
 ## Game flow
 
 1. **Title** → Start  
-2. **SHED** (tight side-scroller) — hang with **Taylor**, smoke, leave through the nearby exit door  
-3. **YARD** (side-scroller) — mothership landing beat (lights + fog), walk up and **enter** the UFO  
-4. **COCKPIT** — full 2D flight (bank / climb / dive); dodge birds, towers, power lines; theme song plays  
-5. **BEAM** — separate side-scroller mode; align over ground targets and beam them up  
-6. Exit beam → cockpit again, or **Enter** from cockpit for mission debrief / results  
+2. **SHED** — hang with **Tayler**, smoke, leave through the exit door  
+3. **YARD** — mothership landing; walk up and board  
+4. **BOARDING** cutscene — **both** Zakk & Tayler walk the ramp (Space/Enter/click to skip)  
+5. **CASSETTE** — Zakk inserts the tape → **theme music starts** → flight unlocks  
+6. **FLY** — free L/R/U/D side-scroller over Chilliwack; beam while flying  
+7. **Results** — Enter from fly, or hull reaches 0  
 
-HUD mode label always shows: **SHED / YARD / COCKPIT / BEAM**.
+HUD modes: **SHED / YARD / BOARDING / CASSETTE / FLY**.
 
 ## Controls
 
@@ -52,67 +38,59 @@ HUD mode label always shows: **SHED / YARD / COCKPIT / BEAM**.
 |--------|---------|--------|
 | Walk (shed/yard) | ← → or A D | On-screen ◀ ▶ |
 | Jump (shed/yard) | Space | ▲ (when not at a door) |
-| Interact / enter | ↑ / W / E / Enter | USE button |
-| **Fly — bank** | ← → or A D | ◀ ▶ |
-| **Fly — climb / dive** | ↑ ↓ or W S | ▲ ▼ |
-| **Boost** | Shift (stronger with Moon Juice) | — |
-| Beam Mode on/off | **B** (cockpit ↔ beam) | BEAM (cockpit) / USE (exit beam) |
-| Fire beam | Space (in Beam Mode) | BEAM button |
-| End mission | Enter (cockpit) | USE in cockpit |
-| Mute | M or 🔊 button | 🔊 button |
-| Start / again | Start button or Enter / Space | Tap buttons |
+| Interact / enter / cassette | ↑ / W / E / Enter / Space | USE |
+| Skip boarding cutscene | Space / Enter / click | USE / BEAM |
+| **Fly** L/R/U/D | Arrow keys or WASD | Pad |
+| **Beam** (while flying) | Space / B (hold ok) | BEAM |
+| End mission | Enter (fly) | USE in fly |
+| Mute | M or 🔊 | 🔊 |
 
-**Moon Juice:** random cockpit power-up — wider beam + stronger Shift boost while it lasts.
+**Cassette gate:** music and flight controls only after the tape is in (mute still respected).
 
-**Cockpit hazards:** birds, radio towers, power lines. Collisions cost a life (−75 score, screen shake). Three lives.
+## Beam rules
 
-## Music
-
-Boarding the mothership (`enterCockpit`) starts `assets/mothership-theme.mp3` on loop.  
-Mute pauses/stops playback; unmute resumes if you are still in cockpit or beam.  
-Theme stops on title, results, or ending the mission.
+- **People** (green halo): Local, Tourist, Fried Chicken Fan, Corn Farmer, Cheam Hiker, Vedder Floater → **score**  
+- **Pets / other** (red ⚠): Dog, Cat, Chicken, Lawnmower, Trash Can, Mailbox → **hull damage** (lives down, shake, red flash)  
+- Optional Moon Juice widens the beam  
 
 ## Chilliwack flavour
 
-Cockpit windows and Beam Mode show scrolling Fraser Valley vibes (not a top-down map):
+Side-scroller flyover with **Mt. Cheam** + Coast Mountains always readable:
 
 - Downtown / Yale Road  
-- Farmland / Corn  
+- Vedder Farmland  
 - Vedder River  
 - Cultus Lake Direction  
-- Cheam Peak / Coast Mountains  
+- Mt. Cheam / Coast Mountains  
 
-Ground targets: locals, tourists, fried-chicken fans, corn farmers, Cheam hikers, Vedder floaters — with cheesy one-liners (chicken, microplastics, moon juice).
+## Music
+
+Inserting the cassette starts `assets/mothership-theme.mp3` on loop.  
+Mute pauses theme + SFX; unmute resumes if still in flight.  
+Theme stops on title / results.
 
 ## File structure
 
 ```
 mothership/
-├── index.html          # shell + screens + HUD
-├── css/style.css       # layout, title/results, touch UI
+├── index.html
+├── css/style.css
 ├── js/
-│   ├── audio.js        # SFX beeps + theme music + mute
-│   ├── world.js        # Shed / yard / cockpit / beam drawing + copy
-│   └── game.js         # modes, avatar, landing, flight, beam, score
+│   ├── audio.js      # SFX + theme + mute
+│   ├── world.js      # scenes, Zakk/Tayler sprites, UFO, fly world
+│   └── game.js       # modes: shed→yard→board→cassette→fly
 ├── assets/
 │   └── mothership-theme.mp3
-├── package.json        # npm start / npm run dev → serve
+├── package.json
 └── README.md
 ```
 
-Tweak copy in `js/world.js` (`ONE_LINERS`, `RESULTS_LINERS`, `SHED_GAGS`, `TARGET_KINDS`, `DISTRICTS`) and UI strings in `index.html`.
+Character refs live under `refs/` for artists (not required to play). Keep gameplay assets only in the shipped tree.
 
 ## High score
 
-Stored in `localStorage` under `mothership_highscore`. Mute preference: `mothership_muted`.
-
-## Suggested next features
-
-- Chicken operating table bonus after beaming a fried-chicken target  
-- Guitar shred score-multiplier / boss fanfare  
-- More Fraser Valley POIs (Promontory, Sardis, Bridal Falls)  
-- Local co-op: Zakk steers, Taylor beams  
+`localStorage`: `mothership_highscore`. Mute: `mothership_muted`.
 
 ## License
 
-MIT — fan homage; not affiliated with Retrofit. No paid assets; all art is procedural Canvas drawing.
+MIT — fan homage; not affiliated with Retrofit. Procedural Canvas art.

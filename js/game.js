@@ -1,7 +1,7 @@
 /**
  * Mothership — Chilliwack skies
- * Acts: Shed → Yard (landing) → Cockpit → Beam Mode
- * Pilots: Zakk & Taylor (T). Cheesy clay UFO comedy.
+ * Flow: Shed → Yard → BoardCutscene → Cassette → Fly (beam integrated)
+ * Pilots: Zakk (char-ref-2) & Tayler (char-ref-1)
  */
 (function () {
   const W = MothershipWorld;
@@ -42,9 +42,11 @@
   let interactQueued = false;
   let beamQueued = false;
   let jumpQueued = false;
+  let skipQueued = false;
   let prevInteractHeld = false;
+  let prevBeamHeld = false;
 
-  // title | shed | yard | cockpit | beam | results
+  // title | shed | yard | boardCutscene | cassette | fly | results
   let mode = 'title';
   let t = 0;
   let lastTs = 0;
@@ -58,11 +60,11 @@
 
   let avatar = null;
   let camX = 0;
-  let taylor = null; // shed companion
-
+  let tayler = null;
   let landing = null;
+  let cutscene = null;
+  let cassette = null;
   let fly = null;
-  let beam = null;
 
   function getHigh() {
     return parseInt(localStorage.getItem(HS_KEY) || '0', 10) || 0;
@@ -86,20 +88,16 @@
     const labels = {
       shed: 'SHED',
       yard: 'YARD',
-      cockpit: 'COCKPIT',
-      beam: 'BEAM',
+      boardCutscene: 'BOARDING',
+      cassette: 'CASSETTE',
+      fly: 'FLY',
     };
     el.modeLabel.textContent = labels[mode] || '';
-    if (mode === 'cockpit' && fly) {
+    if (mode === 'fly' && fly) {
       el.district.classList.remove('hidden');
-      const altFt = Math.round(200 + fly.alt * 1800);
-      const spd = Math.round(40 + fly.speed * 28);
       el.district.textContent =
         W.DISTRICTS[fly.districtIndex % W.DISTRICTS.length].name +
-        ' · ' + altFt + 'ft · ' + spd;
-    } else if (mode === 'beam') {
-      el.district.classList.remove('hidden');
-      el.district.textContent = 'Align & beam';
+        ' · HULL ' + fly.lives;
     } else {
       el.district.classList.add('hidden');
     }
@@ -118,15 +116,7 @@
   }
 
   function makeAvatar(x, y) {
-    return {
-      x, y,
-      vx: 0,
-      vy: 0,
-      facing: 1,
-      onGround: true,
-      w: 20,
-      h: 48,
-    };
+    return { x, y, vx: 0, vy: 0, facing: 1, onGround: true, w: 20, h: 48 };
   }
 
   // ——— Mode transitions ———
@@ -140,7 +130,8 @@
     floaters = [];
     flashMsg = null;
     fly = null;
-    beam = null;
+    cassette = null;
+    cutscene = null;
     enterShed();
   }
 
@@ -149,11 +140,9 @@
     interactQueued = false;
     jumpQueued = false;
     prevInteractHeld = true;
-
     camX = 0;
-    // Start near the chill couch with Taylor — both visible
     avatar = makeAvatar(200, GROUND);
-    taylor = { x: 355, y: GROUND }; // near couch / table
+    tayler = { x: 420, y: GROUND };
     showScreen('play');
     syncHud();
     setPrompt('← → walk · Space jump · ↑/E leave shed');
@@ -165,8 +154,8 @@
     interactQueued = false;
     jumpQueued = false;
     prevInteractHeld = true;
-    taylor = null;
-
+    // Tayler follows into yard
+    tayler = { x: 240, y: GROUND };
     Audio.play('ui');
     camX = 0;
     avatar = makeAvatar(280, GROUND);
@@ -174,96 +163,103 @@
       phase: 'approach',
       x: 720,
       y: -80,
-      targetY: GROUND - 50,
-      scale: 1.3,
+      targetY: GROUND - 55,
+      scale: 1.4,
       lights: true,
       timer: 0,
     };
     showScreen('play');
     syncHud();
-    setPrompt('Something\'s landing in the backyard…');
+    setPrompt("Something's landing in the backyard…");
     showFlash('UFO inbound — dry ice budget approved!', 130);
   }
 
-  function enterCockpit() {
-    mode = 'cockpit';
+  function enterBoardCutscene() {
+    mode = 'boardCutscene';
+    skipQueued = false;
     interactQueued = false;
-    jumpQueued = false;
-    prevInteractHeld = true;
-
+    Audio.play('landing');
     Audio.play('power');
-    Audio.unlock();
-    Audio.playTheme();
-
+    const ufoX = landing ? landing.x : 720;
+    const ufoY = landing ? landing.y : GROUND - 55;
+    cutscene = {
+      camX: Math.max(0, ufoX - CW * 0.55),
+      ufoX: ufoX,
+      ufoY: ufoY,
+      zakk: { x: (avatar ? avatar.x : 400), y: GROUND },
+      tayler: { x: (tayler ? tayler.x : 360), y: GROUND },
+      progress: 0,
+      walking: true,
+      phase: 'walk', // walk | enter | done
+      timer: 0,
+    };
     avatar = null;
     landing = null;
+    tayler = null;
+    showScreen('play');
+    syncHud();
+    setPrompt('Space / Enter / click — skip');
+    showFlash('Zakk & Tayler boarding…', 100);
+  }
+
+  function enterCassette() {
+    mode = 'cassette';
+    interactQueued = false;
+    skipQueued = false;
+    prevInteractHeld = true;
+    cutscene = null;
+    cassette = {
+      inserted: false,
+      insertProgress: 0,
+      inserting: false,
+      doneTimer: 0,
+    };
+    Audio.play('ui');
+    // Theme does NOT start yet — cassette gate
+    showScreen('play');
+    syncHud();
+    setPrompt('Press E / Space — insert cassette');
+    showFlash('Cockpit online. Pop in the tape, Zakk.', 120);
+  }
+
+  function enterFly() {
+    mode = 'fly';
+    interactQueued = false;
+    beamQueued = false;
+    prevBeamHeld = false;
+    cassette = null;
+
     fly = {
       scrollX: 0,
-      speed: 2.4,
-      targetSpeed: 2.4,
-      alt: 0.5,
-      bank: 0,
+      ufoX: CW * 0.35,
+      ufoY: CH * 0.32,
+      vx: 0,
       vy: 0,
       districtIndex: 0,
       districtTimer: 0,
-      moonJuice: 0,
-      boosting: false,
       lives: 3,
-      hazards: [],
-      spawnTimer: 90,
-      invuln: 0,
-      hitFlash: 0,
-      shakeX: 0,
-      shakeY: 0,
-      shake: 0,
-    };
-    // seed a couple hazards ahead
-    for (let i = 0; i < 3; i++) spawnHazard(400 + i * 280);
-    showScreen('play');
-    syncHud();
-    setPrompt('←→ bank · ↑↓ climb/dive · Shift boost · B Beam · Enter end');
-    showFlash('Welcome aboard, Zakk & T. Theme song: ON. Fly!', 130);
-  }
-
-  function enterBeam() {
-    mode = 'beam';
-    interactQueued = false;
-    jumpQueued = false;
-    prevInteractHeld = true;
-
-    Audio.play('ui');
-    // theme keeps looping while aboard
-    if (Audio.isThemeWanted) Audio.playTheme();
-
-    beam = {
-      ufoX: CW / 2,
-      scrollX: fly ? fly.scrollX : 0,
       targets: [],
-      spawnTimer: 30,
+      props: [],
+      spawnTimer: 40,
+      propTimer: 10,
       beaming: false,
       beamTimer: 0,
-      wide: fly && fly.moonJuice > 0,
-      moonJuice: fly ? fly.moonJuice : 0,
+      beamWide: false,
+      moonJuice: 0,
+      invuln: 0,
+      hitFlash: 0,
+      shake: 0,
+      shakeX: 0,
+      shakeY: 0,
+      controlsUnlocked: true,
     };
-    for (let i = 0; i < 4; i++) spawnBeamTarget(200 + i * 180);
+    // seed world
+    for (let i = 0; i < 12; i++) spawnProp(200 + i * 160);
+    for (let i = 0; i < 5; i++) spawnFlyTarget(300 + i * 200);
     showScreen('play');
     syncHud();
-    setPrompt('← → align · Space / BEAM to abduct · B exit');
-    showFlash('BEAM MODE engaged. Find soft targets.', 100);
-  }
-
-  function exitBeamToCockpit() {
-    if (fly && beam) {
-      fly.scrollX = beam.scrollX;
-      fly.moonJuice = beam.moonJuice;
-    }
-    mode = 'cockpit';
-    beam = null;
-    Audio.play('ui');
-    Audio.playTheme();
-    syncHud();
-    setPrompt('←→ bank · ↑↓ climb/dive · Shift boost · B Beam · Enter end');
-    showFlash('Back in the cockpit. Fly!', 80);
+    setPrompt('←→↑↓ fly · Space / BEAM abduct · Enter end');
+    showFlash('Free flight over Chilliwack. Beam humans — not pets!', 140);
   }
 
   function endMission() {
@@ -284,32 +280,25 @@
     setPrompt('');
   }
 
-  function spawnBeamTarget(x) {
-    const kind = W.pick(W.TARGET_KINDS);
-    beam.targets.push({
-      x: x != null ? x : CW + W.rand(40, 200),
-      kind,
-      wobble: W.rand(0, Math.PI * 2),
-      beamed: false,
-      vx: W.rand(-0.3, 0.3),
+  function spawnProp(atX) {
+    if (!fly) return;
+    const kinds = ['house', 'shop', 'barn', 'corn', 'tree', 'apt', 'house', 'corn'];
+    fly.props.push({
+      x: atX != null ? atX : fly.scrollX + CW + W.rand(40, 180),
+      kind: W.pick(kinds),
     });
   }
 
-  function spawnHazard(atX) {
+  function spawnFlyTarget(atX) {
     if (!fly) return;
-    const kinds = ['bird', 'bird', 'tower', 'powerline', 'bird'];
-    const kind = W.pick(kinds);
-    let alt;
-    if (kind === 'bird') alt = W.rand(0.35, 0.9);
-    else if (kind === 'tower') alt = W.rand(0.05, 0.35);
-    else alt = W.rand(0.25, 0.55); // powerline mid-low
-    fly.hazards.push({
-      x: atX != null ? atX : fly.scrollX + CW + W.rand(40, 220),
-      kind,
-      alt,
-      size: W.rand(0.4, 1),
-      phase: W.rand(0, Math.PI * 2),
-      hit: false,
+    // ~65% people (good), ~35% hazards (bad)
+    const human = Math.random() < 0.65;
+    const kind = human ? W.pick(W.PEOPLE_KINDS) : W.pick(W.HAZARD_KINDS);
+    fly.targets.push({
+      x: atX != null ? atX : fly.scrollX + CW + W.rand(80, 280),
+      kind: kind,
+      wobble: W.rand(0, Math.PI * 2),
+      beamed: false,
     });
   }
 
@@ -323,20 +312,13 @@
 
   function inputY() {
     let v = 0;
-    if (keys['arrowup'] || keys['w'] || touchDirs.up) v -= 1; // up = climb
-    if (keys['arrowdown'] || keys['s'] || touchDirs.down) v += 1; // down = dive
+    if (keys['arrowup'] || keys['w'] || touchDirs.up) v -= 1;
+    if (keys['arrowdown'] || keys['s'] || touchDirs.down) v += 1;
     return v;
   }
 
-  function wantsBoost() {
-    return !!(keys['shift'] || keys['shiftleft'] || keys['shiftright']);
-  }
-
   function wantsJump() {
-    if (jumpQueued) {
-      jumpQueued = false;
-      return true;
-    }
+    if (jumpQueued) { jumpQueued = false; return true; }
     return false;
   }
 
@@ -345,28 +327,33 @@
   }
 
   function wantsInteract() {
-    if (interactQueued) {
-      interactQueued = false;
-      return true;
-    }
+    if (interactQueued) { interactQueued = false; return true; }
     const held = interactHeld();
     const edge = held && !prevInteractHeld;
     prevInteractHeld = held;
     return edge;
   }
 
-  function consumeBeamKey() {
-    if (beamQueued) {
-      beamQueued = false;
-      return true;
-    }
+  function wantsSkip() {
+    if (skipQueued) { skipQueued = false; return true; }
     return false;
+  }
+
+  function beamHeld() {
+    return !!(keys[' '] || keys['space'] || keys['b']);
+  }
+
+  function wantsBeamEdge() {
+    if (beamQueued) { beamQueued = false; return true; }
+    const held = beamHeld();
+    const edge = held && !prevBeamHeld;
+    prevBeamHeld = held;
+    return edge;
   }
 
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     keys[k] = true;
-    if (e.key === 'Shift') keys['shift'] = true;
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k) || e.code === 'Space') {
       e.preventDefault();
     }
@@ -379,25 +366,35 @@
 
     if (k === 'e' || k === 'enter') interactQueued = true;
 
-    if (k === 'b') {
-      if (mode === 'cockpit') enterBeam();
-      else if (mode === 'beam') exitBeamToCockpit();
+    if (mode === 'boardCutscene' && (k === 'enter' || k === ' ' || k === 'e')) {
+      skipQueued = true;
     }
-    if (k === 'escape' && mode === 'beam') exitBeamToCockpit();
+
+    if (mode === 'cassette' && (k === 'e' || k === ' ' || k === 'enter')) {
+      interactQueued = true;
+    }
 
     if ((e.code === 'Space' || k === ' ')) {
-      if (mode === 'beam') beamQueued = true;
+      if (mode === 'fly') beamQueued = true;
       else if (mode === 'shed' || mode === 'yard') jumpQueued = true;
     }
 
-    if (k === 'enter' && mode === 'cockpit') {
+    if (k === 'b' && mode === 'fly') beamQueued = true;
+
+    if (k === 'enter' && mode === 'fly') {
       endMission();
     }
   });
 
   window.addEventListener('keyup', (e) => {
     keys[e.key.toLowerCase()] = false;
-    if (e.key === 'Shift') keys['shift'] = false;
+  });
+
+  // click to skip cutscene / insert cassette
+  canvas.addEventListener('click', () => {
+    if (mode === 'boardCutscene') skipQueued = true;
+    else if (mode === 'cassette' && cassette && !cassette.inserted) interactQueued = true;
+    else if (mode === 'title') startGame();
   });
 
   el.btnStart.addEventListener('click', startGame);
@@ -431,31 +428,35 @@
 
   el.btnBeam.addEventListener('touchstart', (e) => {
     e.preventDefault();
-    if (mode === 'cockpit') enterBeam();
-    else if (mode === 'beam') beamQueued = true;
+    if (mode === 'fly') beamQueued = true;
+    else if (mode === 'cassette') interactQueued = true;
+    else if (mode === 'boardCutscene') skipQueued = true;
     else if (mode === 'shed' || mode === 'yard') interactQueued = true;
   }, { passive: false });
   el.btnBeam.addEventListener('mousedown', (e) => {
     e.preventDefault();
-    if (mode === 'cockpit') enterBeam();
-    else if (mode === 'beam') beamQueued = true;
+    if (mode === 'fly') beamQueued = true;
+    else if (mode === 'cassette') interactQueued = true;
+    else if (mode === 'boardCutscene') skipQueued = true;
     else if (mode === 'shed' || mode === 'yard') interactQueued = true;
   });
 
   el.btnInteract.addEventListener('touchstart', (e) => {
     e.preventDefault();
-    if (mode === 'beam') exitBeamToCockpit();
-    else if (mode === 'cockpit') endMission();
+    if (mode === 'fly') endMission();
+    else if (mode === 'boardCutscene') skipQueued = true;
+    else if (mode === 'cassette') interactQueued = true;
     else interactQueued = true;
   }, { passive: false });
   el.btnInteract.addEventListener('mousedown', (e) => {
     e.preventDefault();
-    if (mode === 'beam') exitBeamToCockpit();
-    else if (mode === 'cockpit') endMission();
+    if (mode === 'fly') endMission();
+    else if (mode === 'boardCutscene') skipQueued = true;
+    else if (mode === 'cassette') interactQueued = true;
     else interactQueued = true;
   });
 
-  // ——— Physics helpers ———
+  // ——— Physics ———
   function updateSideScroller(worldW) {
     const accel = 0.55;
     const maxSpd = 4.2;
@@ -497,17 +498,16 @@
       return Math.abs(avatar.x - W.SHED_DOOR_X) < 50;
     }
     if (mode === 'yard' && landing && landing.phase === 'landed') {
-      return Math.abs(avatar.x - landing.x) < 70;
+      return Math.abs(avatar.x - landing.x) < 80;
     }
     return false;
   }
 
-  // ——— Update modes ———
+  // ——— Updates ———
   function updateShed() {
     updateSideScroller(W.SHED_WORLD_W);
 
-    // gag near chill table / Taylor
-    if (taylor && Math.abs(avatar.x - taylor.x) < 55 && Math.random() < 0.012) {
+    if (tayler && Math.abs(avatar.x - tayler.x) < 60 && Math.random() < 0.012) {
       showFlash(W.pick(W.SHED_GAGS), 100);
     }
 
@@ -519,13 +519,20 @@
       }
     } else {
       prevInteractHeld = interactHeld();
-      setPrompt('← → walk · Space jump · hang with T · EXIT →');
+      setPrompt('← → walk · Space jump · hang with Tayler · EXIT →');
     }
   }
 
   function updateYard() {
     updateSideScroller(1200);
     landing.timer++;
+
+    // Tayler wanders toward UFO slowly once landed
+    if (tayler && landing.phase === 'landed') {
+      const tx = landing.x - 50;
+      if (tayler.x < tx - 4) tayler.x += 1.2;
+      else if (tayler.x > tx + 4) tayler.x -= 1.2;
+    }
 
     if (landing.phase === 'approach') {
       landing.x = 700 + Math.sin(t * 0.003) * 20;
@@ -535,228 +542,260 @@
       landing.y += 0.8;
       landing.lights = true;
       if (landing.timer % 8 === 0) {
-        W.burst(particles, landing.x, GROUND - 10, '#c8d8e0', 3);
+        W.burst(particles, landing.x - camX, GROUND - 10, '#c8d8e0', 3);
       }
       if (landing.y >= landing.targetY) {
         landing.y = landing.targetY;
         landing.phase = 'landed';
         Audio.play('landing');
         Audio.play('power');
-        showFlash('Mothership landed. Walk up and ENTER.', 140);
+        showFlash('Mothership landed. Walk up with Tayler and BOARD.', 140);
       }
     }
 
     if (landing.phase === 'landed') {
       if (nearInteract()) {
-        setPrompt('↑ / E / USE — Enter the mothership');
+        setPrompt('↑ / E / USE — Board with Tayler');
         if (wantsInteract()) {
-          enterCockpit();
+          enterBoardCutscene();
           return;
         }
       } else {
         prevInteractHeld = interactHeld();
-        setPrompt('Walk to the UFO door and enter');
+        setPrompt('Walk to the UFO ramp and board');
       }
     }
   }
 
-  function updateCockpit() {
+  function updateBoardCutscene() {
+    cutscene.timer++;
+    if (wantsSkip() || wantsInteract()) {
+      enterCassette();
+      return;
+    }
+
+    const targetX = cutscene.ufoX;
+    const rampTopY = cutscene.ufoY + 10;
+
+    // walk both toward ramp
+    if (cutscene.phase === 'walk') {
+      cutscene.walking = true;
+      let done = true;
+      for (const who of [cutscene.zakk, cutscene.tayler]) {
+        if (who.x < targetX - 10) {
+          who.x += 2.2;
+          done = false;
+        }
+        // climb ramp as approaching
+        if (who.x > targetX - 55) {
+          const climb = Math.min(1, (who.x - (targetX - 55)) / 45);
+          who.y = GROUND + (rampTopY - GROUND) * climb;
+        }
+      }
+      cutscene.progress = Math.min(1, (cutscene.zakk.x - (targetX - 120)) / 120);
+      cutscene.camX += (Math.max(0, targetX - CW * 0.55) - cutscene.camX) * 0.08;
+      if (done || cutscene.timer > 280) {
+        cutscene.phase = 'enter';
+        cutscene.timer = 0;
+        cutscene.walking = false;
+        showFlash('Into the clay mothership…', 80);
+      }
+    } else if (cutscene.phase === 'enter') {
+      // fade into door — shrink / rise
+      cutscene.progress = Math.min(1, cutscene.timer / 50);
+      cutscene.zakk.y -= 0.8;
+      cutscene.tayler.y -= 0.8;
+      if (cutscene.timer > 55) {
+        enterCassette();
+      }
+    }
+  }
+
+  function updateCassette() {
+    if (!cassette.inserted) {
+      setPrompt('Press E / Space — insert cassette');
+      if (wantsInteract()) {
+        cassette.inserting = true;
+        cassette.inserted = true;
+        cassette.insertProgress = 0;
+        Audio.play('cassette');
+        showFlash('Click. Clunk. Theme engaged.', 90);
+      } else {
+        prevInteractHeld = interactHeld() || beamHeld();
+      }
+    }
+
+    if (cassette.inserting) {
+      cassette.insertProgress = Math.min(1, cassette.insertProgress + 0.04);
+      if (cassette.insertProgress >= 1) {
+        cassette.inserting = false;
+        cassette.doneTimer = 1;
+        // START THEME now — respect mute
+        Audio.unlock();
+        Audio.playTheme();
+        Audio.play('power');
+        showFlash('Mothership theme: ON. Flight controls unlocked!', 110);
+      }
+    }
+
+    if (cassette.doneTimer > 0) {
+      cassette.doneTimer++;
+      setPrompt('Get ready…');
+      if (cassette.doneTimer > 55) {
+        enterFly();
+      }
+    }
+  }
+
+  function updateFly() {
     const ix = inputX();
     const iy = inputY();
 
-    // Bank toward input; snappy
-    const bankTarget = ix * 0.28;
-    fly.bank += (bankTarget - fly.bank) * 0.12;
+    // Free flight L/R/U/D — flying right reveals world
+    fly.vx += ix * 0.45;
+    fly.vy += iy * 0.35;
+    fly.vx *= 0.88;
+    fly.vy *= 0.88;
+    fly.vx = Math.max(-5.5, Math.min(5.5, fly.vx));
+    fly.vy = Math.max(-4, Math.min(4, fly.vy));
 
-    // Climb / dive
-    fly.vy += (-iy) * 0.0045; // up key => climb (alt up)
-    // slight auto-level
-    fly.vy *= 0.92;
-    fly.alt += fly.vy;
-    // also bank slightly affects "slide"
-    fly.alt += -fly.bank * 0.002;
-    fly.alt = Math.max(0.08, Math.min(0.95, fly.alt));
+    fly.ufoX += fly.vx;
+    fly.ufoY += fly.vy;
+    fly.ufoX = Math.max(50, Math.min(CW - 50, fly.ufoX));
+    fly.ufoY = Math.max(50, Math.min(CH * 0.62, fly.ufoY));
 
-    // Speed: base + lateral throttle feel + boost
-    const boost = wantsBoost() || (fly.moonJuice > 0 && wantsBoost());
-    fly.boosting = wantsBoost() && (fly.moonJuice > 0 || true);
-    // Moon Juice enables stronger boost; Shift always gives mild boost
-    let boostAmt = 0;
-    if (wantsBoost()) {
-      boostAmt = fly.moonJuice > 0 ? 2.2 : 0.9;
-    } else if (fly.moonJuice > 0) {
-      boostAmt = 0.5; // passive sip of juice
-    }
-    fly.boosting = boostAmt > 0.8;
-    const targetSpd = 2.2 + Math.abs(ix) * 1.4 + boostAmt + (1 - Math.abs(fly.alt - 0.5)) * 0.3;
-    fly.speed += (targetSpd - fly.speed) * 0.18;
+    // World scrolls based on rightward intent + always mild drift when moving right
+    const scrollSpeed = 1.8 + Math.max(0, ix) * 2.8 + Math.max(0, fly.vx) * 0.35;
+    fly.scrollX += scrollSpeed;
 
-    // Always advance; bank adds lateral "strafe" to scroll feel
-    fly.scrollX += fly.speed + ix * 0.6;
-
-    fly.districtTimer += fly.speed;
-    if (fly.districtTimer > 550) {
+    fly.districtTimer += scrollSpeed;
+    if (fly.districtTimer > 520) {
       fly.districtTimer = 0;
       fly.districtIndex++;
       syncHud();
       showFlash(W.DISTRICTS[fly.districtIndex % W.DISTRICTS.length].name, 90);
     }
 
-    if (fly.moonJuice > 0) fly.moonJuice--;
-
-    if (Math.random() < 0.0018 && fly.moonJuice <= 0) {
-      fly.moonJuice = 300;
-      Audio.play('power');
-      showFlash('MOON JUICE! Hold Shift for BOOST.', 100);
+    if (fly.moonJuice > 0) {
+      fly.moonJuice--;
+      fly.beamWide = true;
+    } else {
+      fly.beamWide = false;
     }
 
-    // Spawn hazards
+    if (Math.random() < 0.0015 && fly.moonJuice <= 0) {
+      fly.moonJuice = 280;
+      Audio.play('power');
+      showFlash('MOON JUICE! Wider beam!', 100);
+    }
+
+    // props
+    fly.propTimer--;
+    if (fly.propTimer <= 0) {
+      spawnProp();
+      fly.propTimer = W.rand(40, 90);
+    }
+    fly.props = fly.props.filter((p) => p.x > fly.scrollX - 100);
+
+    // targets
     fly.spawnTimer--;
     if (fly.spawnTimer <= 0) {
-      spawnHazard();
-      fly.spawnTimer = W.rand(50, 110) - Math.min(40, fly.speed * 5);
+      spawnFlyTarget();
+      fly.spawnTimer = W.rand(45, 95);
     }
+    fly.targets = fly.targets.filter((tg) => tg.x > fly.scrollX - 60 && !tg.beamed);
 
-    // Move / cull hazards; collision vs ship "nose" at center alt
-    const shipWorldX = fly.scrollX + CW * 0.55;
-    for (const hz of fly.hazards) {
-      // birds drift a bit
-      if (hz.kind === 'bird') {
-        hz.alt += Math.sin(t * 0.01 + hz.phase) * 0.0015;
-        hz.alt = Math.max(0.2, Math.min(0.95, hz.alt));
-      }
+    // beam
+    const fireEdge = wantsBeamEdge();
+    const holdBeam = beamHeld();
+    if ((fireEdge || holdBeam) && fly.beamTimer <= 5) {
+      if (!fly.beaming) Audio.play('beam');
+      fly.beaming = true;
+      fly.beamTimer = 18;
+      tryFlyBeam();
     }
-    fly.hazards = fly.hazards.filter((hz) => hz.x > fly.scrollX - 120);
+    if (fly.beamTimer > 0) {
+      fly.beamTimer--;
+      if (fly.beamTimer < 8) fly.beaming = false;
+    } else {
+      fly.beaming = false;
+      prevBeamHeld = holdBeam;
+    }
 
     if (fly.invuln > 0) fly.invuln--;
     if (fly.hitFlash > 0) fly.hitFlash--;
     if (fly.shake > 0) {
       fly.shake--;
-      fly.shakeX = (Math.random() - 0.5) * fly.shake * 0.6;
-      fly.shakeY = (Math.random() - 0.5) * fly.shake * 0.6;
+      fly.shakeX = (Math.random() - 0.5) * fly.shake * 0.7;
+      fly.shakeY = (Math.random() - 0.5) * fly.shake * 0.7;
     } else {
       fly.shakeX = 0;
       fly.shakeY = 0;
     }
 
-    if (fly.invuln <= 0) {
-      for (const hz of fly.hazards) {
-        if (hz.hit) continue;
-        const dx = hz.x - shipWorldX;
-        // collision window in front of ship view
-        if (dx < -30 || dx > 90) continue;
-        const dAlt = Math.abs(hz.alt - fly.alt);
-        let thresh = hz.kind === 'bird' ? 0.12 : hz.kind === 'powerline' ? 0.1 : 0.18;
-        // towers only hit if flying low
-        if (hz.kind === 'tower' && fly.alt > 0.4) continue;
-        if (hz.kind === 'tower') thresh = 0.22;
-        if (dAlt < thresh) {
-          hz.hit = true;
-          fly.lives--;
-          fly.invuln = 55;
-          fly.hitFlash = 35;
-          fly.shake = 28;
-          score = Math.max(0, score - 75);
-          Audio.play('hit');
-          W.burst(particles, CW / 2, CH * 0.4, '#ff6644', 14);
-          W.addFloater(floaters, CW / 2, CH * 0.35, '-75', '#ff6644');
-          showFlash(hz.kind === 'bird' ? 'Bird strike! Watch the altitude!' :
-            hz.kind === 'tower' ? 'Tower! Pull up!' : 'Power lines! Climb!', 100);
-          syncHud();
-          if (fly.lives <= 0) {
-            showFlash('Ship too toasted — emergency debrief!', 120);
-            setTimeout(function () {
-              if (mode === 'cockpit') endMission();
-            }, 700);
-          }
-          break;
-        }
-      }
-    }
-
-    // passive score for flying
-    if ((t / 16 | 0) % 30 === 0) {
+    if ((t / 16 | 0) % 40 === 0) {
       score += 1;
       syncHud();
     }
 
-    setPrompt('←→ bank · ↑↓ climb/dive · Shift boost · B Beam · Enter end');
+    setPrompt('←→↑↓ fly · hold Space beam · green=people · red=DON\'T · Enter end');
     syncHud();
   }
 
-  function updateBeam() {
-    const ix = inputX();
-    beam.ufoX += ix * 5;
-    beam.ufoX = Math.max(60, Math.min(CW - 60, beam.ufoX));
-    beam.scrollX += 1.6 + Math.abs(ix) * 0.5;
-
-    for (const tg of beam.targets) {
-      tg.x -= 1.6;
-      tg.x += tg.vx;
-    }
-    beam.targets = beam.targets.filter((tg) => tg.x > -40 && !tg.beamed);
-
-    beam.spawnTimer--;
-    if (beam.spawnTimer <= 0) {
-      spawnBeamTarget();
-      beam.spawnTimer = W.rand(50, 100);
-    }
-
-    const fire = consumeBeamKey() || keys[' '] || keys['space'];
-    if (fire && beam.beamTimer <= 0) {
-      beam.beaming = true;
-      beam.beamTimer = 20;
-      Audio.play('beam');
-      tryBeamHit();
-    }
-    if (beam.beamTimer > 0) {
-      beam.beamTimer--;
-      if (beam.beamTimer < 10) beam.beaming = false;
-    }
-
-    if (beam.moonJuice > 0) {
-      beam.moonJuice--;
-      beam.wide = true;
-    } else {
-      beam.wide = false;
-    }
-
-    setPrompt('Align over targets · Space/BEAM · USE/B exit');
-  }
-
-  function tryBeamHit() {
-    const half = (beam.wide ? 100 : 56) / 2;
+  function tryFlyBeam() {
+    if (!fly) return;
+    const half = (fly.beamWide ? 96 : 64) / 2;
+    // Beam hits targets near UFO screen X, converted to world
+    const beamWorldX = fly.scrollX + fly.ufoX;
     let hit = false;
-    for (const tg of beam.targets) {
+    for (const tg of fly.targets) {
       if (tg.beamed) continue;
-      if (Math.abs(tg.x - beam.ufoX) < half + 12) {
+      if (Math.abs(tg.x - beamWorldX) < half + 16) {
         tg.beamed = true;
         hit = true;
-        const pts = tg.kind.points + (beam.wide ? 50 : 0);
-        score += pts;
-        beamed++;
-        W.burst(particles, tg.x, CH * 0.78 - 20, '#7dff3a', 16);
-        W.addFloater(floaters, tg.x, CH * 0.78 - 40, '+' + pts, '#7dff3a');
-        Audio.play('score');
-        if (Math.random() < 0.5) showFlash(W.pick(W.ONE_LINERS), 140);
-        else showFlash('Beamed: ' + tg.kind.label + '!', 80);
+        if (tg.kind.human) {
+          const pts = tg.kind.points + (fly.beamWide ? 40 : 0);
+          score += pts;
+          beamed++;
+          W.burst(particles, fly.ufoX, CH * 0.7, '#7dff3a', 14);
+          W.addFloater(floaters, fly.ufoX, CH * 0.55, '+' + pts, '#7dff3a');
+          Audio.play('score');
+          if (Math.random() < 0.45) showFlash(W.pick(W.ONE_LINERS), 130);
+          else showFlash('Beamed: ' + tg.kind.label + '!', 70);
+        } else {
+          // DAMAGE
+          if (fly.invuln <= 0) {
+            fly.lives--;
+            fly.invuln = 50;
+            fly.hitFlash = 32;
+            fly.shake = 26;
+            score = Math.max(0, score - 50);
+            W.burst(particles, fly.ufoX, fly.ufoY + 20, '#ff6644', 16);
+            W.addFloater(floaters, fly.ufoX, fly.ufoY, '-HULL', '#ff6644');
+            Audio.play('hit');
+            showFlash(W.pick(W.BAD_BEAM_LINERS), 120);
+            if (fly.lives <= 0) {
+              showFlash('Ship too toasted — emergency debrief!', 120);
+              setTimeout(function () {
+                if (mode === 'fly') endMission();
+              }, 700);
+            }
+          }
+        }
       }
     }
     if (!hit) {
-      W.burst(particles, beam.ufoX, 120, '#88ffaa', 4);
+      W.burst(particles, fly.ufoX, fly.ufoY + 40, '#88ffaa', 3);
     }
     syncHud();
-
-    if (beamed > 0 && beamed % 8 === 0) {
-      showFlash('Nice haul! Enter from cockpit to debrief anytime.', 120);
-    }
   }
 
   function update() {
     if (mode === 'shed') updateShed();
     else if (mode === 'yard') updateYard();
-    else if (mode === 'cockpit') updateCockpit();
-    else if (mode === 'beam') updateBeam();
+    else if (mode === 'boardCutscene') updateBoardCutscene();
+    else if (mode === 'cassette') updateCassette();
+    else if (mode === 'fly') updateFly();
 
     W.updateFx(particles, floaters);
     if (flashTimer > 0) flashTimer--;
@@ -794,12 +833,11 @@
 
     if (mode === 'shed') {
       W.drawShed(ctx, CW, CH, camX, t);
-      // Taylor first (behind / beside), then Zakk
-      if (taylor) {
-        W.drawTaylor(ctx, taylor.x - camX, taylor.y, t);
+      if (tayler) {
+        W.drawTayler(ctx, tayler.x - camX, tayler.y, 1, false, t, { seated: true, smoking: true });
       }
       const smoking = Math.abs(avatar.vx) < 0.5;
-      W.drawHuman(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, { smoking: smoking });
+      W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, { smoking: smoking });
       if (nearInteract()) {
         ctx.fillStyle = '#7dff3a';
         ctx.font = 'bold 16px Segoe UI, sans-serif';
@@ -809,28 +847,34 @@
       }
     } else if (mode === 'yard') {
       W.drawYard(ctx, CW, CH, camX, t, landing);
-      W.drawHuman(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t);
+      if (tayler) {
+        const tMoving = landing && landing.phase === 'landed';
+        W.drawTayler(ctx, tayler.x - camX, tayler.y, 1, tMoving, t, {});
+      }
+      W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {});
       if (landing && landing.phase === 'landed' && nearInteract()) {
         ctx.fillStyle = '#7dff3a';
         ctx.font = 'bold 16px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('▲ BOARD', landing.x - camX, landing.y - 60);
+        ctx.fillText('▲ BOARD', landing.x - camX, landing.y - 70);
         ctx.textAlign = 'left';
       }
-    } else if (mode === 'cockpit') {
-      W.drawCockpit(ctx, CW, CH, fly, t);
-    } else if (mode === 'beam') {
-      W.drawBeamScene(ctx, CW, CH, beam, t);
+    } else if (mode === 'boardCutscene') {
+      W.drawBoardCutscene(ctx, CW, CH, cutscene, t);
+    } else if (mode === 'cassette') {
+      W.drawCassetteScene(ctx, CW, CH, cassette, t);
+    } else if (mode === 'fly') {
+      W.drawFlyScene(ctx, CW, CH, fly, t);
     }
 
     W.drawFx(ctx, particles, floaters);
     drawFlash();
 
-    if (mode === 'beam' && beam.moonJuice > 0) {
+    if (mode === 'fly' && fly && fly.moonJuice > 0) {
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
       ctx.fillRect(CW / 2 - 60, 36, 120, 8);
       ctx.fillStyle = '#44ddff';
-      ctx.fillRect(CW / 2 - 60, 36, 120 * (beam.moonJuice / 300), 8);
+      ctx.fillRect(CW / 2 - 60, 36, 120 * (fly.moonJuice / 280), 8);
     }
   }
 
@@ -847,7 +891,6 @@
     requestAnimationFrame(frame);
   }
 
-  // Boot
   el.titleHigh.textContent = 'High Score: ' + getHigh();
   updateMuteUI();
   showScreen('title');
