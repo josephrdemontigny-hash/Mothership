@@ -113,6 +113,169 @@
   let boardSit = null;
   /** Guard double-insert on title stereo */
   let titleInserting = false;
+  /**
+   * Gold '67 El Camino Easter egg (optional — does not gate story).
+   * inYard: car parked/driven in backyard; driving: Zakk is behind the wheel.
+   */
+  let camino = null;
+  let drivingCamino = false;
+
+  function resetCamino() {
+    camino = {
+      x: W.SHED_CAMINO_X,
+      facingRight: false,
+      wheelRot: 0,
+      inYard: false,
+      vx: 0,
+    };
+    drivingCamino = false;
+  }
+
+  function caminoDoorX() {
+    if (!camino) return W.SHED_CAMINO_X + W.CAMINO_DOOR_DX;
+    // Door sits toward the nose; nose is left when !facingRight
+    return camino.x + (camino.facingRight ? -W.CAMINO_DOOR_DX : W.CAMINO_DOOR_DX);
+  }
+
+  function nearCaminoDoor() {
+    if (!avatar || !camino || drivingCamino) return false;
+    if (mode === 'shed' && camino.inYard) return false;
+    if (mode === 'yard' && !camino.inYard) return false;
+    // Prefer cabin / door over whole car so walking past bed doesn't prompt
+    const doorX = caminoDoorX();
+    return Math.abs(avatar.x - doorX) < 52 && Math.abs(avatar.x - camino.x) < 140;
+  }
+
+  function makeCaminoDriverDraw() {
+    return function (ctx) {
+      // Local nose-left space: seat under side glass, facing hood (-x)
+      W.drawZakk(ctx, W.CAMINO_DOOR_DX, -8, -1, false, t, {
+        seated: true,
+        scale: 0.82,
+        noLabel: true,
+        noShadow: true,
+        smoking: false,
+      });
+    };
+  }
+
+  function enterCamino() {
+    if (!camino || drivingCamino) return;
+    drivingCamino = true;
+    interactQueued = false;
+    jumpQueued = false;
+    prevInteractHeld = true;
+    avatar.vx = 0;
+    avatar.vy = 0;
+    avatar.onGround = true;
+    avatar.x = caminoDoorX();
+    avatar.y = GROUND;
+    Audio.play('ui');
+    showFlash("Fired up the '67 — ←→ drive · E exit", 110);
+    setPrompt('← → drive · E / USE exit');
+    syncInteractBtn();
+  }
+
+  function exitCamino() {
+    if (!drivingCamino || !camino) return;
+    drivingCamino = false;
+    camino.vx = 0;
+    interactQueued = false;
+    prevInteractHeld = true;
+    avatar.x = caminoDoorX();
+    avatar.y = GROUND;
+    avatar.vx = 0;
+    Audio.play('ui');
+    showFlash('Parked the Camino.', 70);
+    syncInteractBtn();
+  }
+
+  /** Drive through shed exit → yard with car */
+  function driveCaminoToYard() {
+    mode = 'yard';
+    interactQueued = false;
+    jumpQueued = false;
+    prevInteractHeld = true;
+    boardSit = null;
+    Audio.play('ui');
+    Audio.play('power');
+    if (!landing) {
+      const targetY = GROUND - 86;
+      landing = {
+        phase: 'landed',
+        x: 720,
+        y: targetY,
+        targetY: targetY,
+        scale: 2.28,
+        lights: true,
+        timer: 0,
+        legExtend: 1,
+        showPilots: false,
+      };
+    }
+    // Keep Tayler in yard for boarding flow if sesh done; otherwise still spawn
+    if (!tayler) tayler = { x: 240, y: GROUND };
+    else tayler.x = 240;
+    camino.inYard = true;
+    camino.x = W.YARD_SHED_DOOR_X + 120;
+    camino.facingRight = true;
+    camino.vx = 2.5;
+    drivingCamino = true;
+    avatar.x = caminoDoorX();
+    avatar.y = GROUND;
+    camX = Math.max(0, Math.min(Math.max(0, 1200 - CW), avatar.x - CW * 0.4));
+    showFlash('Drove the gold Camino into the yard!', 130);
+    setPrompt('← → drive · E exit · board mothership when ready');
+    showScreen('play');
+    syncHud();
+    syncInteractBtn();
+  }
+
+  /** Drive back into shed from yard */
+  function driveCaminoToShed() {
+    mode = 'shed';
+    interactQueued = false;
+    jumpQueued = false;
+    prevInteractHeld = true;
+    boardSit = null;
+    Audio.play('ui');
+    if (!tayler) tayler = { x: 940, y: GROUND };
+    camino.inYard = false;
+    camino.x = Math.min(W.SHED_DOOR_X - 160, W.SHED_WORLD_W - 200);
+    camino.facingRight = false;
+    camino.vx = -2;
+    drivingCamino = true;
+    avatar.x = caminoDoorX();
+    avatar.y = GROUND;
+    camX = Math.max(0, Math.min(Math.max(0, W.SHED_WORLD_W - CW), avatar.x - CW * 0.4));
+    showFlash('Back in the shed — Camino style.', 90);
+    showScreen('play');
+    syncHud();
+    syncInteractBtn();
+  }
+
+  function updateCaminoDrive(worldW) {
+    const accel = 0.55;
+    const maxSpd = 9.2;
+    const friction = 0.88;
+    const ix = inputX();
+    camino.vx += ix * accel;
+    camino.vx *= friction;
+    if (Math.abs(camino.vx) > maxSpd) camino.vx = Math.sign(camino.vx) * maxSpd;
+    if (Math.abs(ix) > 0.1) camino.facingRight = ix > 0;
+    camino.x += camino.vx;
+    camino.wheelRot += camino.vx * 0.045;
+    const pad = W.CAMINO_HALF_W * 0.55;
+    camino.x = Math.max(pad, Math.min(worldW - pad, camino.x));
+    // Keep avatar hitbox glued to door for camera / proximity
+    avatar.x = caminoDoorX();
+    avatar.y = GROUND;
+    avatar.vx = camino.vx;
+    avatar.vy = 0;
+    avatar.onGround = true;
+    avatar.facing = camino.facingRight ? 1 : -1;
+    camX = Math.max(0, Math.min(Math.max(0, worldW - CW), avatar.x - CW * 0.4));
+  }
 
   /**
    * Press-required Tayler sesh (not one long auto-cutscene).
@@ -164,9 +327,15 @@
       el.btnInteract.textContent = 'USE';
       return;
     }
+    if (drivingCamino) {
+      el.btnInteract.textContent = 'EXIT';
+      return;
+    }
     const step = (mode === 'shed' && nearTaylerForPrompt()) ? currentJointPrompt() : null;
     if (step && jointPhase !== 'anim') {
       el.btnInteract.textContent = step.btn;
+    } else if (nearCaminoDoor()) {
+      el.btnInteract.textContent = 'DRIVE';
     } else if (mode === 'shed' && nearDoor() && ufoLanded()) {
       el.btnInteract.textContent = 'EXIT';
     } else if (mode === 'yard' && nearYardShedDoor()) {
@@ -593,6 +762,7 @@
     puffTimer = 0;
     prevUpHeld = false;
     titleInserting = false;
+    resetCamino();
     syncInvHud();
     enterShed();
   }
@@ -608,6 +778,8 @@
     jumpQueued = false;
     prevInteractHeld = true;
     camX = 0;
+    if (!camino) resetCamino();
+    drivingCamino = false;
     // Spawn in the shed by the El Camino
     avatar = makeAvatar(220, GROUND);
     tayler = { x: 940, y: GROUND };
@@ -625,6 +797,7 @@
     jumpQueued = false;
     prevInteractHeld = true;
     boardSit = null;
+    drivingCamino = false;
     Audio.play('ui');
     if (!tayler) tayler = { x: 940, y: GROUND };
     avatar = makeAvatar(Math.max(80, W.SHED_DOOR_X - 55), GROUND);
@@ -644,6 +817,8 @@
     jumpQueued = false;
     prevInteractHeld = true;
     boardSit = null;
+    // Walking out the door — leave Camino where it is (usually still in shed)
+    drivingCamino = false;
     tayler = { x: 240, y: GROUND };
     Audio.play('ui');
     camX = 0;
@@ -677,6 +852,7 @@
     prevInteractHeld = true;
     boardSit = null;
     landing = null;
+    drivingCamino = false;
     tayler = null;
     Audio.play('ui');
     Audio.play('power');
@@ -763,6 +939,7 @@
     fly = null;
     landing = null;
     boardSit = null;
+    resetCamino();
     avatar = null;
     tayler = null;
     smoking = false;
@@ -1166,6 +1343,8 @@
   }
 
   function nearInteract() {
+    if (drivingCamino) return true;
+    if (nearCaminoDoor()) return true;
     if (mode === 'shed') {
       return nearTaylerSesh() || nearDoor();
     }
@@ -1199,6 +1378,35 @@
   // ——— Updates ———
   function updateShed() {
     updatePuffInput();
+
+    // Easter egg: drive the gold El Camino (optional — never required)
+    if (drivingCamino && camino && !camino.inYard) {
+      updateCaminoDrive(W.SHED_WORLD_W);
+      setPrompt(ufoLanded()
+        ? '← → drive · E exit · peel out EXIT → yard'
+        : '← → drive · E exit · (EXIT unlocks after landing)');
+      if (wantsInteract()) {
+        exitCamino();
+        syncInteractBtn();
+        return;
+      }
+      // Drive out through garage / exit door (same story gate as walking EXIT)
+      if (camino.x + W.CAMINO_HALF_W * 0.35 > W.SHED_DOOR_X - 20) {
+        if (ufoLanded()) {
+          driveCaminoToYard();
+          return;
+        }
+        // Soft stop — keep Easter egg from skipping the sesh / landing
+        camino.x = W.SHED_DOOR_X - 20 - W.CAMINO_HALF_W * 0.35;
+        camino.vx = Math.min(0, camino.vx);
+        if (Math.random() < 0.08) {
+          showFlash(!smokeDone ? 'Sesh first — then peel out!' : 'Wait for the mothership to land…', 80);
+        }
+      }
+      syncInteractBtn();
+      return;
+    }
+
     // Press-to-advance joint: get high → roll → light → smoke → UFO lands
     if (jointPhase === 'anim' && jointStage && !smokeDone) {
       jointTimer++;
@@ -1284,6 +1492,12 @@
           beginJointStep(step);
         }
       }
+    } else if (nearCaminoDoor()) {
+      setPrompt('↑ / E / USE — DRIVE EL CAMINO');
+      if (wantsInteract()) {
+        enterCamino();
+        return;
+      }
     } else if (nearDoor()) {
       if (!ufoLanded()) {
         let msg;
@@ -1316,15 +1530,36 @@
       } else if (!ufoLanded()) {
         setPrompt(canPuffJoint() ? '↑ puff · watch the window — landing…' : 'Watch the window — wait for it to land…');
       } else {
-        setPrompt(canPuffJoint() ? '↑ puff · ← → walk · EXIT →' : '← → walk · UFO landed · EXIT →');
+        setPrompt(canPuffJoint()
+          ? '↑ puff · ← → walk · Camino / EXIT →'
+          : '← → walk · Camino · EXIT →');
       }
     }
     syncInteractBtn();
   }
 
   function updateYard() {
-    updateSideScroller(1200);
     if (landing) landing.timer++;
+
+    // Driving Camino in the yard
+    if (drivingCamino && camino && camino.inYard) {
+      updateCaminoDrive(1200);
+      setPrompt('← → drive · E exit · ← shed door · mothership →');
+      if (wantsInteract()) {
+        exitCamino();
+        syncInteractBtn();
+        return;
+      }
+      // Drive back into shed
+      if (camino.x - W.CAMINO_HALF_W * 0.25 < W.YARD_SHED_DOOR_X + 10 && camino.vx < -0.4) {
+        driveCaminoToShed();
+        return;
+      }
+      syncInteractBtn();
+      return;
+    }
+
+    updateSideScroller(1200);
 
     if (tayler && landing && landing.phase === 'landed') {
       const tx = landing.x - 50;
@@ -1333,10 +1568,20 @@
     }
 
     // Prefer shed door when near it (left side) over boarding
-    if (nearYardShedDoor()) {
+    if (nearYardShedDoor() && !(camino && camino.inYard && nearCaminoDoor())) {
       setPrompt('↑ / E / USE — enter the shed');
       if (wantsInteract()) {
         returnToShed();
+        return;
+      }
+      syncInteractBtn();
+      return;
+    }
+
+    if (nearCaminoDoor()) {
+      setPrompt('↑ / E / USE — DRIVE EL CAMINO');
+      if (wantsInteract()) {
+        enterCamino();
         return;
       }
       syncInteractBtn();
@@ -1355,7 +1600,9 @@
         }
       } else {
         prevInteractHeld = interactHeld();
-        setPrompt('← shed · mothership →  Walk to board');
+        setPrompt(camino && camino.inYard
+          ? '← shed · Camino · mothership →'
+          : '← shed · mothership →  Walk to board');
       }
     } else {
       prevInteractHeld = interactHeld();
@@ -1643,6 +1890,7 @@
         (jointPhase === 'await' && jointStepIndex >= 3);
       // Mute ashtray ambient during active unlit sesh (reads as joint smoke)
       const inUnlitSesh = !jointLit && (smoking || jointPhase === 'await' || jointPhase === 'anim');
+      const shedCamino = camino && !camino.inYard;
       W.drawShed(ctx, CW, CH, camX, t, {
         cassetteTaken: true,
         tapeInStereo: true,
@@ -1652,6 +1900,13 @@
         smokeProgress: smokeProgress,
         jointLit: jointLit,
         ashSmoke: !inUnlitSesh,
+        hideCamino: !shedCamino,
+        caminoX: shedCamino ? camino.x : W.SHED_CAMINO_X,
+        caminoDusty: false,
+        caminoFacingRight: shedCamino ? !!camino.facingRight : false,
+        caminoWheelRot: shedCamino ? camino.wheelRot : 0,
+        caminoDrawDriver: (shedCamino && drivingCamino) ? makeCaminoDriverDraw() : null,
+        caminoNoLabel: !!(shedCamino && drivingCamino),
       });
       // Sesh anim owns the joint prop — avoid double-drawing on characters
       const seshOwnsJoint = (jointPhase === 'anim' || ufoLanding) && !!jointStage &&
@@ -1681,13 +1936,15 @@
           heavySmoke: false,
         });
       }
-      W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {
-        smoking: showCharJoint && (smokeDone || ufoLanding || jointStage === 'smoke' || jointStepIndex >= 3 || smokeAnimLate),
-        jointLit: jointLit,
-        puffing: isPuffing,
-        puffProg: pProg,
-        heavySmoke: false,
-      });
+      if (!drivingCamino) {
+        W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {
+          smoking: showCharJoint && (smokeDone || ufoLanding || jointStage === 'smoke' || jointStepIndex >= 3 || smokeAnimLate),
+          jointLit: jointLit,
+          puffing: isPuffing,
+          puffProg: pProg,
+          heavySmoke: false,
+        });
+      }
       if ((jointPhase === 'anim' || ufoLanding) && jointStage && tayler && !smokeAnimLate) {
         const idx = jointStageIndex(jointStage);
         const stage = idx >= 0 ? JOINT_STEPS[idx] : { dur: 64 };
@@ -1770,7 +2027,15 @@
         ctx.fillStyle = '#9dff6a';
         ctx.fillRect(CW / 2 - 80, 106, 160 * smokeProgress, 7);
       }
-      if (nearDoor()) {
+      if (!drivingCamino && nearCaminoDoor()) {
+        const bob = Math.sin(t * 0.01) * 3;
+        ctx.fillStyle = '#ffd76a';
+        ctx.font = 'bold 15px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('▲ DRIVE EL CAMINO', caminoDoorX() - camX, GROUND - 130 + bob);
+        ctx.textAlign = 'left';
+      }
+      if (nearDoor() && !drivingCamino) {
         ctx.fillStyle = ufoLanded() ? '#7dff3a' : '#ff8866';
         ctx.font = 'bold 16px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
@@ -1783,19 +2048,36 @@
         ctx.textAlign = 'left';
       }
     } else if (mode === 'yard') {
-      W.drawYard(ctx, CW, CH, camX, t, landing);
+      const yardCamino = camino && camino.inYard;
+      W.drawYard(ctx, CW, CH, camX, t, landing, {
+        showCamino: !!yardCamino,
+        caminoX: yardCamino ? camino.x : 420,
+        caminoFacingRight: yardCamino ? !!camino.facingRight : true,
+        caminoWheelRot: yardCamino ? camino.wheelRot : 0,
+        caminoDrawDriver: (yardCamino && drivingCamino) ? makeCaminoDriverDraw() : null,
+        caminoNoLabel: !!(yardCamino && drivingCamino),
+      });
       if (tayler) {
         const tMoving = landing && landing.phase === 'landed';
         W.drawTayler(ctx, tayler.x - camX, tayler.y, 1, tMoving, t, {});
       }
-      W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {});
-      if (nearYardShedDoor()) {
+      if (!drivingCamino) {
+        W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {});
+      }
+      if (!drivingCamino && nearCaminoDoor()) {
+        const bob = Math.sin(t * 0.01) * 3;
+        ctx.fillStyle = '#ffd76a';
+        ctx.font = 'bold 15px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('▲ DRIVE EL CAMINO', caminoDoorX() - camX, GROUND - 120 + bob);
+        ctx.textAlign = 'left';
+      } else if (nearYardShedDoor() && !drivingCamino) {
         ctx.fillStyle = '#7dff3a';
         ctx.font = 'bold 16px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('▲ ENTER SHED', W.YARD_SHED_DOOR_X - camX, GROUND - 100);
         ctx.textAlign = 'left';
-      } else if (landing && landing.phase === 'landed' && nearInteract()) {
+      } else if (landing && landing.phase === 'landed' && nearInteract() && !drivingCamino) {
         ctx.fillStyle = '#7dff3a';
         ctx.font = 'bold 16px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
