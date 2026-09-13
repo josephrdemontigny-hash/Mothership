@@ -1,7 +1,8 @@
 /**
  * Mothership — Chilliwack skies
- * Flow: title → shed (grab→stereo→watch land) → yard (board/sit) → fly → results
+ * Flow: title → shed (grab→stereo→smoke with Tayler→land) → yard (board/sit) → fly → results
  * (no cockpit cassette / boarding cutscene). Pilots: Zakk & Tayler
+ * Fly scroll is player-driven (no auto-scroll).
  */
 (function () {
   const W = MothershipWorld;
@@ -66,7 +67,13 @@
   let hasCassette = false;
   /** Cassette inserted in shed stereo — theme playing */
   let tapeInStereo = false;
-  /** 0..1 UFO fly-in in shed window; starts when stereo plays */
+  /** Shared sesh with Tayler active */
+  let smoking = false;
+  /** 0..1 smoke beat progress (joint + puffs); UFO lands during this */
+  let smokeProgress = 0;
+  /** Finished smoking with Tayler (UFO land gate complete) */
+  let smokeDone = false;
+  /** 0..1 UFO fly-in in shed window; advances during smoke beat only */
   let windowUfo = 0;
   /** Brief sit-in-driver delay after boarding in yard */
   let boardSit = null;
@@ -168,6 +175,9 @@
     boardSit = null;
     hasCassette = false;
     tapeInStereo = false;
+    smoking = false;
+    smokeProgress = 0;
+    smokeDone = false;
     windowUfo = 0;
     syncInvHud();
     enterShed();
@@ -184,7 +194,7 @@
     tayler = { x: 940, y: GROUND };
     showScreen('play');
     syncHud();
-    setPrompt('Grab the cassette · play it on the stereo');
+    setPrompt('Grab the cassette · play it on the stereo · then smoke with Tayler');
     showFlash('Grab the cassette and play it on the stereo!', 150);
   }
 
@@ -253,7 +263,7 @@
     for (let i = 0; i < 5; i++) spawnFlyTarget(300 + i * 200);
     showScreen('play');
     syncHud();
-    setPrompt('←→↑↓ fly · Space / USE beam · Enter end');
+    setPrompt('←→↑↓ fly (you drive the scroll) · Space / USE beam · Enter end');
     showFlash('Free flight over Chilliwack. Beam humans — not pets!', 140);
   }
 
@@ -405,6 +415,10 @@
     mode = 'title';
     hasCassette = false;
     tapeInStereo = false;
+    smoking = false;
+    smokeProgress = 0;
+    smokeDone = false;
+    windowUfo = 0;
     boardSit = null;
     syncInvHud();
     showScreen('title');
@@ -508,11 +522,11 @@
     if (Math.abs(avatar.x - W.SHED_STEREO_X) >= 55) return false;
     hasCassette = false;
     tapeInStereo = true;
-    windowUfo = Math.max(windowUfo, 0.02);
+    // Music starts here (iOS gesture-safe). UFO does NOT land until smoke with Tayler.
     Audio.unlock();
     Audio.playTheme();
     Audio.play('cassette');
-    showFlash('Click. Clunk. Theme on — look out the window!', 120);
+    showFlash('Theme on! Smoke with Tayler — watch the window…', 130);
     syncInvHud();
     W.burst(particles, W.SHED_STEREO_X - camX + 30, GROUND - 50, '#7dff3a', 12);
     W.addFloater(floaters, W.SHED_STEREO_X - camX + 30, GROUND - 70, '♪ PLAYING', '#7dff3a');
@@ -524,13 +538,19 @@
     return Math.abs(avatar.x - W.SHED_DOOR_X) < 50;
   }
 
+  function nearTaylerSesh() {
+    if (mode !== 'shed' || !avatar || !tayler) return false;
+    if (!tapeInStereo || smokeDone || smoking) return false;
+    return Math.abs(avatar.x - tayler.x) < 72;
+  }
+
   function ufoLanded() {
     return windowUfo >= 0.98;
   }
 
   function nearInteract() {
     if (mode === 'shed') {
-      return nearCassetteProp() || nearStereo() || nearDoor();
+      return nearCassetteProp() || nearStereo() || nearTaylerSesh() || nearDoor();
     }
     if (mode === 'yard' && landing && landing.phase === 'landed' && !boardSit) {
       return Math.abs(avatar.x - landing.x) < 110;
@@ -540,19 +560,31 @@
 
   // ——— Updates ———
   function updateShed() {
-    // UFO only flies in / lands after stereo insert (theme already playing)
-    if (tapeInStereo && !ufoLanded()) {
-      windowUfo = Math.min(1, windowUfo + 0.0042);
-      if (ufoLanded()) {
+    // Smoke beat: joint + puffs while mothership descends in the window
+    if (smoking && !smokeDone) {
+      smokeProgress = Math.min(1, smokeProgress + 0.0065);
+      windowUfo = Math.min(1, smokeProgress);
+      if (Math.random() < 0.04) Audio.play('smoke');
+      if (smokeProgress >= 1) {
+        smoking = false;
+        smokeDone = true;
         windowUfo = 1;
+        smokeProgress = 1;
         Audio.play('landing');
         Audio.play('power');
         showFlash('Mothership landed! Head for EXIT →', 130);
+        W.addFloater(floaters, tayler.x - camX, GROUND - 90, 'LANDED', '#7dff3a');
       }
+      setPrompt('Smoking with Tayler… mothership inbound');
+      // Soft lock movement a bit during automatic smoke scene
+      avatar.vx *= 0.5;
+      updateSideScroller(W.SHED_WORLD_W);
+      return;
     }
+
     updateSideScroller(W.SHED_WORLD_W);
 
-    if (tayler && Math.abs(avatar.x - tayler.x) < 60 && Math.random() < 0.012) {
+    if (tayler && Math.abs(avatar.x - tayler.x) < 60 && Math.random() < 0.012 && !tapeInStereo) {
       showFlash(W.pick(W.SHED_GAGS), 100);
     }
 
@@ -575,20 +607,37 @@
         // Fallback if gesture helper missed (e.g. held ↑ after walking into range)
         if (!tapeInStereo) tryPlayStereoFromGesture();
       }
+    } else if (nearTaylerSesh()) {
+      setPrompt('↑ / E / USE — SMOKE WITH TAYLER');
+      if (wantsInteract()) {
+        smoking = true;
+        smokeProgress = Math.max(smokeProgress, 0.02);
+        windowUfo = Math.max(windowUfo, 0.02);
+        Audio.play('ui');
+        Audio.play('smoke');
+        showFlash('Shared sesh — look out the window…', 120);
+        W.burst(particles, tayler.x - camX, GROUND - 50, '#c8e8a0', 10);
+        W.addFloater(floaters, tayler.x - camX, GROUND - 80, 'SMOKE', '#c8e8a0');
+      }
     } else if (nearDoor()) {
       if (!ufoLanded()) {
-        const msg = !tapeInStereo
-          ? (hasCassette
+        let msg;
+        if (!tapeInStereo) {
+          msg = hasCassette
             ? 'Play the cassette on the stereo first!'
-            : 'Grab the cassette · play it on the stereo')
-          : 'Wait for it to land…';
+            : 'Grab the cassette · play it on the stereo';
+        } else if (!smokeDone && !smoking) {
+          msg = 'Smoke with Tayler first — then the mothership lands';
+        } else {
+          msg = 'Wait for it to land…';
+        }
         setPrompt(msg);
         prevInteractHeld = interactHeld();
         if (wantsInteract()) {
           showFlash(
             !tapeInStereo
               ? (hasCassette ? 'Stereo first — insert the tape!' : 'Grab the cassette first!')
-              : 'Wait for it to land…',
+              : (!smokeDone ? 'SMOKE WITH TAYLER first!' : 'Wait for it to land…'),
             100
           );
           Audio.play('hit');
@@ -603,9 +652,11 @@
     } else {
       prevInteractHeld = interactHeld();
       if (!hasCassette && !tapeInStereo) {
-        setPrompt('← → walk · GRAB cassette · PLAY ON STEREO · watch the window');
+        setPrompt('← → walk · GRAB cassette · PLAY ON STEREO');
       } else if (hasCassette && !tapeInStereo) {
         setPrompt('Take the cassette to the stereo — PLAY ON STEREO');
+      } else if (!smokeDone) {
+        setPrompt('SMOKE WITH TAYLER · then watch the window');
       } else if (!ufoLanded()) {
         setPrompt('Watch the window — wait for it to land…');
       } else {
@@ -664,18 +715,34 @@
 
     fly.ufoX += fly.vx;
     fly.ufoY += fly.vy;
+    // Soft edge push: near screen edge, convert leftover intent into scroll
+    const edgeL = 90;
+    const edgeR = CW - 90;
+    let scrollDelta = 0;
+    if (fly.ufoX < edgeL && fly.vx < 0) {
+      scrollDelta += fly.vx * 1.35;
+      fly.ufoX = edgeL;
+    } else if (fly.ufoX > edgeR && fly.vx > 0) {
+      scrollDelta += fly.vx * 1.35;
+      fly.ufoX = edgeR;
+    } else {
+      // Player-driven world scroll from horizontal flight (no auto-advance)
+      scrollDelta = fly.vx * 1.05;
+    }
     fly.ufoX = Math.max(50, Math.min(CW - 50, fly.ufoX));
     fly.ufoY = Math.max(50, Math.min(CH * 0.62, fly.ufoY));
 
-    const scrollSpeed = 1.8 + Math.max(0, ix) * 2.8 + Math.max(0, fly.vx) * 0.35;
-    fly.scrollX += scrollSpeed;
+    fly.scrollX = Math.max(0, fly.scrollX + scrollDelta);
 
-    fly.districtTimer += scrollSpeed;
-    if (fly.districtTimer > 520) {
-      fly.districtTimer = 0;
-      fly.districtIndex++;
+    // District from how far south you've flown (scrollX), not a free timer
+    const newDistrict = Math.min(
+      W.DISTRICTS.length - 1,
+      Math.floor(fly.scrollX / 900)
+    );
+    if (newDistrict !== fly.districtIndex) {
+      fly.districtIndex = newDistrict;
       syncHud();
-      showFlash(W.DISTRICTS[fly.districtIndex % W.DISTRICTS.length].name, 90);
+      showFlash(W.DISTRICTS[fly.districtIndex].name, 90);
     }
 
     if (fly.moonJuice > 0) {
@@ -693,17 +760,20 @@
 
     fly.propTimer--;
     if (fly.propTimer <= 0) {
-      spawnProp();
+      // Spawn ahead of travel direction (player-driven reveal)
+      if (scrollDelta >= 0) spawnProp(fly.scrollX + CW + W.rand(20, 100));
+      else spawnProp(fly.scrollX - W.rand(40, 120));
       fly.propTimer = W.rand(16, 36);
     }
-    fly.props = fly.props.filter((p) => p.x > fly.scrollX - 100);
+    fly.props = fly.props.filter((p) => p.x > fly.scrollX - 220 && p.x < fly.scrollX + CW + 320);
 
     fly.spawnTimer--;
     if (fly.spawnTimer <= 0) {
-      spawnFlyTarget();
+      if (scrollDelta >= 0) spawnFlyTarget(fly.scrollX + CW + W.rand(80, 280));
+      else spawnFlyTarget(fly.scrollX - W.rand(60, 200));
       fly.spawnTimer = W.rand(45, 95);
     }
-    fly.targets = fly.targets.filter((tg) => tg.x > fly.scrollX - 60 && !tg.beamed);
+    fly.targets = fly.targets.filter((tg) => tg.x > fly.scrollX - 160 && tg.x < fly.scrollX + CW + 280 && !tg.beamed);
 
     const fireEdge = wantsBeamEdge();
     const holdBeam = beamHeld();
@@ -832,19 +902,55 @@
         tapeInStereo: tapeInStereo,
         windowUfo: windowUfo,
         doorLocked: !ufoLanded(),
+        smoking: smoking,
+        smokeProgress: smokeProgress,
       });
       if (tayler) {
-        W.drawTayler(ctx, tayler.x - camX, tayler.y, 1, false, t, { seated: true, smoking: true });
+        const taylerSmoking = true;
+        W.drawTayler(ctx, tayler.x - camX, tayler.y, 1, false, t, {
+          seated: true,
+          smoking: taylerSmoking,
+          heavySmoke: smoking || smokeDone,
+        });
       }
-      const smoking = Math.abs(avatar.vx) < 0.5;
-      W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, { smoking: smoking });
+      const zakkIdle = Math.abs(avatar.vx) < 0.5;
+      W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {
+        smoking: smoking || (zakkIdle && tapeInStereo),
+        heavySmoke: smoking,
+      });
+      if (nearTaylerSesh()) {
+        const bob = Math.sin(t * 0.01) * 3;
+        ctx.fillStyle = '#7dff3a';
+        ctx.font = 'bold 15px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('▲ SMOKE WITH TAYLER', tayler.x - camX, GROUND - 118 + bob);
+        ctx.textAlign = 'left';
+      }
+      if (smoking) {
+        ctx.fillStyle = 'rgba(10,30,16,0.72)';
+        ctx.fillRect(CW / 2 - 140, 48, 280, 28);
+        ctx.strokeStyle = '#c8e8a0';
+        ctx.strokeRect(CW / 2 - 140, 48, 280, 28);
+        ctx.fillStyle = '#e8ffe0';
+        ctx.font = 'bold 13px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Shared sesh — mothership descending…', CW / 2, 67);
+        ctx.textAlign = 'left';
+        // progress bar
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fillRect(CW / 2 - 80, 82, 160, 8);
+        ctx.fillStyle = '#9dff6a';
+        ctx.fillRect(CW / 2 - 80, 82, 160 * smokeProgress, 8);
+      }
       if (nearDoor()) {
         ctx.fillStyle = ufoLanded() ? '#7dff3a' : '#ff8866';
         ctx.font = 'bold 16px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
         let doorLabel = '▲ ENTER';
         if (!ufoLanded()) {
-          doorLabel = tapeInStereo ? '▲ WAIT FOR LANDING' : '▲ LOCKED';
+          if (!tapeInStereo) doorLabel = '▲ LOCKED';
+          else if (!smokeDone) doorLabel = '▲ SMOKE WITH TAYLER';
+          else doorLabel = '▲ WAIT FOR LANDING';
         }
         ctx.fillText(doorLabel, W.SHED_DOOR_X - camX, GROUND - 170);
         ctx.textAlign = 'left';

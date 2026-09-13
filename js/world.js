@@ -1,6 +1,7 @@
 /**
  * Mothership — Chilliwack scenes, drawing helpers, flavour copy.
- * Modes: Shed / Yard / Fly (side-scroller + beam). Stereo starts theme; no cockpit cassette.
+ * Modes: Shed / Yard / Fly (side-scroller + beam). Stereo starts theme; smoke with Tayler lands UFO.
+ * Fly scroll is player-driven. No cockpit cassette.
  * Flight: North→South Chilliwack; Mt. Cheam (Lhílheqey) fixed EAST = LEFT of skyline.
  * Characters: Zakk (char-ref-2 all-black) & Tayler (char-ref-1 backwards cap).
  */
@@ -88,6 +89,11 @@
   const SHED_STEREO_X = 1180;
   /** Barn-find El Camino (side view) center X — walk path in FRONT of the car */
   const SHED_CAMINO_X = 360;
+  /** Large framed backyard window on back wall (world X of glass left edge) */
+  const SHED_WINDOW_X = 720;
+  const SHED_WINDOW_W = 380;
+  const SHED_WINDOW_Y = 32;
+  const SHED_WINDOW_H = 168;
   /** Default human sprite scale — taller vs shed interior (~1.48×). */
   const CHAR_SCALE = 1.48;
   /** Slightly shrink shed furniture so characters dominate room height. */
@@ -209,7 +215,11 @@
     const cx = cheamX + cheamParallax;
 
     function peak(x0, h, half, col) {
-      ctx.fillStyle = col;
+      const pg = ctx.createLinearGradient(x0 - half, base - h, x0 + half, base);
+      pg.addColorStop(0, col);
+      pg.addColorStop(0.55, col);
+      pg.addColorStop(1, '#1a2834');
+      ctx.fillStyle = pg;
       ctx.beginPath();
       ctx.moveTo(x0 - half, base);
       ctx.lineTo(x0 - half * 0.22, base - h * 0.62);
@@ -218,8 +228,16 @@
       ctx.lineTo(x0 + half, base);
       ctx.closePath();
       ctx.fill();
+      // lit west face
+      ctx.fillStyle = 'rgba(180,200,220,0.08)';
+      ctx.beginPath();
+      ctx.moveTo(x0 - half, base);
+      ctx.lineTo(x0 - half * 0.22, base - h * 0.62);
+      ctx.lineTo(x0, base - h);
+      ctx.closePath();
+      ctx.fill();
       // east face shade
-      ctx.fillStyle = 'rgba(10,16,24,0.22)';
+      ctx.fillStyle = 'rgba(8,12,20,0.32)';
       ctx.beginPath();
       ctx.moveTo(x0, base - h);
       ctx.lineTo(x0 + half * 0.28, base - h * 0.55);
@@ -505,7 +523,11 @@
       const jx = x + facing * 22 * scale;
       const jy = y - 20 * scale;
       drawJoint(ctx, jx, jy, facing > 0 ? -0.5 : Math.PI + 0.5);
-      drawSmokePuffs(ctx, jx + facing * 14, jy - 6, t, 1.4);
+      const smokeMul = opts.heavySmoke ? 2.2 : 1.4;
+      drawSmokePuffs(ctx, jx + facing * 14, jy - 6, t, smokeMul);
+      if (opts.heavySmoke) {
+        drawSmokePuffs(ctx, jx + facing * 8, jy - 18, t + 400, 1.6);
+      }
     }
 
     if (!opts.noLabel) {
@@ -663,7 +685,11 @@
       const jx = x + facing * 22 * scale;
       const jy = y - (seated ? 16 : 20) * scale;
       drawJoint(ctx, jx, jy, facing > 0 ? -0.55 : Math.PI + 0.55);
-      drawSmokePuffs(ctx, jx + facing * 14, jy - 6, t, 0.8);
+      const smokeMul = opts.heavySmoke ? 2.0 : 0.8;
+      drawSmokePuffs(ctx, jx + facing * 14, jy - 6, t, smokeMul);
+      if (opts.heavySmoke) {
+        drawSmokePuffs(ctx, jx + facing * 6, jy - 16, t + 300, 1.5);
+      }
     }
 
     if (!opts.noLabel) {
@@ -946,144 +972,312 @@
     const s = opts.scale != null ? opts.scale : 1;
     ctx.scale(s, s);
 
-    // Life-sized: ~470px long, hood ~chest (66px), roof just under a 112px human
-    ctx.fillStyle = 'rgba(0,0,0,0.38)';
+    // Ground contact shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.42)';
     ctx.beginPath();
-    ctx.ellipse(8, 6, 236, 16, 0, 0, Math.PI * 2);
+    ctx.ellipse(6, 5, 248, 14, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    const body = dusty ? '#8a5a38' : '#a86a3a';
-    const bodyDark = dusty ? '#6a4028' : '#7a4828';
-    const roof = '#1a1a1c';
+    // Metallic copper / bronze body palette (ref: barn-find El Camino)
+    const copperHi = dusty ? '#c88858' : '#e0a060';
+    const copperMid = dusty ? '#9a6038' : '#b87440';
+    const copperLo = dusty ? '#6a3a22' : '#7a4428';
+    const copperDeep = dusty ? '#4a2818' : '#5a301c';
 
-    // rear bed
-    ctx.fillStyle = body;
-    ctx.fillRect(48, -86, 176, 58);
-    ctx.fillStyle = bodyDark;
-    ctx.fillRect(52, -82, 168, 16);
+    function bodyPaint(x0, y0, x1, y1) {
+      const g = ctx.createLinearGradient(x0, y0, x1, y1);
+      g.addColorStop(0, copperDeep);
+      g.addColorStop(0.22, copperLo);
+      g.addColorStop(0.45, copperMid);
+      g.addColorStop(0.62, copperHi);
+      g.addColorStop(0.8, copperMid);
+      g.addColorStop(1, copperLo);
+      return g;
+    }
+
+    // —— Rear bed / cargo ——
+    ctx.fillStyle = bodyPaint(48, -90, 230, -30);
+    ctx.beginPath();
+    ctx.moveTo(42, -40);
+    ctx.lineTo(48, -88);
+    ctx.lineTo(228, -86);
+    ctx.lineTo(236, -38);
+    ctx.closePath();
+    ctx.fill();
+    // bed rail lip
+    ctx.fillStyle = copperDeep;
+    ctx.fillRect(52, -90, 172, 6);
+    // inner bed shadow
+    ctx.fillStyle = 'rgba(20,12,8,0.55)';
+    ctx.fillRect(58, -84, 160, 28);
+    // clutter in bed
     ctx.fillStyle = '#5a4030';
-    ctx.fillRect(70, -104, 56, 22);
-    ctx.fillStyle = '#3a5a2a';
-    ctx.fillRect(134, -100, 44, 20);
-    ctx.fillStyle = 'rgba(40,40,50,0.5)';
+    ctx.fillRect(72, -106, 52, 24);
+    ctx.fillStyle = '#2a4a22';
+    ctx.fillRect(138, -100, 40, 18);
+    // bed cover shadow / tarp hint
+    ctx.fillStyle = 'rgba(30,28,40,0.45)';
     ctx.beginPath();
-    ctx.moveTo(54, -86);
-    ctx.lineTo(96, -114);
-    ctx.lineTo(214, -102);
-    ctx.lineTo(214, -86);
+    ctx.moveTo(56, -88);
+    ctx.lineTo(100, -118);
+    ctx.lineTo(220, -104);
+    ctx.lineTo(220, -88);
     ctx.closePath();
     ctx.fill();
 
-    // cabin + beltline
-    ctx.fillStyle = body;
+    // —— Cabin body ——
+    ctx.fillStyle = bodyPaint(-210, -90, 70, -20);
     ctx.beginPath();
-    ctx.moveTo(-200, -42);
-    ctx.lineTo(-184, -68);
-    ctx.lineTo(-40, -86);
-    ctx.lineTo(56, -86);
-    ctx.lineTo(66, -42);
+    ctx.moveTo(-210, -36);
+    ctx.lineTo(-198, -72);
+    ctx.lineTo(-48, -90);
+    ctx.lineTo(54, -88);
+    ctx.lineTo(64, -38);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = roof;
-    ctx.beginPath();
-    ctx.moveTo(-158, -80);
-    ctx.lineTo(-142, -102);
-    ctx.lineTo(-6, -104);
-    ctx.lineTo(32, -86);
-    ctx.lineTo(-40, -86);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = dusty ? 'rgba(140,180,200,0.42)' : 'rgba(160,200,220,0.55)';
-    ctx.beginPath();
-    ctx.moveTo(-148, -82);
-    ctx.lineTo(-134, -98);
-    ctx.lineTo(-16, -100);
-    ctx.lineTo(-10, -86);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = dusty ? 'rgba(120,160,180,0.32)' : 'rgba(140,180,200,0.42)';
-    ctx.fillRect(-6, -98, 32, 14);
 
-    // hood — chest height
-    ctx.fillStyle = body;
+    // Black vinyl roof
+    const roofG = ctx.createLinearGradient(-160, -110, 40, -80);
+    roofG.addColorStop(0, '#0a0a0c');
+    roofG.addColorStop(0.4, '#2a2a30');
+    roofG.addColorStop(0.7, '#141418');
+    roofG.addColorStop(1, '#08080a');
+    ctx.fillStyle = roofG;
     ctx.beginPath();
-    ctx.moveTo(-200, -42);
-    ctx.lineTo(-200, -66);
-    ctx.lineTo(-248, -68);
-    ctx.lineTo(-256, -28);
-    ctx.lineTo(-200, -28);
+    ctx.moveTo(-162, -82);
+    ctx.lineTo(-148, -108);
+    ctx.lineTo(-10, -110);
+    ctx.lineTo(36, -88);
+    ctx.lineTo(-42, -88);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = bodyDark;
-    ctx.fillRect(-246, -66, 50, 10);
+    // roof seam
+    ctx.strokeStyle = 'rgba(80,80,90,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-150, -100);
+    ctx.lineTo(20, -98);
+    ctx.stroke();
 
-    // chrome bumper + grille
-    ctx.fillStyle = '#c8c8d0';
-    ctx.fillRect(-264, -34, 24, 18);
-    ctx.fillStyle = '#e8e8f0';
-    ctx.fillRect(-260, -30, 18, 5);
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(-246, -58, 18, 20);
-    ctx.strokeStyle = '#aaa';
+    // Glass (windshield + side) with chrome trim
+    const glassG = ctx.createLinearGradient(-150, -108, -10, -80);
+    glassG.addColorStop(0, dusty ? 'rgba(120,150,170,0.55)' : 'rgba(140,180,210,0.65)');
+    glassG.addColorStop(0.5, 'rgba(200,220,235,0.35)');
+    glassG.addColorStop(1, dusty ? 'rgba(80,110,130,0.5)' : 'rgba(60,100,130,0.55)');
+    ctx.fillStyle = glassG;
+    ctx.beginPath();
+    ctx.moveTo(-152, -84);
+    ctx.lineTo(-140, -104);
+    ctx.lineTo(-18, -106);
+    ctx.lineTo(-12, -88);
+    ctx.closePath();
+    ctx.fill();
+    // vent window triangle
+    ctx.fillStyle = dusty ? 'rgba(100,130,150,0.4)' : 'rgba(120,160,190,0.45)';
+    ctx.beginPath();
+    ctx.moveTo(-152, -84);
+    ctx.lineTo(-140, -104);
+    ctx.lineTo(-136, -84);
+    ctx.closePath();
+    ctx.fill();
+    // rear cab glass
+    ctx.fillStyle = dusty ? 'rgba(100,130,150,0.38)' : 'rgba(130,170,200,0.48)';
+    ctx.fillRect(-8, -104, 36, 16);
+    // chrome window trim
+    ctx.strokeStyle = '#d8d8e0';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(-152, -84);
+    ctx.lineTo(-140, -104);
+    ctx.lineTo(-18, -106);
+    ctx.lineTo(-12, -88);
+    ctx.closePath();
+    ctx.stroke();
+
+    // —— Long hood ——
+    ctx.fillStyle = bodyPaint(-260, -74, -180, -20);
+    ctx.beginPath();
+    ctx.moveTo(-210, -36);
+    ctx.lineTo(-210, -70);
+    ctx.lineTo(-252, -72);
+    ctx.lineTo(-268, -64);
+    ctx.lineTo(-272, -28);
+    ctx.lineTo(-210, -28);
+    ctx.closePath();
+    ctx.fill();
+    // hood center highlight (sky reflection)
+    ctx.fillStyle = dusty ? 'rgba(180,200,220,0.12)' : 'rgba(160,200,230,0.18)';
+    ctx.beginPath();
+    ctx.moveTo(-248, -70);
+    ctx.lineTo(-214, -68);
+    ctx.lineTo(-214, -48);
+    ctx.lineTo(-250, -46);
+    ctx.closePath();
+    ctx.fill();
+    // hood crease
+    ctx.strokeStyle = 'rgba(255,220,180,0.25)';
     ctx.lineWidth = 1.5;
-    for (let i = 0; i < 5; i++) {
+    ctx.beginPath();
+    ctx.moveTo(-266, -58);
+    ctx.lineTo(-212, -56);
+    ctx.stroke();
+
+    // —— Chrome grille + dual headlights + bumper ——
+    // bumper wrap
+    const chrome = ctx.createLinearGradient(-280, -40, -240, -10);
+    chrome.addColorStop(0, '#6a6a72');
+    chrome.addColorStop(0.25, '#f0f0f6');
+    chrome.addColorStop(0.5, '#ffffff');
+    chrome.addColorStop(0.75, '#b0b0b8');
+    chrome.addColorStop(1, '#505058');
+    ctx.fillStyle = chrome;
+    ctx.beginPath();
+    ctx.moveTo(-278, -36);
+    ctx.lineTo(-248, -38);
+    ctx.lineTo(-246, -14);
+    ctx.lineTo(-280, -16);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillRect(-274, -32, 22, 3);
+
+    // grille housing
+    ctx.fillStyle = '#1a1a1e';
+    ctx.fillRect(-252, -62, 28, 26);
+    // horizontal chrome bars
+    ctx.strokeStyle = '#d0d0d8';
+    ctx.lineWidth = 1.4;
+    for (let i = 0; i < 6; i++) {
       ctx.beginPath();
-      ctx.moveTo(-244, -56 + i * 3.5);
-      ctx.lineTo(-230, -56 + i * 3.5);
+      ctx.moveTo(-250, -60 + i * 4);
+      ctx.lineTo(-226, -60 + i * 4);
       ctx.stroke();
     }
-    ctx.fillStyle = '#ffe8a0';
-    ctx.beginPath();
-    ctx.arc(-250, -62, 7, 0, Math.PI * 2);
-    ctx.arc(-250, -40, 7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,240,180,0.22)';
-    ctx.beginPath();
-    ctx.arc(-258, -62, 16, 0, Math.PI * 2);
-    ctx.fill();
-
-    // rocker / chrome strip
-    ctx.fillStyle = bodyDark;
-    ctx.fillRect(-230, -42, 448, 18);
-    ctx.fillStyle = '#b0b0b8';
-    ctx.fillRect(-226, -36, 440, 3);
-    ctx.fillStyle = '#c8c8d0';
-    ctx.fillRect(216, -36, 20, 16);
-
-    function wheel(wx) {
-      ctx.fillStyle = '#111';
+    // dual stacked headlights
+    function headlamp(hx, hy) {
+      const hg = ctx.createRadialGradient(hx - 2, hy - 2, 1, hx, hy, 9);
+      hg.addColorStop(0, '#fff8e0');
+      hg.addColorStop(0.45, '#ffe8a0');
+      hg.addColorStop(0.8, '#c8a860');
+      hg.addColorStop(1, '#6a5a30');
+      ctx.fillStyle = '#c8c8d0';
       ctx.beginPath();
-      ctx.arc(wx, -26, 26, 0, Math.PI * 2);
+      ctx.arc(hx, hy, 9.5, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = '#c8c8d0';
+      ctx.fillStyle = hg;
+      ctx.beginPath();
+      ctx.arc(hx, hy, 7.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.beginPath();
+      ctx.arc(hx - 2, hy - 2, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    headlamp(-256, -66);
+    headlamp(-256, -42);
+    // headlight glow in shed gloom
+    ctx.fillStyle = 'rgba(255,230,160,0.16)';
+    ctx.beginPath();
+    ctx.arc(-268, -54, 22, 0, Math.PI * 2);
+    ctx.fill();
+
+    // —— Rocker + chrome strip ——
+    ctx.fillStyle = copperDeep;
+    ctx.fillRect(-240, -40, 470, 16);
+    const strip = ctx.createLinearGradient(-230, -36, 220, -28);
+    strip.addColorStop(0, '#808088');
+    strip.addColorStop(0.3, '#e8e8f0');
+    strip.addColorStop(0.6, '#a8a8b0');
+    strip.addColorStop(1, '#707078');
+    ctx.fillStyle = strip;
+    ctx.fillRect(-234, -34, 458, 3.5);
+    // rear bumper chrome
+    ctx.fillStyle = chrome;
+    ctx.fillRect(224, -36, 22, 18);
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillRect(226, -32, 16, 3);
+
+    // wheel-arch chrome eyebrows
+    ctx.strokeStyle = '#c8c8d0';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(-142, -28, 32, Math.PI * 1.15, Math.PI * 1.85);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(142, -28, 32, Math.PI * 1.15, Math.PI * 1.85);
+    ctx.stroke();
+
+    // —— Wheels / tires ——
+    function wheel(wx) {
+      // tire
+      ctx.fillStyle = '#0c0c0e';
+      ctx.beginPath();
+      ctx.arc(wx, -26, 28, 0, Math.PI * 2);
+      ctx.fill();
+      // sidewall
+      ctx.strokeStyle = '#2a2a30';
       ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.arc(wx, -26, 22, 0, Math.PI * 2);
+      ctx.arc(wx, -26, 24, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.fillStyle = '#3a3a40';
-      ctx.beginPath();
-      ctx.arc(wx, -26, 12, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#d0d0d8';
-      ctx.beginPath();
-      ctx.arc(wx, -26, 5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#888';
+      // tread notches
+      ctx.strokeStyle = '#1a1a1e';
       ctx.lineWidth = 2;
-      for (let a = 0; a < 5; a++) {
-        const ang = a * 1.256 + (t || 0) * 0.0002;
+      for (let a = 0; a < 12; a++) {
+        const ang = a * (Math.PI / 6) + (t || 0) * 0.00015;
         ctx.beginPath();
-        ctx.moveTo(wx + Math.cos(ang) * 6, -26 + Math.sin(ang) * 6);
-        ctx.lineTo(wx + Math.cos(ang) * 18, -26 + Math.sin(ang) * 18);
+        ctx.moveTo(wx + Math.cos(ang) * 22, -26 + Math.sin(ang) * 22);
+        ctx.lineTo(wx + Math.cos(ang) * 27, -26 + Math.sin(ang) * 27);
+        ctx.stroke();
+      }
+      // chrome trim ring
+      ctx.strokeStyle = '#d8d8e0';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(wx, -26, 18, 0, Math.PI * 2);
+      ctx.stroke();
+      // hubcap
+      const hub = ctx.createRadialGradient(wx - 3, -29, 1, wx, -26, 14);
+      hub.addColorStop(0, '#f0f0f6');
+      hub.addColorStop(0.4, '#a0a0a8');
+      hub.addColorStop(1, '#3a3a42');
+      ctx.fillStyle = hub;
+      ctx.beginPath();
+      ctx.arc(wx, -26, 13, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#1a1a20';
+      ctx.beginPath();
+      ctx.arc(wx, -26, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      // spokes
+      ctx.strokeStyle = 'rgba(220,220,230,0.7)';
+      ctx.lineWidth = 1.5;
+      for (let a = 0; a < 5; a++) {
+        const ang = a * 1.256 + 0.2;
+        ctx.beginPath();
+        ctx.moveTo(wx + Math.cos(ang) * 5, -26 + Math.sin(ang) * 5);
+        ctx.lineTo(wx + Math.cos(ang) * 12, -26 + Math.sin(ang) * 12);
         ctx.stroke();
       }
     }
-    wheel(-140);
-    wheel(140);
+    wheel(-142);
+    wheel(142);
+
+    // Ambient occlusion under rocker
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.fillRect(-230, -26, 450, 6);
 
     if (dusty) {
-      ctx.fillStyle = 'rgba(180,160,120,0.16)';
-      ctx.fillRect(-256, -114, 490, 100);
+      // shed dust film
+      ctx.fillStyle = 'rgba(180,160,120,0.12)';
+      ctx.fillRect(-272, -118, 510, 100);
+      // dusty mottling
+      for (let i = 0; i < 18; i++) {
+        ctx.fillStyle = 'rgba(160,140,100,' + (0.04 + (i % 3) * 0.02) + ')';
+        ctx.beginPath();
+        ctx.arc(-200 + i * 24, -70 - (i % 5) * 8, 6 + (i % 4), 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
@@ -1326,8 +1520,12 @@
     const doorLocked = !!opts.doorLocked;
     const ufoProg = opts.windowUfo != null ? opts.windowUfo : 0;
 
-    // plywood back wall — darker, dusty
-    ctx.fillStyle = '#6a5436';
+    // plywood back wall — darker, dusty, subtle panel shading
+    const wallG = ctx.createLinearGradient(0, 0, 0, floorY);
+    wallG.addColorStop(0, '#5a482e');
+    wallG.addColorStop(0.4, '#6a5436');
+    wallG.addColorStop(1, '#4a3a26');
+    ctx.fillStyle = wallG;
     ctx.fillRect(0, 0, w, floorY);
     ctx.strokeStyle = '#4a3a22';
     ctx.lineWidth = 2;
@@ -1336,6 +1534,17 @@
       ctx.moveTo(x, 0);
       ctx.lineTo(x, floorY);
       ctx.stroke();
+      // panel grain hint
+      ctx.strokeStyle = 'rgba(90,70,40,0.25)';
+      ctx.lineWidth = 1;
+      for (let gy = 20; gy < floorY; gy += 28) {
+        ctx.beginPath();
+        ctx.moveTo(x + 4, gy);
+        ctx.lineTo(x + 80, gy + (gy % 40) * 0.05);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = '#4a3a22';
+      ctx.lineWidth = 2;
     }
     // exposed studs
     ctx.fillStyle = '#4a3824';
@@ -1357,102 +1566,179 @@
     // orange sled in the rafters (ref vibe)
     drawOrangeSled(ctx, 140 - camX * 0.3, 8);
 
-    // ——— LARGE backyard window (dominant widescreen spectacle) ———
-    const wx = 520 - camX * 0.05;
-    const wy = 28;
-    const ww = 360;
-    const wh = 148;
-    ctx.fillStyle = '#5a4030';
-    ctx.fillRect(wx - 8, wy - 8, ww + 16, wh + 18);
+    // ——— LARGE framed backyard window (attached to back wall, world-locked) ———
+    const wx = SHED_WINDOW_X - camX;
+    const wy = SHED_WINDOW_Y;
+    const ww = SHED_WINDOW_W;
+    const wh = SHED_WINDOW_H;
+    const frameT = 14; // solid wood frame thickness
+    const mullion = 8;
+    const glassX = wx + frameT;
+    const glassY = wy + frameT;
+    const glassW = ww - frameT * 2;
+    const glassH = wh - frameT * 2;
+
+    // sill / header boards that sit ON the plywood wall (reads attached)
+    ctx.fillStyle = '#3a2a1c';
+    ctx.fillRect(wx - 10, wy - 10, ww + 20, 10); // header board
+    ctx.fillStyle = '#4a3424';
+    ctx.fillRect(wx - 14, wy + wh - 4, ww + 28, 16); // deep sill
+    ctx.fillStyle = '#6a4e34';
+    ctx.fillRect(wx - 12, wy + wh + 2, ww + 24, 8);
+    // side trim into studs
+    ctx.fillStyle = '#4a3424';
+    ctx.fillRect(wx - 8, wy - 2, 8, wh + 6);
+    ctx.fillRect(wx + ww, wy - 2, 8, wh + 6);
+
+    // outer wood frame (solid)
+    const frameGrad = ctx.createLinearGradient(wx, wy, wx + ww, wy + wh);
+    frameGrad.addColorStop(0, '#5a4030');
+    frameGrad.addColorStop(0.35, '#7a5a40');
+    frameGrad.addColorStop(0.7, '#5a4030');
+    frameGrad.addColorStop(1, '#3a2a1c');
+    ctx.fillStyle = frameGrad;
+    ctx.fillRect(wx, wy, ww, wh);
+    // inner bevel
+    ctx.fillStyle = '#8a6a48';
+    ctx.fillRect(wx + 3, wy + 3, ww - 6, wh - 6);
+    ctx.fillStyle = '#4a3424';
+    ctx.fillRect(glassX - 2, glassY - 2, glassW + 4, glassH + 4);
+
+    // glass + backyard + Cheam + UFO — clipped cleanly inside glass rect
     ctx.save();
     ctx.beginPath();
-    ctx.rect(wx + 4, wy + 4, ww - 8, wh - 8);
+    ctx.rect(glassX, glassY, glassW, glassH);
     ctx.clip();
-    const skyG = ctx.createLinearGradient(0, wy, 0, wy + wh);
-    skyG.addColorStop(0, '#6eb8ff');
-    skyG.addColorStop(0.55, '#9ed0ff');
-    skyG.addColorStop(1, '#c8e8ff');
+
+    const skyG = ctx.createLinearGradient(0, glassY, 0, glassY + glassH);
+    skyG.addColorStop(0, '#4a9ae8');
+    skyG.addColorStop(0.35, '#7ebef0');
+    skyG.addColorStop(0.7, '#b8daf8');
+    skyG.addColorStop(1, '#d8ecff');
     ctx.fillStyle = skyG;
-    ctx.fillRect(wx + 4, wy + 4, ww - 8, wh - 8);
-    // trees
-    ctx.fillStyle = '#3a7a3a';
-    for (let i = 0; i < 9; i++) {
-      const tx = wx + 18 + i * 36;
-      ctx.fillRect(tx, wy + wh - 52, 7, 28);
+    ctx.fillRect(glassX, glassY, glassW, glassH);
+
+    // soft cloud wisps
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    for (let i = 0; i < 4; i++) {
+      const cx = glassX + 40 + i * 70 + Math.sin(t * 0.0004 + i) * 6;
+      const cy = glassY + 18 + (i % 2) * 14;
       ctx.beginPath();
-      ctx.arc(tx + 3, wy + wh - 55, 13, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy, 28, 8, 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.fillStyle = '#4a9a3a';
-    ctx.fillRect(wx + 4, wy + wh - 30, ww - 8, 26);
-    ctx.fillStyle = '#3a8a2a';
-    for (let i = 0; i < 22; i++) {
-      ctx.fillRect(wx + 10 + i * 14, wy + wh - 34, 3, 8);
-    }
-    // Mt. Cheam east/left
-    ctx.fillStyle = '#2a3a4c';
+
+    // Mt. Cheam east/left (unlabeled) + companions
+    const groundLine = glassY + glassH - 34;
+    ctx.fillStyle = '#2e4254';
     ctx.beginPath();
-    ctx.moveTo(wx + 14, wy + wh - 30);
-    ctx.lineTo(wx + 58, wy + 26);
-    ctx.lineTo(wx + 110, wy + wh - 30);
+    ctx.moveTo(glassX - 4, groundLine);
+    ctx.lineTo(glassX + 36, glassY + 58);
+    ctx.lineTo(glassX + 70, groundLine);
     ctx.fill();
+    ctx.fillStyle = '#243848';
+    ctx.beginPath();
+    ctx.moveTo(glassX + 20, groundLine);
+    ctx.lineTo(glassX + 78, glassY + 22);
+    ctx.lineTo(glassX + 148, groundLine);
+    ctx.fill();
+    // Cheam pyramid
+    ctx.fillStyle = '#1e3040';
+    ctx.beginPath();
+    ctx.moveTo(glassX + 48, groundLine);
+    ctx.lineTo(glassX + 108, glassY + 10);
+    ctx.lineTo(glassX + 178, groundLine);
+    ctx.fill();
+    // snow cap
     ctx.fillStyle = '#eef6ff';
     ctx.beginPath();
-    ctx.moveTo(wx + 44, wy + 46);
-    ctx.lineTo(wx + 58, wy + 26);
-    ctx.lineTo(wx + 76, wy + 50);
+    ctx.moveTo(glassX + 92, glassY + 36);
+    ctx.lineTo(glassX + 108, glassY + 10);
+    ctx.lineTo(glassX + 128, glassY + 40);
+    ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = '#354858';
+    // east face shade
+    ctx.fillStyle = 'rgba(8,14,22,0.35)';
     ctx.beginPath();
-    ctx.moveTo(wx + 4, wy + wh - 30);
-    ctx.lineTo(wx + 30, wy + 52);
-    ctx.lineTo(wx + 52, wy + wh - 30);
+    ctx.moveTo(glassX + 108, glassY + 10);
+    ctx.lineTo(glassX + 178, groundLine);
+    ctx.lineTo(glassX + 108, groundLine);
+    ctx.closePath();
     ctx.fill();
+
+    // tree line
+    for (let i = 0; i < 11; i++) {
+      const tx = glassX + 12 + i * 32;
+      const trunkG = ctx.createLinearGradient(tx, groundLine - 40, tx, groundLine);
+      trunkG.addColorStop(0, '#2a5a28');
+      trunkG.addColorStop(1, '#1a3a1a');
+      ctx.fillStyle = '#4a3020';
+      ctx.fillRect(tx + 4, groundLine - 28, 5, 22);
+      ctx.fillStyle = trunkG;
+      ctx.beginPath();
+      ctx.moveTo(tx - 6, groundLine - 18);
+      ctx.lineTo(tx + 6, groundLine - 48);
+      ctx.lineTo(tx + 18, groundLine - 18);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // lawn / yard
+    const lawn = ctx.createLinearGradient(0, groundLine, 0, glassY + glassH);
+    lawn.addColorStop(0, '#3a8a2a');
+    lawn.addColorStop(1, '#2a6a1a');
+    ctx.fillStyle = lawn;
+    ctx.fillRect(glassX, groundLine, glassW, glassY + glassH - groundLine);
+    ctx.fillStyle = 'rgba(255,255,200,0.08)';
+    ctx.fillRect(glassX, groundLine, glassW, 6);
+
+    // UFO landing (clipped inside glass)
     if (ufoProg > 0.01) {
-      const ufoX = wx + 45 + ufoProg * (ww * 0.42);
-      const ufoY = wy + 16 + Math.min(1, ufoProg * 1.1) * (wh - 58);
-      const ufoS = 0.5 + ufoProg * 0.28;
-      drawClayUFO(ctx, ufoX, ufoY, ufoS, t, ufoProg > 0.2);
-      if (ufoProg > 0.5) {
-        ctx.fillStyle = 'rgba(200,220,230,' + (0.15 + ufoProg * 0.25) + ')';
+      const ufoX = glassX + 55 + ufoProg * (glassW * 0.38);
+      const ufoY = glassY + 14 + Math.min(1, ufoProg) * (glassH - 62);
+      const ufoS = 0.48 + ufoProg * 0.32;
+      drawClayUFO(ctx, ufoX, ufoY, ufoS, t, ufoProg > 0.18);
+      if (ufoProg > 0.45) {
+        ctx.fillStyle = 'rgba(200,220,230,' + (0.12 + ufoProg * 0.28) + ')';
         ctx.beginPath();
-        ctx.ellipse(ufoX, wy + wh - 28, 30 + ufoProg * 14, 6, 0, 0, Math.PI * 2);
+        ctx.ellipse(ufoX, groundLine + 4, 28 + ufoProg * 16, 5, 0, 0, Math.PI * 2);
         ctx.fill();
       }
-    } else {
-      ctx.fillStyle = 'rgba(255,255,255,0.4)';
-      ctx.font = '11px Segoe UI, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('backyard · Chilliwack', wx + ww / 2, wy + wh / 2);
-      ctx.textAlign = 'left';
     }
+
+    // glass reflection sheen
+    const sheen = ctx.createLinearGradient(glassX, glassY, glassX + glassW * 0.4, glassY + glassH);
+    sheen.addColorStop(0, 'rgba(255,255,255,0.18)');
+    sheen.addColorStop(0.35, 'rgba(255,255,255,0.02)');
+    sheen.addColorStop(1, 'rgba(20,40,60,0.08)');
+    ctx.fillStyle = sheen;
+    ctx.fillRect(glassX, glassY, glassW, glassH);
     ctx.restore();
-    // thick frame + 2×2 big panes
-    ctx.strokeStyle = '#6a5040';
-    ctx.lineWidth = 9;
-    ctx.strokeRect(wx, wy, ww, wh);
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(wx + ww / 2, wy);
-    ctx.lineTo(wx + ww / 2, wy + wh);
-    ctx.moveTo(wx, wy + wh / 2);
-    ctx.lineTo(wx + ww, wy + wh / 2);
-    ctx.stroke();
-    ctx.fillStyle = '#8a6a40';
-    ctx.fillRect(wx - 6, wy + wh, ww + 12, 12);
-    ctx.fillStyle = '#5a4030';
-    ctx.fillRect(wx, wy + wh + 3, ww, 5);
+
+    // mullions ON TOP of glass (2×2 panes) — solid wood, not broken
+    ctx.fillStyle = '#6a4e34';
+    // vertical center mullion
+    ctx.fillRect(wx + ww / 2 - mullion / 2, glassY - 1, mullion, glassH + 2);
+    // horizontal center mullion
+    ctx.fillRect(glassX - 1, wy + wh / 2 - mullion / 2, glassW + 2, mullion);
+    // outer frame highlight edge
+    ctx.strokeStyle = 'rgba(200,170,120,0.35)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(wx + 2, wy + 2, ww - 4, wh - 4);
+    // shadow under sill
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(wx - 8, wy + wh + 10, ww + 16, 4);
+
     if (ufoProg > 0.02 && ufoProg < 0.98) {
       ctx.fillStyle = '#1a4a1a';
       ctx.font = 'bold 12px Segoe UI, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(ufoProg < 0.65 ? 'UFO INBOUND…' : 'LANDING…', wx + ww / 2, wy - 10);
+      ctx.fillText(ufoProg < 0.65 ? 'UFO INBOUND…' : 'LANDING…', wx + ww / 2, wy - 14);
       ctx.textAlign = 'left';
     } else if (ufoProg >= 0.98) {
       ctx.fillStyle = '#1a4a1a';
       ctx.font = 'bold 12px Segoe UI, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('LANDED — EXIT →', wx + ww / 2, wy - 10);
+      ctx.fillText('LANDED — EXIT →', wx + ww / 2, wy - 14);
       ctx.textAlign = 'left';
     }
 
@@ -1484,10 +1770,10 @@
     // pegboard
     drawPegboard(ctx, 195 - camX, 50, 70, 110);
 
-    // posters right of window
-    drawPoster(ctx, 670 - camX, 40, 'RETROFIT', '#3a1a4a');
-    drawPoster(ctx, 725 - camX, 48, 'UFO?', '#1a3a4a');
-    drawPoster(ctx, 780 - camX, 36, 'BEER', '#4a2a1a');
+    // posters flanking the big window
+    drawPoster(ctx, 640 - camX, 48, 'RETROFIT', '#3a1a4a');
+    drawPoster(ctx, 1120 - camX, 44, 'UFO?', '#1a3a4a');
+    drawPoster(ctx, 1170 - camX, 52, 'BEER', '#4a2a1a');
 
     function propAt(ax, drawFn) {
       ctx.save();
@@ -1636,7 +1922,7 @@
     ctx.save();
     ctx.beginPath();
     ctx.rect(0, 0, w, h);
-    ctx.rect(wx + 4, wy + 4, ww - 8, wh - 8);
+    ctx.rect(glassX, glassY, glassW, glassH);
     ctx.clip('evenodd');
     const haze = ctx.createLinearGradient(0, 0, 0, floorY);
     haze.addColorStop(0, 'rgba(18, 12, 6, 0.34)');
@@ -2106,7 +2392,11 @@
     ctx.fillRect(1, -6, 8, 6);
 
     function head() {
-      ctx.fillStyle = skin;
+      const hg = ctx.createRadialGradient(-2, -56, 1, 0, -54, 9);
+      hg.addColorStop(0, '#e8c4a0');
+      hg.addColorStop(0.55, skin);
+      hg.addColorStop(1, '#a07858');
+      ctx.fillStyle = hg;
       ctx.beginPath();
       ctx.arc(0, -54, 8, 0, Math.PI * 2);
       ctx.fill();
@@ -2576,6 +2866,7 @@
     SHED_CASSETTE_X,
     SHED_STEREO_X,
     SHED_CAMINO_X,
+    SHED_WINDOW_X,
     CHAR_SCALE,
     drawCassetteProp,
     drawStereo,
