@@ -1,7 +1,7 @@
 # Mothership — Chilliwack Skies
 
-Arcade flyer MVP inspired by Retrofit’s song **“Mothership”**.  
-You pilot a clay/cartoon UFO over **Chilliwack, BC / Fraser Valley**, beam up ground targets for points, and dodge birds, towers, mountains, and rival UFOs.
+Arcade comedy game inspired by Retrofit’s song **“Mothership”**.  
+You start in **mom’s shed**, watch a clay UFO land in the backyard, board it, pilot from the **cockpit**, then drop into **Beam Mode** to abduct Chilliwackians.
 
 **Tone:** absurd cheesy comedy, green B-movie aliens (the band in bad costumes).  
 **Pilots (copy/UI):** Zakk & Taylor (T).
@@ -33,31 +33,45 @@ npx serve .
 python3 -m http.server 8080
 ```
 
-Works in modern Chrome / Safari; phone landscape is supported (on-screen pad + BEAM button).
+Works in modern Chrome / Safari; phone landscape is supported (on-screen pad + USE / BEAM).
+
+## Game flow
+
+1. **Title** → Start  
+2. **SHED** (side-scroller) — walk around mom’s garage, leave through the exit door  
+3. **YARD** (side-scroller) — mothership landing beat (lights + fog), walk up and **enter** the UFO  
+4. **COCKPIT** — interior / window view; steer the Chilliwack scenery outside  
+5. **BEAM** — separate side-scroller mode; align over ground targets and beam them up  
+6. Exit beam → cockpit again, or **Enter** from cockpit for mission debrief / results  
+
+HUD mode label always shows: **SHED / YARD / COCKPIT / BEAM**.
 
 ## Controls
 
 | Action | Desktop | Touch |
 |--------|---------|--------|
-| Steer | Arrow keys or WASD | On-screen ◀▶▲▼ |
-| Beam up | Space | BEAM button / tap right side of canvas |
+| Move / steer | ← → or A D | On-screen ◀ ▶ |
+| Jump (shed/yard) | Space | ▲ (when not at a door) |
+| Interact / enter | ↑ / W / E / Enter | USE button |
+| Beam Mode on/off | **B** (cockpit ↔ beam) | BEAM (cockpit) / USE (exit beam) |
+| Fire beam | Space (in Beam Mode) | BEAM button |
+| End mission | Enter (cockpit) | USE in cockpit |
 | Mute | M or 🔊 button | 🔊 button |
 | Start / again | Start button or Enter / Space | Tap buttons |
 
-**Moon Juice** power-up: temporary wider beam + slight speed boost (cyan bottle / orb).
+**Moon Juice:** random cockpit power-up — wider beam + slight speed boost while it lasts.
 
-## Chilliwack landmarks (in-game)
+## Chilliwack flavour
 
-The scrolling world cycles labelled districts — not a generic city:
+Cockpit windows and Beam Mode show scrolling Fraser Valley vibes (not a top-down map):
 
-- **Downtown / Yale Road** — road stripe, storefront blocks, Yale Rd sign
-- **Highway / Suburban Blocks**
-- **Farmland / Corn** — corn rows, U-Pick sign
-- **Vedder River** — winding blue river
-- **Cultus Lake Direction** — lake ellipse + “→ CULTUS LAKE”
-- **Cheam Peak / Coast Mountains** — mountain silhouette + snowcaps on the horizon always
+- Downtown / Yale Road  
+- Farmland / Corn  
+- Vedder River  
+- Cultus Lake Direction  
+- Cheam Peak / Coast Mountains  
 
-Ground targets include locals, tourists, fried-chicken fans, corn farmers, Cheam hikers, Vedder floaters — with cheesy one-liners (chicken, microplastics, moon juice).
+Ground targets: locals, tourists, fried-chicken fans, corn farmers, Cheam hikers, Vedder floaters — with cheesy one-liners (chicken, microplastics, moon juice).
 
 ## File structure
 
@@ -67,13 +81,13 @@ mothership/
 ├── css/style.css       # layout, title/results, touch UI
 ├── js/
 │   ├── audio.js        # Web Audio beeps + mute (localStorage)
-│   ├── world.js        # Chilliwack districts, targets, hazards, drawing
-│   └── game.js         # loop, UFO, beam, score/lives, high score
+│   ├── world.js        # Shed / yard / cockpit / beam drawing + copy
+│   └── game.js         # modes, avatar, landing, cockpit, beam, score
 ├── package.json        # npm start / npm run dev → serve
 └── README.md
 ```
 
-Tweak copy in `js/world.js` (`ONE_LINERS`, `RESULTS_LINERS`, `DISTRICTS`, `TARGET_KINDS`) and UI strings in `index.html`.
+Tweak copy in `js/world.js` (`ONE_LINERS`, `RESULTS_LINERS`, `SHED_GAGS`, `TARGET_KINDS`, `DISTRICTS`) and UI strings in `index.html`.
 
 ## High score
 
@@ -81,11 +95,11 @@ Stored in `localStorage` under `mothership_highscore`. Mute preference: `mothers
 
 ## Suggested next features
 
-- **Garage intro** — short pre-flight cutscene of Zakk & T climbing into the clay UFO
-- **Chicken operating table** — bonus mini-scene after beaming a fried-chicken target
-- **Guitar shred** — score-multiplier moment / boss fanfare with chiptune shred
-- More Fraser Valley POIs (Promontory, Sardis, Bridal Falls)
-- Local co-op: Zakk steers, Taylor beams (or vice versa)
+- Longer shed gag beats / Taylor as second avatar  
+- Chicken operating table bonus after beaming a fried-chicken target  
+- Guitar shred score-multiplier / boss fanfare  
+- More Fraser Valley POIs (Promontory, Sardis, Bridal Falls)  
+- Local co-op: Zakk steers, Taylor beams  
 
 ## License
 

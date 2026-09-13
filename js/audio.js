@@ -62,6 +62,11 @@
       setTimeout(() => tone(150, 0.2, 'sawtooth', 0.07), 120);
       setTimeout(() => tone(100, 0.35, 'triangle', 0.06), 260);
     },
+    landing() {
+      tone(180, 0.1, 'triangle', 0.06);
+      setTimeout(() => tone(240, 0.12, 'triangle', 0.05), 80);
+      setTimeout(() => tone(120, 0.25, 'sawtooth', 0.04), 180);
+    },
   };
 
   global.MothershipAudio = {

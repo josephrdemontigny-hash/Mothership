@@ -18,10 +18,11 @@
         <span id="beamed-label">BEAMED <strong id="beamed">0</strong></span>
       </div>
       <div class="hud-center">
-        <span id="district">Downtown / Yale Road</span>
+        <span id="mode-label">SHED</span>
+        <span id="district" class="hidden">Chilliwack</span>
       </div>
       <div class="hud-right">
-        <span id="lives-label">LIVES <strong id="lives">3</strong></span>
+        <span id="prompt-label"></span>
         <button type="button" id="mute-btn" title="Mute">🔊</button>
       </div>
     </div>
@@ -33,12 +34,12 @@
         <h1>MOTHERSHIP</h1>
         <p class="subtitle">Chilliwack skies</p>
         <p class="flavour">
-          The band dressed as green B-movie aliens.<br />
-          The UFO is clay. The mission is nonsense.<br />
+          Mom’s shed. A cheesy clay UFO.<br />
+          Green B-movie costumes. Mission: nonsense.<br />
           Beam up Chilliwack — leave the microplastics.
         </p>
-        <button type="button" id="btn-start" class="btn primary">START BEAMING</button>
-        <p class="hint">Arrows / WASD · Space to beam · M mute</p>
+        <button type="button" id="btn-start" class="btn primary">ENTER THE SHED</button>
+        <p class="hint">← → move · ↑ / E interact · Space jump · B beam mode · M mute</p>
         <p class="highscore" id="title-high">High Score: 0</p>
       </div>
     </div>
@@ -46,7 +47,7 @@
     <!-- Results screen -->
     <div id="screen-results" class="screen hidden">
       <div class="panel results-panel">
-        <h2>MISSION ABORTED</h2>
+        <h2>MISSION DEBRIEF</h2>
         <p class="results-line">Beamed: <strong id="res-beamed">0</strong> Chilliwackians</p>
         <p class="results-line">Score: <strong id="res-score">0</strong></p>
         <p class="results-line high" id="res-high-wrap">High Score: <strong id="res-high">0</strong></p>
@@ -61,12 +62,15 @@
       <div class="pad" id="pad-left">
         <button type="button" data-dir="left" aria-label="Left">◀</button>
         <div class="pad-mid">
-          <button type="button" data-dir="up" aria-label="Up">▲</button>
+          <button type="button" data-dir="up" aria-label="Up / Jump / Interact">▲</button>
           <button type="button" data-dir="down" aria-label="Down">▼</button>
         </div>
         <button type="button" data-dir="right" aria-label="Right">▶</button>
       </div>
-      <button type="button" id="btn-beam" aria-label="Beam">BEAM</button>
+      <div class="touch-actions">
+        <button type="button" id="btn-interact" aria-label="Interact">USE</button>
+        <button type="button" id="btn-beam" aria-label="Beam / Beam Mode">BEAM</button>
+      </div>
     </div>
   </div>
 
