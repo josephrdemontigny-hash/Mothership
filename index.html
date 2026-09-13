@@ -28,30 +28,36 @@
       </div>
     </div>
 
-    <!-- Title: vintage car stereo + cassette insert -->
+    <!-- Title: restomod dash stereo + cassette insert -->
     <div id="screen-title" class="screen">
       <div class="stereo-wrap">
-        <div class="car-stereo" id="car-stereo" aria-label="Vintage car stereo">
+        <div class="dash-panel" aria-hidden="true"></div>
+        <div class="car-stereo" id="car-stereo" aria-label="Restomod car stereo">
           <div class="stereo-face">
             <div class="stereo-knob stereo-knob-l" aria-hidden="true">
+              <span class="knob-wing knob-wing-l"></span>
+              <span class="knob-wing knob-wing-r"></span>
+              <span class="knob-face"></span>
               <span class="knob-mark"></span>
             </div>
-            <div class="stereo-mid">
-              <div class="stereo-brand">DELCO · AM/FM · STEREO</div>
+            <div class="stereo-chrome">
+              <div class="cassette-slot" id="cassette-slot" title="Insert cassette">
+                <div class="slot-lip"></div>
+                <div class="slot-dark"></div>
+                <div class="slot-hint" id="slot-hint">INSERT TAPE</div>
+              </div>
               <div class="stereo-display" id="stereo-display">
                 <span class="stereo-eq" aria-hidden="true"></span>
                 <span class="stereo-lcd">INSERT TAPE</span>
-              </div>
-              <div class="cassette-slot" id="cassette-slot">
-                <div class="slot-lip"></div>
-                <div class="slot-dark"></div>
-                <div class="slot-hint" id="slot-hint">▲ INSERT / START</div>
               </div>
               <div class="stereo-buttons" aria-hidden="true">
                 <span></span><span></span><span></span><span></span><span></span>
               </div>
             </div>
             <div class="stereo-knob stereo-knob-r" aria-hidden="true">
+              <span class="knob-wing knob-wing-l"></span>
+              <span class="knob-wing knob-wing-r"></span>
+              <span class="knob-face"></span>
               <span class="knob-mark"></span>
             </div>
           </div>
@@ -61,7 +67,7 @@
                 class="tape-face"
                 src="assets/cassette-menu.jpeg"
                 srcset="assets/cassette-menu-sm.jpeg 720w, assets/cassette-menu.jpeg 960w"
-                sizes="(max-width: 520px) 86vw, 340px"
+                sizes="(max-width: 520px) 86vw, 300px"
                 width="960"
                 height="597"
                 alt=""
