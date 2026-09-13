@@ -3205,8 +3205,256 @@
     ctx.fill();
   }
 
-  function drawBuilding(ctx, x, groundY, kind) {
+
+  function drawLandmarkLabel(ctx, x, y, text) {
+    if (!text) return;
+    ctx.save();
+    ctx.font = 'bold 8px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    const tw = Math.max(52, ctx.measureText(text).width + 10);
+    ctx.fillRect(x - tw / 2, y - 9, tw, 12);
+    ctx.fillStyle = '#ffe8a0';
+    ctx.fillText(text, x, y);
+    ctx.textAlign = 'left';
+    ctx.restore();
+  }
+
+  /** Millennium Clock Tower — tall slender downtown tower with clock faces */
+  function drawClockTower(ctx, x, groundY, label) {
+    const baseW = 28;
+    const cx = x + baseW / 2;
+    // stone shaft
+    ctx.fillStyle = '#c8b89a';
+    ctx.fillRect(x + 6, groundY - 118, 16, 118);
+    // slightly wider mid section
+    ctx.fillStyle = '#b8a888';
+    ctx.fillRect(x + 3, groundY - 78, 22, 28);
+    // clock face block
+    ctx.fillStyle = '#d8c8a8';
+    ctx.fillRect(x, groundY - 108, 28, 26);
+    // clock faces (N/S readable)
+    ctx.fillStyle = '#fff8e8';
+    ctx.beginPath();
+    ctx.arc(cx, groundY - 95, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#5a4030';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.strokeStyle = '#2a2010';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(cx, groundY - 95);
+    ctx.lineTo(cx + 5, groundY - 98);
+    ctx.moveTo(cx, groundY - 95);
+    ctx.lineTo(cx - 1, groundY - 88);
+    ctx.stroke();
+    // peaked roof / cupola
+    ctx.fillStyle = '#4a3020';
+    ctx.beginPath();
+    ctx.moveTo(x - 2, groundY - 118);
+    ctx.lineTo(cx, groundY - 138);
+    ctx.lineTo(x + baseW + 2, groundY - 118);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#6a4830';
+    ctx.fillRect(cx - 2, groundY - 142, 4, 8);
+    // door
+    ctx.fillStyle = '#3a2818';
+    ctx.fillRect(cx - 5, groundY - 18, 10, 18);
+    drawLandmarkLabel(ctx, cx, groundY + 14, label || 'CLOCK TOWER');
+  }
+
+  /** Chilliwack Museum — former City Hall Beaux-Arts: white, pediment, columns, twin stairs */
+  function drawMuseum(ctx, x, groundY, label) {
+    const w = 92;
+    const cx = x + w / 2;
+    // twin stairs
+    ctx.fillStyle = '#d0d0d0';
+    ctx.fillRect(x + 8, groundY - 14, 28, 14);
+    ctx.fillRect(x + 56, groundY - 14, 28, 14);
+    ctx.fillStyle = '#b8b8b8';
+    ctx.fillRect(x + 14, groundY - 20, 22, 6);
+    ctx.fillRect(x + 56, groundY - 20, 22, 6);
+    // white body
+    ctx.fillStyle = '#f2efe6';
+    ctx.fillRect(x, groundY - 72, w, 52);
+    // columns
+    ctx.fillStyle = '#e8e4d8';
+    for (let i = 0; i < 4; i++) {
+      const cxCol = x + 14 + i * 20;
+      ctx.fillRect(cxCol, groundY - 68, 6, 36);
+      ctx.fillStyle = '#f8f6f0';
+      ctx.beginPath();
+      ctx.arc(cxCol + 3, groundY - 70, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#e8e4d8';
+    }
+    // pediment
+    ctx.fillStyle = '#ebe6da';
+    ctx.beginPath();
+    ctx.moveTo(x - 4, groundY - 72);
+    ctx.lineTo(cx, groundY - 96);
+    ctx.lineTo(x + w + 4, groundY - 72);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#c8c0b0';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // center door + windows
+    ctx.fillStyle = '#3a4a5a';
+    ctx.fillRect(cx - 7, groundY - 36, 14, 16);
+    ctx.fillStyle = '#7ec8ff';
+    ctx.fillRect(x + 10, groundY - 56, 12, 10);
+    ctx.fillRect(x + w - 22, groundY - 56, 12, 10);
+    drawLandmarkLabel(ctx, cx, groundY + 14, label || 'MUSEUM');
+  }
+
+  /** Vedder Bridge — span over water */
+  function drawVedderBridge(ctx, x, groundY, label) {
+    const w = 140;
+    const cx = x + w / 2;
+    // water under span
+    ctx.fillStyle = '#3a8ccc';
+    ctx.fillRect(x + 10, groundY - 6, w - 20, 14);
+    ctx.fillStyle = 'rgba(180,230,255,0.35)';
+    ctx.fillRect(x + 18, groundY - 2, 20, 3);
+    ctx.fillRect(x + 70, groundY + 2, 28, 3);
+    // deck
+    ctx.fillStyle = '#6a6a70';
+    ctx.fillRect(x, groundY - 22, w, 10);
+    ctx.fillStyle = '#8a8a90';
+    ctx.fillRect(x, groundY - 24, w, 3);
+    // rail
+    ctx.strokeStyle = '#444850';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x, groundY - 30);
+    ctx.lineTo(x + w, groundY - 30);
+    ctx.stroke();
+    for (let i = 0; i <= 10; i++) {
+      ctx.fillStyle = '#505058';
+      ctx.fillRect(x + i * 14, groundY - 30, 2, 8);
+    }
+    // piers
+    ctx.fillStyle = '#5a5a60';
+    ctx.fillRect(x + 18, groundY - 14, 10, 18);
+    ctx.fillRect(x + w - 28, groundY - 14, 10, 18);
+    // simple arch suggestion
+    ctx.strokeStyle = '#707078';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x + 28, groundY - 14);
+    ctx.quadraticCurveTo(cx, groundY - 42, x + w - 28, groundY - 14);
+    ctx.stroke();
+    drawLandmarkLabel(ctx, cx, groundY + 18, label || 'VEDDER BRIDGE');
+  }
+
+  /** Royal Hotel — brick downtown hotel block with sign */
+  function drawRoyalHotel(ctx, x, groundY, label) {
+    const w = 78;
+    const cx = x + w / 2;
+    ctx.fillStyle = '#8a4040';
+    ctx.fillRect(x, groundY - 88, w, 88);
+    ctx.fillStyle = '#6a3030';
+    ctx.fillRect(x - 2, groundY - 96, w + 4, 10);
+    // windows grid
+    for (let r = 0; r < 4; r++) {
+      for (let c = 0; c < 4; c++) {
+        ctx.fillStyle = r % 2 === 0 ? '#ffe88a' : '#7ec8ff';
+        ctx.fillRect(x + 8 + c * 17, groundY - 82 + r * 16, 10, 10);
+      }
+    }
+    // canopy / entrance
+    ctx.fillStyle = '#2a2010';
+    ctx.fillRect(cx - 10, groundY - 28, 20, 28);
+    ctx.fillStyle = '#c03030';
+    ctx.fillRect(x + 6, groundY - 34, w - 12, 8);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 8px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('ROYAL', cx, groundY - 27);
+    ctx.textAlign = 'left';
+    drawLandmarkLabel(ctx, cx, groundY + 14, label || 'ROYAL HOTEL');
+  }
+
+  /** Historic Fire Hall — red brick with hose tower */
+  function drawFireHall(ctx, x, groundY, label) {
+    const w = 70;
+    const cx = x + w / 2;
+    ctx.fillStyle = '#a03030';
+    ctx.fillRect(x, groundY - 58, w, 58);
+    // hose / bell tower
+    ctx.fillStyle = '#8a2828';
+    ctx.fillRect(x + w - 22, groundY - 96, 18, 96);
+    ctx.fillStyle = '#4a2020';
+    ctx.beginPath();
+    ctx.moveTo(x + w - 24, groundY - 96);
+    ctx.lineTo(x + w - 13, groundY - 112);
+    ctx.lineTo(x + w - 2, groundY - 96);
+    ctx.closePath();
+    ctx.fill();
+    // bay doors
+    ctx.fillStyle = '#3a2010';
+    ctx.fillRect(x + 6, groundY - 32, 22, 32);
+    ctx.fillRect(x + 32, groundY - 32, 22, 32);
+    ctx.strokeStyle = '#c4a35a';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 6, groundY - 32, 22, 32);
+    ctx.strokeRect(x + 32, groundY - 32, 22, 32);
+    // windows
+    ctx.fillStyle = '#ffe88a';
+    ctx.fillRect(x + 10, groundY - 50, 12, 10);
+    ctx.fillRect(x + 36, groundY - 50, 12, 10);
+    drawLandmarkLabel(ctx, cx, groundY + 14, label || 'FIRE HALL');
+  }
+
+  /** Paramount / Imperial theatre silhouette — marquee + tall facade */
+  function drawTheatre(ctx, x, groundY, label) {
+    const w = 84;
+    const cx = x + w / 2;
+    // facade
+    ctx.fillStyle = '#3a3550';
+    ctx.fillRect(x, groundY - 100, w, 100);
+    // stepped top
+    ctx.fillStyle = '#2a2840';
+    ctx.fillRect(x + 12, groundY - 112, w - 24, 12);
+    ctx.fillRect(x + 24, groundY - 122, w - 48, 10);
+    // marquee
+    ctx.fillStyle = '#c4a030';
+    ctx.fillRect(x - 6, groundY - 58, w + 12, 16);
+    ctx.fillStyle = '#1a1828';
+    ctx.fillRect(x - 2, groundY - 54, w + 4, 10);
+    ctx.fillStyle = '#ffe8a0';
+    ctx.font = 'bold 8px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('PARAMOUNT', cx, groundY - 46);
+    // ticket doors
+    ctx.fillStyle = '#5a4060';
+    ctx.fillRect(cx - 14, groundY - 28, 28, 28);
+    ctx.fillStyle = '#7ec8ff';
+    for (let i = 0; i < 3; i++) {
+      ctx.fillRect(x + 10 + i * 24, groundY - 88, 14, 18);
+    }
+    // marquee bulbs
+    ctx.fillStyle = '#fff6c0';
+    for (let i = 0; i < 12; i++) {
+      ctx.beginPath();
+      ctx.arc(x - 2 + i * 8, groundY - 58, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.textAlign = 'left';
+    drawLandmarkLabel(ctx, cx, groundY + 14, label || 'PARAMOUNT');
+  }
+
+  function drawBuilding(ctx, x, groundY, kind, label) {
     if (kind === 'streetlight') { drawStreetlight(ctx, x, groundY); return; }
+    if (kind === 'clockTower') { drawClockTower(ctx, x, groundY, label); return; }
+    if (kind === 'museum') { drawMuseum(ctx, x, groundY, label); return; }
+    if (kind === 'vedderBridge') { drawVedderBridge(ctx, x, groundY, label); return; }
+    if (kind === 'royalHotel') { drawRoyalHotel(ctx, x, groundY, label); return; }
+    if (kind === 'fireHall') { drawFireHall(ctx, x, groundY, label); return; }
+    if (kind === 'theatre') { drawTheatre(ctx, x, groundY, label); return; }
     if (kind === 'car') {
       const cols = ['#446688', '#884444', '#555', '#c4a35a', '#2a5a3a'];
       drawParkedCar(ctx, x, groundY, cols[(Math.abs(x | 0) % cols.length)]);
@@ -3617,7 +3865,7 @@
     for (const p of props) {
       const px = p.x - scrollX;
       if (px < -80 || px > w + 80) continue;
-      drawBuilding(ctx, px, groundY, p.kind);
+      drawBuilding(ctx, px, groundY, p.kind, p.label);
     }
 
     // district flavour strip

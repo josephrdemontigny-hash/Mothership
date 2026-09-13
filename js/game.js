@@ -919,6 +919,8 @@
       /** Fly craft draw scale — smaller + snappier feel */
       ufoScale: 0.92,
     };
+    ensureLandmarks();
+    ensureStreetlights();
     for (let i = 0; i < 30; i++) spawnProp(60 + i * 68);
     for (let i = 0; i < 5; i++) spawnFlyTarget(300 + i * 200);
     showScreen('play');
@@ -1001,22 +1003,81 @@
   }
 
 
+  /** Fixed Chilliwack landmarks — world X along N→S flight (districts ~900 wide). */
+  const FLY_LANDMARKS = [
+    { x: 1080, kind: 'clockTower', label: 'CLOCK TOWER' },
+    { x: 1280, kind: 'museum', label: 'MUSEUM' },
+    { x: 1460, kind: 'royalHotel', label: 'ROYAL HOTEL' },
+    { x: 1640, kind: 'theatre', label: 'PARAMOUNT' },
+    { x: 1780, kind: 'fireHall', label: 'FIRE HALL' },
+    { x: 2180, kind: 'vedderBridge', label: 'VEDDER BRIDGE' },
+  ];
+
+  const STREETLIGHT_SPACING = 130;
+
   function districtPropKinds() {
     const id = W.DISTRICTS[fly.districtIndex % W.DISTRICTS.length].id;
-    if (id === 'downtown') return ['shop', 'plaza', 'apt', 'streetlight', 'car', 'shop', 'tree', 'apt', 'car'];
+    // streetlights spawn on a fixed interval — never mixed into random building picks
+    if (id === 'downtown') return ['shop', 'plaza', 'apt', 'car', 'shop', 'tree', 'apt', 'car'];
     if (id === 'farm') return ['barn', 'corn', 'tree', 'house', 'corn', 'tree', 'car'];
-    if (id === 'cultus') return ['tree', 'house', 'tree', 'car', 'streetlight', 'tree', 'house'];
-    if (id === 'south') return ['house', 'apt', 'tree', 'car', 'streetlight', 'house', 'shop'];
-    return ['house', 'tree', 'streetlight', 'car', 'house', 'tree', 'streetlight', 'car'];
+    if (id === 'cultus') return ['tree', 'house', 'tree', 'car', 'tree', 'house'];
+    if (id === 'south') return ['house', 'apt', 'tree', 'car', 'house', 'shop'];
+    return ['house', 'tree', 'car', 'house', 'tree', 'car'];
+  }
+
+  function ensureLandmarks() {
+    if (!fly) return;
+    for (const lm of FLY_LANDMARKS) {
+      const has = fly.props.some((p) => p.landmark && p.kind === lm.kind);
+      if (!has) {
+        fly.props.push({
+          x: lm.x,
+          kind: lm.kind,
+          label: lm.label,
+          landmark: true,
+        });
+      }
+    }
+  }
+
+  /** Keep streetlights on a regular grid along the road (readable via drawStreetlight). */
+  function ensureStreetlights() {
+    if (!fly) return;
+    const spacing = STREETLIGHT_SPACING;
+    const minX = Math.max(0, fly.scrollX - 120);
+    const maxX = fly.scrollX + CW + 280;
+    const start = Math.floor(minX / spacing) * spacing;
+    const have = new Set();
+    for (const p of fly.props) {
+      if (p.kind === 'streetlight') have.add(p.x | 0);
+    }
+    for (let x = start; x <= maxX; x += spacing) {
+      if (x < 20) continue;
+      const xi = x | 0;
+      // keep lamps off landmark footprints
+      if (FLY_LANDMARKS.some((lm) => Math.abs(xi - lm.x) < 45)) continue;
+      if (!have.has(xi)) {
+        fly.props.push({ x: xi, kind: 'streetlight', streetlight: true });
+        have.add(xi);
+      }
+    }
   }
 
   function spawnProp(atX) {
     if (!fly) return;
     const kinds = districtPropKinds();
-    const x0 = atX != null ? atX : fly.scrollX + CW + W.rand(16, 90);
+    let x0 = atX != null ? atX : fly.scrollX + CW + W.rand(16, 90);
+    // nudge off landmark footprints so icons stay readable
+    for (const lm of FLY_LANDMARKS) {
+      if (Math.abs(x0 - lm.x) < 55) x0 = lm.x + (x0 < lm.x ? -70 : 70);
+    }
     fly.props.push({ x: x0, kind: W.pick(kinds) });
     if (Math.random() < 0.62) {
-      fly.props.push({ x: x0 + W.rand(28, 64), kind: W.pick(kinds) });
+      let x1 = x0 + W.rand(28, 64);
+      for (const lm of FLY_LANDMARKS) {
+        if (Math.abs(x1 - lm.x) < 55) x1 = lm.x + 75;
+      }
+      fly.props.push({ x: x1, kind: W.pick(kinds) });
     }
   }
 
@@ -1766,7 +1827,12 @@
       else spawnProp(fly.scrollX - W.rand(40, 120));
       fly.propTimer = W.rand(16, 36);
     }
-    fly.props = fly.props.filter((p) => p.x > fly.scrollX - 220 && p.x < fly.scrollX + CW + 320);
+    fly.props = fly.props.filter((p) => {
+      if (p.landmark) return true; // fixed Chilliwack landmarks stay in the world
+      return p.x > fly.scrollX - 220 && p.x < fly.scrollX + CW + 320;
+    });
+    ensureLandmarks();
+    ensureStreetlights();
 
     fly.spawnTimer--;
     if (fly.spawnTimer <= 0) {
