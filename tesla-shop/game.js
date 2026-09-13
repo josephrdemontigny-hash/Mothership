@@ -1,1362 +1,1622 @@
 /**
- * Hole in the Wall — Tesla EV Repair Apprentice Simulator
- * Vanilla JS SPA
+ * Hole in the Wall — Tesla EV Repair Apprentice
+ * Walk-around canvas game (WASD + E/Space interact)
  */
 (() => {
   "use strict";
 
-  // ─── Data ───────────────────────────────────────────────────────────
-  const LOCATIONS = {
-    floor: {
-      id: "floor",
-      name: "Shop Floor",
-      key: "1",
-      art: "🛢️ 🔧 🐦",
-      enter: (s) =>
-        `Concrete slick with old oil. Overhead fluorescents buzz like dying bees. ` +
-        `Pigeons argue in the rafters. You're ${s.name}, wet-behind-the-ears apprentice, standing in controlled chaos.`,
-    },
-    nima: {
-      id: "nima",
-      name: "Far Left Bay — Nima",
-      key: "2",
-      art: "🔌 💻 🚗",
-      enter: () =>
-        `Diagnostic screens glow blue-green. A Model 3 sits half-undressed on the hoist. ` +
-        `Nima leans on a toolbox like he owns the building — and maybe he does, spiritually.`,
-    },
-    won: {
-      id: "won",
-      name: "Middle Bay — Won Song",
-      key: "3",
-      art: "🔩 ⚙️ 🚗",
-      enter: () =>
-        `Big jobs live here. Suspension arms, drive units, brake dust, the kind of work that needs a forklift and patience. ` +
-        `Won Song doesn't look up when you arrive. He already knows you're there.`,
-    },
-    rolando: {
-      id: "rolando",
-      name: "Far Right Bay — Rolando",
-      key: "4",
-      art: "💧 🧴 🚗",
-      enter: () =>
-        `Smell of sealant and coffee. Rolando has towels everywhere and zero patience for rookies who track dirt. ` +
-        `Water leaks are his religion. The bay floor has more puddles than the washroom.`,
-    },
-    parts: {
-      id: "parts",
-      name: "Parts Room — Moe",
-      key: "5",
-      art: "📦 🚜 🔋",
-      enter: () =>
-        `Shelves packed with modules, clips, and mystery boxes labeled in three handwritings. ` +
-        `A forklift idles near the back. Moe appears from behind a pallet of 12V batteries.`,
-    },
-    office: {
-      id: "office",
-      name: "Front Office",
-      key: "6",
-      art: "📋 ☕ 🖥️",
-      enter: () =>
-        `The front desk: coffee rings on laminate, sticky notes everywhere, a cracked tablet for check-ins. ` +
-        `Kim, Ryan, and Jordan Sham hold the line between customers and the grease pit.`,
-    },
-    washroom: {
-      id: "washroom",
-      name: "Washroom",
-      key: "7",
-      art: "🚿 🧻 🐦",
-      enter: () =>
-        `One working soap dispenser. A handwritten sign: "DO NOT WASH PARTS IN SINK — Moe". ` +
-        `Someone left grease handprints on the mirror. A pigeon stares through the high window.`,
-    },
-    doors: {
-      id: "doors",
-      name: "Bay Doors",
-      key: "8",
-      art: "🚪 🌤️ 🐦",
-      enter: () =>
-        `Roll-up doors at both ends of the building. Draft cuts through like a knife. ` +
-        `Outside: the lot (west). Inside: FOH & parts, then three bays on the east wall. Pigeons use the door tracks as a highway.`,
-    },
-    lot: {
-      id: "lot",
-      name: "Customer Lot",
-      key: "9",
-      art: "🅿️ 🚗 🐦",
-      enter: () =>
-        `Cracked asphalt west of the shop, faded Tesla logos on bumper stickers, pigeons strutting like they pay rent. ` +
-        `Customer cars wait in uneven rows — some humming, some silent, all trusting this hole in the wall.`,
-    },
-  };
+  // ─── Canvas / sizing ────────────────────────────────────────────────
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  const CW = canvas.width;
+  const CH = canvas.height;
 
-  const AMBIENT = [
-    "A pigeon coos in the rafters.",
-    "Somewhere, an impact gun chatters.",
-    "The smell of brake cleaner drifts past.",
-    "Fluorescent light flickers once, recovers.",
-    "Someone laughs — then a wrench clatters.",
-    "Forklift beep… beep… from Parts.",
-    "A Model S door chimes for no reason.",
-    "Grease drips. Slowly. Dramatically.",
-    "Radio static under a half-heard podcast.",
-    "Bay door rumbles open a crack, then stops.",
-    "Moe's radio crackles: \"Who lost the TPMS kit again?\"",
-  ];
+  const WORLD_W = 1760;
+  const WORLD_H = 980;
 
-  /**
-   * Jobs: FOH assigns → lot fetch → bay → tech → (optional parts delivery) → complete
-   * needsParts: tech radios Moe; player waits at bay (canonical) or can visit parts for flavour
-   */
+  // ─── Job / NPC data (same design as prior version) ──────────────────
+  const JOB_ORDER = ["leak", "brakes", "tire", "drive", "diag"];
+
   const JOBS = {
     leak: {
       id: "leak",
       title: "Water Leak — White Model Y",
-      short: "Water leak / wet carpet",
       repairType: "Water leak / drain clog",
       fohId: "kim",
-      vehicle: {
-        plate: "WET-Y-01",
-        nickname: "Puddle Princess",
-        desc: "White Model Y \"Puddle Princess\" — rear passenger footwell damp after rain",
-        bay: "rolando",
-      },
+      plate: "WET-Y-01",
+      nickname: "Puddle Princess",
+      model: "Y",
+      color: "#f0f0f0",
+      bay: "rolando",
       tech: "rolando",
       needsParts: false,
-      boardBlurb: "Carpet's a swamp. Clogged drains / weather seal.",
+      lotSpot: { x: 300, y: 350 },
     },
     brakes: {
       id: "brakes",
       title: "Brake Service — Pearl White Model Y",
-      short: "Brake service",
       repairType: "Brake service (pads/rotors)",
       fohId: "ryan",
-      vehicle: {
-        plate: "SQK-Y-88",
-        nickname: "Squeaky Y",
-        desc: "Pearl White Model Y \"Squeaky Y\" — grinding pads, warped rotor vibes",
-        bay: "won",
-      },
+      plate: "SQK-Y-88",
+      nickname: "Squeaky Y",
+      model: "Y",
+      color: "#e8e4d8",
+      bay: "won",
       tech: "won",
       needsParts: true,
       partsLabel: "Brake pads & rotors",
       partsHeavy: false,
-      boardBlurb: "Noise on braking. Pads/rotors — Won Song + parts.",
-    },
-    drive: {
-      id: "drive",
-      title: "Drive Unit — Midnight Model 3",
-      short: "Drive unit replacement",
-      repairType: "Drive unit noise / replacement",
-      fohId: "ryan",
-      vehicle: {
-        plate: "DU-M3-42",
-        nickname: "Clunk Cub",
-        desc: "Midnight Silver Model 3 \"Clunk Cub\" — rear drive unit howl + driveway clunk",
-        bay: "won",
-      },
-      tech: "won",
-      needsParts: true,
-      partsLabel: "Rear drive unit (forklift)",
-      partsHeavy: true,
-      boardBlurb: "Heavy metal — drive unit out. Won + Moe's forklift.",
+      lotSpot: { x: 380, y: 480 },
     },
     tire: {
       id: "tire",
       title: "Tire / TPMS — Blue Model X",
-      short: "Tire puncture / TPMS",
-      repairType: "Tire puncture / TPMS / wheel",
+      repairType: "Tire puncture / TPMS",
       fohId: "kim",
-      vehicle: {
-        plate: "FLAT-X9",
-        nickname: "Flatliner",
-        desc: "Deep Blue Model X \"Flatliner\" — nail in sidewall, TPMS light stuck on",
-        bay: "won",
-      },
+      plate: "FLAT-X9",
+      nickname: "Flatliner",
+      model: "X",
+      color: "#2a5a9e",
+      bay: "won",
       tech: "won",
       needsParts: true,
       partsLabel: "Tire + TPMS sensor",
       partsHeavy: false,
-      boardBlurb: "Puncture + angry TPMS. Wheel work for Won.",
+      lotSpot: { x: 300, y: 560 },
+    },
+    drive: {
+      id: "drive",
+      title: "Drive Unit — Midnight Model 3",
+      repairType: "Drive unit replacement",
+      fohId: "ryan",
+      plate: "DU-M3-42",
+      nickname: "Clunk Cub",
+      model: "3",
+      color: "#2a2e34",
+      bay: "won",
+      tech: "won",
+      needsParts: true,
+      partsLabel: "Rear drive unit (forklift)",
+      partsHeavy: true,
+      lotSpot: { x: 420, y: 320 },
     },
     diag: {
       id: "diag",
       title: "Phantom Drain — Red Model S",
-      short: "12V / phantom drain diag",
-      repairType: "12V / HV / phantom drain diagnostics",
+      repairType: "12V / phantom drain diag",
       fohId: "jordan",
-      vehicle: {
-        plate: "GHST-S7",
-        nickname: "Ghost Plaid",
-        desc: "Red Model S Plaid \"Ghost Plaid\" — phantom alerts, 12V sulking, charge-port sulk",
-        bay: "nima",
-      },
+      plate: "GHST-S7",
+      nickname: "Ghost Plaid",
+      model: "S",
+      color: "#c42828",
+      bay: "nima",
       tech: "nima",
       needsParts: true,
       partsLabel: "12V battery + charge-port clips",
       partsHeavy: false,
-      boardBlurb: "Car gaslights everyone. Nima + electrical parts.",
+      lotSpot: { x: 340, y: 620 },
     },
   };
 
-  const JOB_ORDER = ["leak", "brakes", "tire", "drive", "diag"];
-
-  /** Which jobs each FOH person can assign (in order) */
   const FOH_JOBS = {
     kim: ["leak", "tire"],
     ryan: ["brakes", "drive"],
     jordan: ["diag"],
   };
 
-  const FOH = {
-    kim: {
-      id: "kim",
-      name: "Kim",
-      color: "#e8a838",
-      greet: [
-        "Kim glances up from the tablet, sticky note stuck to her sleeve like a warning label.",
-        "\"Oh good — another greenhorn. Try not to bleed on the laminate, rook.\"",
-      ],
-      assign: {
-        leak: (s) => [
-          `Kim taps the screen hard enough to offend it. \"Listen up, knucklehead — this is a WATER LEAK job. White Model Y, plate WET-Y-01, nickname Puddle Princess. Wet carpet after every rain.\"`,
-          `"Ticket's printed, ${s.name}. Grab it from the lot, roll it into Rolando's bay — far right, east wall. He speaks fluent drain clog. You speak fluent wrong turns, apparently."`,
-          "She slides a warm ticket across the desk. \"And if Rolando offers you coffee from his thermos… it's not coffee, idiot.\"",
-        ],
-        tire: (s) => [
-          `\"Wake up, parts-runner — TIRE PUNCTURE / TPMS job. Deep Blue Model X, plate FLAT-X9, they call it Flatliner. Nail in the sidewall, TPMS light having a meltdown."`,
-          `"Lot → Won Song's middle bay. He'll radio Moe for the tire and sensor. Your job is not to lose the lug nuts, wet-behind-the-ears."`,
-          `She squints. \"${s.name}, if you bring me the wrong car I will invent a new sticky-note colour just for your shame."`,
-        ],
-      },
-      busy: "\"I already hung a ticket on you, grease-stain. Go find the car before the pigeons nest in it.\"",
-      doneAll: "\"My tickets are closed. Miracles happen. Don't get cocky, rook — Ryan and Jordan still have pain to share.\"",
-      other: "\"Different flavour of misery? Ryan does the heavy metal. Jordan does the ghost cars. I do wet and flat.\"",
-      tip: "\"Water ingress? Rolando, far right. Tires and big iron? Won, middle. Don't ask Nima about puddles unless you want a 40-minute theory monologue, idiot.\"",
-    },
-    ryan: {
-      id: "ryan",
-      name: "Ryan",
-      greet: [
-        "Ryan looks like he slept here. He probably did, emotionally.",
-        "\"Hey, greenhorn. You the apprentice? Cool. Try not to reverse into the parts cage. Moe still talks about the last knucklehead.\"",
-      ],
-      assign: {
-        brakes: (s) => [
-          `"${s.name} — pay attention, rook. BRAKE SERVICE. Pearl White Model Y, plate SQK-Y-88, nickname Squeaky Y. Pads are screaming, rotors are vibing like a cheap nightclub."`,
-          `"Bring it to Won Song's middle bay. He'll call Moe for pads and rotors — you don't freelance brake parts, wet-behind-the-ears."`,
-          "He hands you a ticket with grease already on the corner. \"How? Don't ask. The desk has a magnetic field for dirt — and for idiots.\"",
-        ],
-        drive: (s) => [
-          `"Listen, grease-stain — DRIVE UNIT replacement. Midnight Silver Model 3, plate DU-M3-42, Clunk Cub. Rear unit howling, clunk over every driveway lip."`,
-          `"Won Song, middle bay. When he radios Moe, you wait at the bay for the forklift like a civilized parts-runner — don't go spelunking the cage unless you're bored."`,
-          `"Ticket. Try not to drop it in a puddle, ${s.name}. We've got standards. Low ones. Still."`,
-        ],
-      },
-      busy: "\"You've got a live ticket, knucklehead. Lot's that way. Car isn't gonna levitate in.\"",
-      doneAll: "\"My heavy jobs are done. Won grunted. That's a standing ovation. Don't smile too hard, rook.\"",
-      other: "\"Kim does leaks and flats. Jordan does haunted electronics. I do brakes and drive units. Division of labour, idiot.\"",
-      tip: "\"Big mechanical? Won Song, middle bay. He radios Moe for parts. You wait at the bay — that's the play, greenhorn.\"",
-    },
-    jordan: {
-      id: "jordan",
-      name: "Jordan Sham",
-      greet: [
-        "Jordan Sham spins a pen between his fingers like it's a tiny drive shaft.",
-        "\"Apprentice! Welcome to the circus, rook. I'm Jordan — I check in the cars that gaslight their owners. You look gaslightable.\"",
-      ],
-      assign: {
-        diag: (s) => [
-          `"Eyes up, knucklehead — this is a 12V / PHANTOM DRAIN diagnostic. Red Model S Plaid, plate GHST-S7, Ghost Plaid. Phantom alerts, battery sulking, charge-port attitude."`,
-          `"Pull it from the lot, drop it on Nima's far-left bay. He'll radio Moe for the 12V and clips when the laptop confesses. Don't poke HV with your feelings, wet-behind-the-ears."`,
-          `He grins. \"Ticket, ${s.name}. Try not to let the car win the staring contest. You're already losing to the pigeons."`,
-        ],
-      },
-      busy: "\"Ghost S is still out there, grease-stain. Lot. Red. Loud about nothing. Go.\"",
-      doneAll: "\"Diag closed. Nima looked smug for thirty seconds. Record. You almost helped, rook.\"",
-      other: "\"Different flavour of pain? Kim and Ryan have the other tickets. Shoo, parts-runner.\"",
-      tip: "\"Weird electronics, phantom drain, charge drama — Nima, far left. Bring snacks for your brain, idiot.\"",
-    },
+  const BAYS = {
+    nima: { x: 1280, y: 180, w: 280, h: 200, label: "Nima — Elec", park: { x: 1380, y: 260 } },
+    won: { x: 1280, y: 400, w: 280, h: 200, label: "Won Song — Mech", park: { x: 1380, y: 480 } },
+    rolando: { x: 1280, y: 620, w: 280, h: 200, label: "Rolando — Water", park: { x: 1380, y: 700 } },
   };
 
-  const TECHS = {
-    rolando: {
-      name: "Rolando",
-      wrong: (s) => [
-        "Rolando wipes sealant off his hands with a rag that has seen wars.",
-        `"${s.name}, you look lost in a helpful-idiot way. What's on the ticket, rook?"`,
-        "He glances. \"Ah. That's not my puddle. Water leaks & drains: me — far right forever. " +
-          "Brakes, tires, drive units? Won, middle. Ghost codes & 12V? Nima, left. Parts? Moe radios in — don't cosplay a forklift.\"",
-        "\"Tiny tip, greenhorn: if the carpet smells like a basement, it's usually the body seam or a clogged drain. Ask me when you've got the wet Y.\"",
-      ],
-      early: [
-        "\"No car, no leak, knucklehead. Go sweet-talk the front desk, then steal— borrow — the car from the lot.\"",
-      ],
-      help: (s) => [
-        "Rolando circles the Model Y like a detective who enjoys bullying apprentices.",
-        `"See this, grease-stain? Clogged drain + tired seal. Classic. Pass me that trim tool before you drop it, ${s.name}."`,
-        "Twenty minutes of careful work. He tests with a water bottle like a ritual.",
-        "\"Dry. Customer will cry happy tears — into a towel, hopefully. Nice assist for a wet-behind-the-ears. You're learning the language of drips. Don't let it go to your head.\"",
-      ],
-      after: "\"Leak's done. Grab another ticket from the desk if you're hungry for chaos, rook.\"",
-      praise: "Rolando bumps your fist with a clean knuckle. \"Not terrible, idiot. Miracle.\"",
-    },
-    won: {
-      name: "Won Song",
-      wrong: (s) => [
-        "Won Song doesn't stop torquing. He speaks to the bolt, then to you.",
-        `"Wrong bay for that ticket, ${s.name}. Pay attention, greenhorn."`,
-        "\"Leaks: Rolando. Diag: Nima. Heavy metal — brakes, tires, suspension, drive units: me. Parts: I radio Moe. Don't mix the playlist, knucklehead.\"",
-        "A pause. \"Tip: listen to the clunk. Driveway lips tell the truth. You rarely do.\"",
-      ],
-      early: [
-        "\"Where's the car, rook? I don't repair air. Front office, then lot, then here.\"",
-      ],
-      // Per-job "need parts" radio lines
-      needParts: {
-        brakes: (s) => [
-          "Won Song spins a wheel, grimaces like the rotor insulted his family.",
-          `"Brake service — pads cooked, rotors done. I'm radioing Moe for pads and rotors. Stay put, ${s.name}. Don't wander off like a lost parts-runner."`,
-          "He keys the radio. \"Moe — middle bay, Squeaky Y. Pads and rotors. Send 'em before this greenhorn invents a new noise.\"",
-        ],
-        drive: (s) => [
-          "Won Song inspects the Model 3, nods once.",
-          `"Drive unit's coming out. Radioing Moe for the forklift and the unit. You wait at the bay, knucklehead — canonical path. Visiting parts for vibes is optional."`,
-          "Radio crackles. \"Moe. Heavy. Clunk Cub. Forklift. Now.\"",
-        ],
-        tire: (s) => [
-          "Won Song eyes the Model X sidewall like it owes him money.",
-          `"Puncture's ugly. TPMS is lying for sport. Calling Moe for a tire and sensor. Park yourself here, rook — don't chase the forklift."`,
-          "\"Moe — Flatliner needs rubber and a sensor. Middle bay. Try not to hit the apprentice; we still need the free labour.\"",
-        ],
-      },
-      waiting: "\"Moe's rolling. Stand there and look decorative, grease-stain.\"",
-      help: {
-        brakes: (s) => [
-          "Pads and rotors hit the cart. Won Song points. You fetch. He works.",
-          `"Hold the caliper like you mean it, ${s.name}. Torque's not a suggestion, idiot."`,
-          "Pedal feel returns. Squeal dies. He almost looks pleased.",
-          "\"Road test later. Brakes are solid. Go tell Ryan before he drinks the whole pot, greenhorn.\"",
-        ],
-        drive: (s) => [
-          "Moe's forklift hums at the bay edge. Won Song points. You spot. He works.",
-          `"Hold that harness clear. Good. ${s.name}, you're not completely useless. Keep it that way."`,
-          "The new unit seats home. Torque specs recited from memory.",
-          "\"Road test later. Job's solid. Tell Ryan I grunted approvingly — he'll translate, rook.\"",
-        ],
-        tire: (s) => [
-          "New tire, fresh TPMS. Won Song balances the wheel like he's done this since the dinosaurs.",
-          `"Hand me the torque stick, knucklehead. Lug order matters. So does not cross-threading — look at me, ${s.name}."`,
-          "TPMS light dies. He spins the wheel once.",
-          "\"She's round again. Miracle. Go bother Kim before I invent more work for you.\"",
-        ],
-      },
-      after: "\"We're good here. Next ticket, wet-behind-the-ears.\"",
-      praise: "Won Song almost smiles. \"Competent-adjacent, idiot. The pigeons noticed.\"",
-    },
-    nima: {
-      name: "Nima",
-      wrong: (s) => [
-        "Nima flips hair that somehow survives a shop environment.",
-        `"Wrong specialty, ${s.name}. I do the mysteries — the ones that make Slack threads cry. You're in the wrong aisle, rook."`,
-        "\"Wet carpets: Rolando. Heavy iron: Won. Me: when the car is lying — 12V, charge port, phantom drains, weird codes.\"",
-        "\"Tip, greenhorn: if every module blames every other module, start with power and grounds before you rewrite the universe.\"",
-      ],
-      early: [
-        "\"Bring me the haunted S first, knucklehead. Jordan checked it in. Lot's full of suspects.\"",
-      ],
-      needParts: {
-        diag: (s) => [
-          "Nima plugs in. Screens bloom. He winces at a voltage plot like it personally betrayed him.",
-          `"Phantom drain + tired 12V + charge-port clips playing hard to get. Radioing Moe. Stay in the bay, ${s.name} — don't go on a parts safari."`,
-          "\"Moe — far left. Ghost Plaid needs a 12V and charge-port clips. Send them before the apprentice trips over a cable.\"",
-        ],
-      },
-      waiting: "\"Moe's en route. Try not to touch HV with your optimism, grease-stain.\"",
-      help: {
-        diag: (s) => [
-          "Parts land on the bench. Nima guides your hands like you're a slightly dangerous intern.",
-          `"Watch — intermittent drain on a harness the last shop 'fixed.' Classic swagger failure, rook."`,
-          `12V seats. Clips click. Alerts evaporate like your dignity.`,
-          `"${s.name}, you just outsmarted a Plaid. Don't let it go to your head. Let it go to your résumé — and maybe wash your hands, idiot."`,
-        ],
-      },
-      after: "\"Mystery's boring now. I love that. Scram, greenhorn.\"",
-      praise: "Nima finger-guns. \"Not bad for a wet-behind-the-ears. Somehow it works.\"",
-    },
-    moe: {
-      name: "Moe",
-      flavour: () => [
-        "Moe leans on the forklift like it's a lounge chair.",
-        "\"Looking for vibes, rook? Counter's open. Canonical path is the tech radios me and I deliver to the bay — you're the optional tour group.\"",
-        "\"Drive units and packs — that's when I dance with Subtle the forklift. Clips and pads too. Be specific, knucklehead.\"",
-      ],
-      noJob: [
-        "\"Parts counter's open. Your pockets look empty of purpose though, greenhorn. Hit the front desk before I invent a nickname worse than grease-stain.\"",
-      ],
-      needCarFirst: [
-        "\"Ticket's cute. Car's still in the lot. I'm not forklifting the asphalt, idiot.\"",
-      ],
-      needTechFirst: [
-        "\"Tech hasn't radioed the play yet. Get their blessing at the bay, then I roll. Don't freelance my schedule, parts-runner.\"",
-      ],
-      // Player visits parts after tech already radioed — flavour alternate
-      alreadyRadioed: (s, job) => [
-        "Moe checks the radio log, smirks.",
-        `"Yeah, yeah — ${job.tech === "won" ? "Won" : "Nima"} already barked. ${job.partsLabel}. I'm heading to the bay."`,
-        `He tosses you a glance. \"Or you can wait there like a civilized rook, ${s.name}. Either way, don't lose the ticket."`,
-      ],
-      deliverHere: (s, job) => [
-        job.partsHeavy
-          ? `Moe fires up Subtle the forklift. \"Heavy package for a light brain. Drive unit run. Buckle up emotionally, ${s.name}."`
-          : `Moe pulls ${job.partsLabel} from a shelf with theatrical disdain. \"Catch, knucklehead — actually don't. Carry it properly."`,
-        "He nods toward the bays. \"I'll meet you there. Try to arrive in the same decade, greenhorn.\"",
-      ],
-      after: "\"You know where to find me. Between the shelves and the legends. Scram, rook.\"",
-      arriveBay: (s, job) => [
-        job.partsHeavy
-          ? `Moe beeps into the bay on the forklift. \"Package for Clunk Cub. Signed for by one apprentice idiot — that's you, ${s.name}."`
-          : `Moe rolls a cart into the bay. \"${job.partsLabel}. Fresh from the cage. Try not to drop them, grease-stain."`,
-        "\"Tell the tech the parts fairy arrived. And if anyone asks — I never speed indoors.\"",
-      ],
-    },
-  };
+  const NPC_DEFS = [
+    { id: "kim", name: "Kim", role: "foh", x: 840, y: 200, color: "#e8a838", emoji: "👩" },
+    { id: "ryan", name: "Ryan", role: "foh", x: 920, y: 200, color: "#6ecf6a", emoji: "🧔" },
+    { id: "jordan", name: "Jordan Sham", role: "foh", x: 1000, y: 200, color: "#6a9ee8", emoji: "🧑" },
+    { id: "moe", name: "Moe", role: "parts", x: 860, y: 720, color: "#d08040", emoji: "👷", homeX: 860, homeY: 720 },
+    { id: "nima", name: "Nima", role: "tech", bay: "nima", x: 1480, y: 220, color: "#c06ae8", emoji: "👨‍💻" },
+    { id: "won", name: "Won Song", role: "tech", bay: "won", x: 1480, y: 440, color: "#e86060", emoji: "🔧" },
+    { id: "rolando", name: "Rolando", role: "tech", bay: "rolando", x: 1480, y: 660, color: "#40c0c0", emoji: "💧" },
+  ];
 
-  // ─── State ──────────────────────────────────────────────────────────
-  const state = {
-    name: "Apprentice",
-    location: "floor",
-    activeJob: null,
-    jobs: Object.fromEntries(JOB_ORDER.map((id) => [id, { stage: null, done: false }])),
-    inventory: [],
-    rep: { rolando: 0, won: 0, nima: 0, moe: 0, kim: 0, ryan: 0, jordan: 0 },
-    carInBay: {},
-    introDone: false,
-    ambientIdx: 0,
-    partsArriving: false,
-  };
+  const AMBIENT = [
+    "A pigeon coos in the rafters.",
+    "Somewhere, an impact gun chatters.",
+    "The smell of brake cleaner drifts past.",
+    "Fluorescent light flickers once, recovers.",
+    "Forklift beep… beep… from Parts.",
+    "A Model S door chimes for no reason.",
+    "Moe's radio crackles: \"Who lost the TPMS kit again?\"",
+  ];
 
   // ─── DOM ────────────────────────────────────────────────────────────
-  const $ = (sel) => document.querySelector(sel);
   const els = {
-    title: $("#screen-title"),
-    game: $("#screen-game"),
-    nameInput: $("#player-name"),
-    btnStart: $("#btn-start"),
-    locNav: $("#location-nav"),
-    schematic: $("#shop-schematic"),
-    sceneArt: $("#scene-art"),
-    sceneTitle: $("#scene-title"),
-    narration: $("#narration"),
-    dialogue: $("#dialogue"),
-    actions: $("#actions"),
-    statusLoc: $("#status-location"),
-    statusJob: $("#status-job"),
-    statusInv: $("#status-inventory"),
-    statusRep: $("#status-rep"),
-    ambient: $("#ambient-line"),
-    helpModal: $("#modal-help"),
-    winModal: $("#modal-win"),
-    winText: $("#win-text"),
-    btnHelp: $("#btn-help"),
-    btnCloseHelp: $("#btn-close-help"),
-    btnReplay: $("#btn-replay"),
+    hud: document.getElementById("hud"),
+    hudJob: document.getElementById("hud-job"),
+    hudInv: document.getElementById("hud-inv"),
+    hudProgress: document.getElementById("hud-progress"),
+    prompt: document.getElementById("prompt-label"),
+    title: document.getElementById("screen-title"),
+    nameInput: document.getElementById("player-name"),
+    btnStart: document.getElementById("btn-start"),
+    dialogue: document.getElementById("dialogue"),
+    dlgWho: document.getElementById("dlg-who"),
+    dlgLines: document.getElementById("dlg-lines"),
+    dlgNext: document.getElementById("dlg-next"),
+    help: document.getElementById("modal-help"),
+    btnHelp: document.getElementById("btn-help"),
+    btnCloseHelp: document.getElementById("btn-close-help"),
+    win: document.getElementById("modal-win"),
+    winText: document.getElementById("win-text"),
+    btnReplay: document.getElementById("btn-replay"),
+    touch: document.getElementById("touch"),
+    btnUse: document.getElementById("btn-use"),
   };
 
-  // ─── Helpers ────────────────────────────────────────────────────────
-  function addItem(id, label) {
-    if (state.inventory.find((i) => i.id === id)) return;
-    state.inventory.push({ id, label });
+  // ─── Input ──────────────────────────────────────────────────────────
+  const keys = Object.create(null);
+  const touchDirs = Object.create(null);
+  let interactQueued = false;
+  let prevInteract = false;
+
+  function onKeyDown(e) {
+    const k = e.key.toLowerCase();
+    keys[k] = true;
+    if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "space"].includes(k)) e.preventDefault();
+    if (k === "escape") {
+      if (!els.help.classList.contains("hidden")) els.help.classList.add("hidden");
+      else if (!els.dialogue.classList.contains("hidden")) advanceDialogue();
+      return;
+    }
+    // While dialogue is open, E/Space/Enter advances instead of world-interact
+    if (!els.dialogue.classList.contains("hidden")) {
+      if (k === "e" || k === " " || k === "enter") {
+        e.preventDefault();
+        advanceDialogue();
+      }
+      return;
+    }
+    if (k === "e" || k === " " || k === "enter") interactQueued = true;
+  }
+  function onKeyUp(e) {
+    keys[e.key.toLowerCase()] = false;
+  }
+  window.addEventListener("keydown", onKeyDown);
+  window.addEventListener("keyup", onKeyUp);
+
+  function bindPad(btn) {
+    const dir = btn.getAttribute("data-dir");
+    const on = (e) => { e.preventDefault(); touchDirs[dir] = true; };
+    const off = (e) => { e.preventDefault(); touchDirs[dir] = false; };
+    btn.addEventListener("touchstart", on, { passive: false });
+    btn.addEventListener("touchend", off, { passive: false });
+    btn.addEventListener("touchcancel", off, { passive: false });
+    btn.addEventListener("mousedown", on);
+    btn.addEventListener("mouseup", off);
+    btn.addEventListener("mouseleave", off);
+  }
+  document.querySelectorAll("#touch .pad").forEach(bindPad);
+
+  function queueInteract(e) {
+    if (e) e.preventDefault();
+    interactQueued = true;
+  }
+  els.btnUse.addEventListener("click", queueInteract);
+  els.btnUse.addEventListener("touchstart", queueInteract, { passive: false });
+
+  function moveVec() {
+    let dx = 0, dy = 0;
+    if (keys["a"] || keys["arrowleft"] || touchDirs.left) dx -= 1;
+    if (keys["d"] || keys["arrowright"] || touchDirs.right) dx += 1;
+    if (keys["w"] || keys["arrowup"] || touchDirs.up) dy -= 1;
+    if (keys["s"] || keys["arrowdown"] || touchDirs.down) dy += 1;
+    if (dx && dy) { dx *= 0.707; dy *= 0.707; }
+    return { dx, dy };
   }
 
-  function removeItem(id) {
-    state.inventory = state.inventory.filter((i) => i.id !== id);
+  function wantsInteract() {
+    const held = !!(keys["e"] || keys[" "] || keys["enter"]);
+    let edge = false;
+    if (interactQueued) { interactQueued = false; edge = true; }
+    if (held && !prevInteract) edge = true;
+    prevInteract = held;
+    return edge;
   }
 
-  function hasItem(id) {
-    return state.inventory.some((i) => i.id === id);
+  // ─── State ──────────────────────────────────────────────────────────
+  let playing = false;
+  let playerName = "Apprentice";
+  let player = null;
+  let cam = { x: 0, y: 0 };
+  let npcs = [];
+  let solids = [];
+  let cars = []; // decorative + job cars
+  let pigeons = [];
+  let particles = [];
+  let floaters = [];
+  let t = 0;
+  let lastTs = 0;
+  let dialogueQueue = null; // { who, lines:[], idx, onDone }
+  let nearTarget = null; // { kind, id, label, fn }
+  let cutscene = null; // { type, timer, ... }
+  let moeDelivery = null; // { jobId, phase, timer }
+  let flash = null;
+  let ambientIdx = 0;
+  let ambientTimer = 0;
+
+  const state = {
+    activeJob: null,
+    jobs: {},
+    inventory: [],
+    carInBay: {},
+    introShown: false,
+  };
+
+  function resetJobs() {
+    state.activeJob = null;
+    state.jobs = Object.fromEntries(JOB_ORDER.map((id) => [id, { stage: null, done: false }]));
+    state.inventory = [];
+    state.carInBay = {};
+    state.introShown = false;
   }
 
-  function bumpRep(who, n = 1) {
-    state.rep[who] = Math.min(5, (state.rep[who] || 0) + n);
-  }
-
-  function jobState(id) {
-    return state.jobs[id];
-  }
-
-  function activeJobData() {
-    return state.activeJob ? JOBS[state.activeJob] : null;
-  }
-
-  function allJobsDone() {
-    return JOB_ORDER.every((id) => state.jobs[id].done);
-  }
+  function jobState(id) { return state.jobs[id]; }
+  function activeJob() { return state.activeJob ? JOBS[state.activeJob] : null; }
+  function allDone() { return JOB_ORDER.every((id) => state.jobs[id].done); }
+  function doneCount() { return JOB_ORDER.filter((id) => state.jobs[id].done).length; }
 
   function nextJobForFOH(fohId) {
-    const list = FOH_JOBS[fohId] || [];
-    return list.find((jid) => !state.jobs[jid].done && !state.jobs[jid].stage) || null;
+    return (FOH_JOBS[fohId] || []).find((jid) => !state.jobs[jid].done && !state.jobs[jid].stage) || null;
   }
-
-  function fohHasInProgress(fohId) {
-    const list = FOH_JOBS[fohId] || [];
-    return list.find((jid) => state.jobs[jid].stage && !state.jobs[jid].done) || null;
+  function fohInProgress(fohId) {
+    return (FOH_JOBS[fohId] || []).find((jid) => state.jobs[jid].stage && !state.jobs[jid].done) || null;
   }
-
   function fohAllDone(fohId) {
     return (FOH_JOBS[fohId] || []).every((jid) => state.jobs[jid].done);
   }
 
-  function showDialogue(who, lines) {
-    const box = els.dialogue;
-    box.classList.remove("hidden");
-    const text = Array.isArray(lines) ? lines : [lines];
-    box.innerHTML =
-      `<div class="who">${who}</div>` +
-      text.map((l) => `<p class="line">${l}</p>`).join("");
+  function addItem(id, label) {
+    if (!state.inventory.find((i) => i.id === id)) state.inventory.push({ id, label });
   }
-
-  function hideDialogue() {
-    els.dialogue.classList.add("hidden");
-    els.dialogue.innerHTML = "";
+  function removeItem(id) {
+    state.inventory = state.inventory.filter((i) => i.id !== id);
   }
-
-  function setNarration(html) {
-    els.narration.innerHTML = html;
-  }
-
-  function clearActions() {
-    els.actions.innerHTML = "";
-  }
-
-  function addAction(label, fn, opts = {}) {
-    const btn = document.createElement("button");
-    btn.className = "btn action";
-    btn.textContent = label;
-    if (opts.disabled) btn.disabled = true;
-    btn.addEventListener("click", fn);
-    els.actions.appendChild(btn);
-    return btn;
+  function hasItem(id) {
+    return state.inventory.some((i) => i.id === id);
   }
 
   function stageHint(job, stage) {
     const map = {
       assigned: "Get the car from the lot",
-      car_fetched: "Bring car to the right bay / talk to tech",
-      tech_ok: job.needsParts ? "Wait at bay — tech radioed Moe for parts" : "Finish at the bay",
+      car_fetched: "Bring car to bay / talk to tech",
+      tech_ok: job.needsParts ? "Wait — Moe delivering parts" : "Finish at the bay",
       parts_ok: "Finish the repair with the tech",
-      done: "Complete",
+      done: "Done",
     };
     return map[stage] || stage;
   }
 
-  function refreshStatus() {
-    const loc = LOCATIONS[state.location];
-    els.statusLoc.textContent = loc.name;
+  // ─── World build ────────────────────────────────────────────────────
+  function rect(x, y, w, h) { return { x, y, w, h }; }
 
-    const job = activeJobData();
-    if (!job) {
-      const left = JOB_ORDER.filter((id) => !state.jobs[id].done).length;
-      els.statusJob.innerHTML = left
-        ? `<span class="muted">None — talk to Kim, Ryan, or Jordan (${left} jobs left)</span>`
-        : `<span class="muted">All tickets closed. Shift's yours.</span>`;
-    } else {
-      const js = jobState(job.id);
-      els.statusJob.innerHTML = `<strong>${job.repairType}</strong><br/>${job.title}<br/><span class="muted">${stageHint(job, js.stage)}</span>`;
-    }
+  function buildWorld() {
+    solids = [];
+    // Outer fence / property bounds (thin walls)
+    solids.push(rect(20, 40, WORLD_W - 40, 24)); // north
+    solids.push(rect(20, WORLD_H - 60, WORLD_W - 40, 24)); // south
+    solids.push(rect(20, 40, 24, WORLD_H - 100)); // west
+    solids.push(rect(WORLD_W - 44, 40, 24, WORLD_H - 100)); // east
 
-    if (state.inventory.length === 0) {
-      els.statusInv.innerHTML = `<li class="muted">Empty pockets</li>`;
-    } else {
-      els.statusInv.innerHTML = state.inventory.map((i) => `<li>${i.label}</li>`).join("");
-    }
+    // Shop exterior west wall with doorway gap (y 420-560)
+    solids.push(rect(680, 60, 28, 360)); // wall above door
+    solids.push(rect(680, 560, 28, 360)); // wall below door
 
-    const repOrder = [
-      ["kim", "Kim"],
-      ["ryan", "Ryan"],
-      ["jordan", "Jordan"],
-      ["rolando", "Rolando"],
-      ["won", "Won"],
-      ["nima", "Nima"],
-      ["moe", "Moe"],
+    // Shop north/south interior walls
+    solids.push(rect(700, 60, 1000, 20));
+    solids.push(rect(700, WORLD_H - 80, 1000, 20));
+
+    // Interior divider between FOH/parts and bays — with openings
+    solids.push(rect(1100, 80, 20, 120)); // top stub
+    solids.push(rect(1100, 320, 20, 60)); // between nima/won aisle
+    solids.push(rect(1100, 540, 20, 60));
+    solids.push(rect(1100, 760, 20, 140)); // bottom stub
+
+    // FOH desk
+    solids.push(rect(780, 120, 260, 36));
+
+    // Parts shelves
+    solids.push(rect(760, 640, 40, 200));
+    solids.push(rect(920, 640, 40, 200));
+    solids.push(rect(760, 860, 200, 30));
+
+    // Washroom alcove on west interior wall — door faces east; center corridor clear
+    solids.push(rect(708, 300, 100, 12)); // north
+    solids.push(rect(708, 300, 12, 130)); // west
+    solids.push(rect(708, 418, 100, 12)); // south
+    solids.push(rect(796, 300, 12, 50)); // east stub (door gap below)
+
+    // Bay hoists / lifts (collision props)
+    solids.push(rect(1320, 200, 18, 100));
+    solids.push(rect(1500, 200, 18, 100));
+    solids.push(rect(1320, 420, 18, 100));
+    solids.push(rect(1500, 420, 18, 100));
+    solids.push(rect(1320, 640, 18, 100));
+    solids.push(rect(1500, 640, 18, 100));
+
+    // Bay door frames on east wall
+    solids.push(rect(1680, 140, 40, 40));
+    solids.push(rect(1680, 360, 40, 40));
+    solids.push(rect(1680, 580, 40, 40));
+
+    // NPCs
+    npcs = NPC_DEFS.map((d) => ({
+      ...d,
+      w: 28,
+      h: 28,
+      facing: 1,
+      delivering: false,
+      vx: 0,
+      vy: 0,
+    }));
+
+    // Decorative lot cars + job cars
+    cars = [];
+    const deco = [
+      { x: 100, y: 120, color: "#555", plate: "" },
+      { x: 280, y: 120, color: "#888", plate: "" },
+      { x: 520, y: 140, color: "#222", plate: "" },
+      { x: 100, y: 760, color: "#a33", plate: "" },
+      { x: 280, y: 800, color: "#336", plate: "" },
+      { x: 520, y: 780, color: "#777", plate: "" },
+      { x: 100, y: 400, color: "#444", plate: "" },
     ];
-    els.statusRep.innerHTML = repOrder
-      .map(([id, label]) => {
-        const v = state.rep[id] || 0;
-        const pct = (v / 5) * 100;
-        return `<li>${label} <span class="rep-bar"><span class="rep-fill" style="width:${pct}%"></span></span></li>`;
-      })
-      .join("");
-
-    els.ambient.textContent = AMBIENT[state.ambientIdx % AMBIENT.length];
-    highlightSchematic(state.location);
-  }
-
-  function buildMap() {
-    els.locNav.innerHTML = "";
-    Object.values(LOCATIONS).forEach((loc) => {
-      const btn = document.createElement("button");
-      btn.className = "loc-btn" + (state.location === loc.id ? " here" : "");
-      btn.innerHTML = `<span class="key">${loc.key}</span><span>${loc.name}</span>`;
-      btn.addEventListener("click", () => goTo(loc.id));
-      els.locNav.appendChild(btn);
+    deco.forEach((c, i) => {
+      cars.push({
+        id: "deco_" + i,
+        jobId: null,
+        x: c.x, y: c.y, w: 70, h: 36,
+        color: c.color, plate: c.plate,
+        model: "3", inLot: true, inBay: false, interactable: false,
+      });
+      solids.push(rect(c.x - 4, c.y - 4, 78, 44));
     });
-  }
 
-  function highlightSchematic(locId) {
-    if (!els.schematic) return;
-    els.schematic.querySelectorAll("[data-loc]").forEach((el) => {
-      el.classList.toggle("active", el.getAttribute("data-loc") === locId);
+    JOB_ORDER.forEach((jid) => {
+      const job = JOBS[jid];
+      cars.push({
+        id: "job_" + jid,
+        jobId: jid,
+        x: job.lotSpot.x,
+        y: job.lotSpot.y,
+        w: job.model === "X" ? 84 : 72,
+        h: job.model === "X" ? 40 : 34,
+        color: job.color,
+        plate: job.plate,
+        model: job.model,
+        nickname: job.nickname,
+        inLot: true,
+        inBay: false,
+        interactable: true,
+      });
     });
+
+    pigeons = [
+      { x: 240, y: 100, phase: 0 },
+      { x: 600, y: 880, phase: 1.2 },
+      { x: 1050, y: 100, phase: 2.4 },
+      { x: 1600, y: 300, phase: 0.7 },
+      { x: 900, y: 500, phase: 3.1 },
+    ];
+
+    player = {
+      x: 920,
+      y: 500,
+      w: 26,
+      h: 26,
+      speed: 180,
+      facing: 1,
+      name: playerName,
+    };
   }
 
-  // ─── Navigation & scene ─────────────────────────────────────────────
-  function goTo(locId) {
-    if (!LOCATIONS[locId]) return;
-    state.location = locId;
-    state.ambientIdx++;
-    hideDialogue();
-    renderScene();
+  function carSolid(car) {
+    return rect(car.x - 2, car.y - 2, car.w + 4, car.h + 4);
   }
 
-  function renderScene() {
-    const loc = LOCATIONS[state.location];
-    els.sceneArt.textContent = loc.art;
-    els.sceneTitle.textContent = loc.name;
-    buildMap();
-    refreshStatus();
-    clearActions();
+  function collides(px, py, pw, ph, ignoreCarId) {
+    const box = { x: px, y: py, w: pw, h: ph };
+    for (const s of solids) {
+      if (aabb(box, s)) return true;
+    }
+    for (const c of cars) {
+      if (!c.inLot && !c.inBay) continue;
+      if (ignoreCarId && c.id === ignoreCarId) continue;
+      if (c.inBay) continue; // parked in bay — walk around via hoist solids
+      // collide with lot cars (deco + job)
+      if (aabb(box, carSolid(c))) return true;
+    }
+    // NPC soft collision (tight — leave room to stand in interact range)
+    for (const n of npcs) {
+      if (n.delivering) continue;
+      const nb = { x: n.x - 8, y: n.y - 8, w: 16, h: 16 };
+      if (aabb(box, nb)) return true;
+    }
+    return false;
+  }
 
-    let narr = "";
-    if (!state.introDone && loc.id === "floor") {
-      narr =
-        `<p>You clock in. The air tastes like metal and yesterday's coffee.</p>` +
-        `<p>${loc.enter(state)}</p>` +
-        `<p class="ambient">A pigeon eyes your lunch from above. Welcome to the hole in the wall, rook.</p>` +
-        `<p>Front office (west side of the shop) is where Kim, Ryan, and Jordan Sham check cars in. Three bays line the east wall: Nima · Won Song · Rolando. Start at FOH when you're ready.</p>`;
-      state.introDone = true;
+  function aabb(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  function dist(ax, ay, bx, by) {
+    const dx = ax - bx, dy = ay - by;
+    return Math.hypot(dx, dy);
+  }
+
+  // ─── Dialogue ───────────────────────────────────────────────────────
+  function showDialogue(who, lines, onDone) {
+    const arr = Array.isArray(lines) ? lines.slice() : [lines];
+    dialogueQueue = { who, lines: arr, idx: 0, onDone: onDone || null };
+    renderDialoguePage();
+    els.dialogue.classList.remove("hidden");
+  }
+
+  function renderDialoguePage() {
+    if (!dialogueQueue) return;
+    const raw = dialogueQueue.lines[dialogueQueue.idx];
+    // Support multi-speaker beats: { who, text } — used for Jordan "Yuuh" interrupt gag
+    if (raw && typeof raw === "object") {
+      els.dlgWho.textContent = raw.who || dialogueQueue.who;
+      els.dlgLines.innerHTML = `<p>${raw.text || ""}</p>`;
     } else {
-      narr = `<p>${loc.enter(state)}</p><p class="ambient">${AMBIENT[state.ambientIdx % AMBIENT.length]}</p>`;
+      els.dlgWho.textContent = dialogueQueue.who;
+      els.dlgLines.innerHTML = `<p>${raw || ""}</p>`;
     }
-
-    if (loc.id === "lot") narr += lotNarrationExtra();
-    if (loc.id === "rolando" || loc.id === "won" || loc.id === "nima") narr += bayCarExtra(loc.id);
-
-    setNarration(narr);
-    renderLocationActions();
+    const last = dialogueQueue.idx >= dialogueQueue.lines.length - 1;
+    els.dlgNext.textContent = last ? "Done" : "Continue";
   }
 
-  function lotNarrationExtra() {
-    const parked = [];
-    Object.values(JOBS).forEach((job) => {
-      const js = jobState(job.id);
-      if (js.stage === "assigned") {
-        parked.push(
-          `<strong>${job.repairType}</strong> — ${job.vehicle.desc} (plate ${job.vehicle.plate}) — waiting`
-        );
+  function advanceDialogue() {
+    if (!dialogueQueue) return;
+    if (dialogueQueue.idx < dialogueQueue.lines.length - 1) {
+      dialogueQueue.idx++;
+      renderDialoguePage();
+      return;
+    }
+    const done = dialogueQueue.onDone;
+    dialogueQueue = null;
+    els.dialogue.classList.add("hidden");
+    if (done) done();
+  }
+
+  els.dlgNext.addEventListener("click", advanceDialogue);
+
+  function showFlash(msg, frames) {
+    flash = { msg, t: frames || 90 };
+  }
+
+  // ─── Interactions ───────────────────────────────────────────────────
+  function findNearTarget() {
+    if (!player || dialogueQueue || cutscene) return null;
+
+    // NPCs
+    let best = null;
+    let bestD = 72;
+    for (const n of npcs) {
+      if (n.delivering && n.id === "moe") {
+        // can still talk if close during wait? skip while moving
+        if (moeDelivery && moeDelivery.phase === "walk") continue;
       }
-    });
-    const holding = JOB_ORDER.filter((id) => hasItem(`car_${id}`));
-    if (holding.length) {
-      parked.push("You've got a car tagged for the shop — take it to the right bay, knucklehead.");
-    }
-    if (parked.length === 0) {
-      return `<p class="ambient">Most spots empty of drama right now. Pigeons hold a union meeting near the dumpster.</p>`;
-    }
-    return `<p>Vehicles of interest:</p><ul>${parked.map((p) => `<li>${p}</li>`).join("")}</ul>`;
-  }
-
-  function bayCarExtra(bayId) {
-    const job = activeJobData();
-    if (!job || job.vehicle.bay !== bayId) return "";
-    const js = jobState(job.id);
-    if (["car_fetched", "tech_ok", "parts_ok"].includes(js.stage) && state.carInBay[job.id]) {
-      let extra = `<p>The <strong>${job.vehicle.plate}</strong> (${job.vehicle.nickname}) sits on the hoist — <em>${job.repairType}</em>.</p>`;
-      if (js.stage === "tech_ok" && job.needsParts) {
-        extra += `<p class="ambient">Tech radioed Moe. Parts are inbound — wait here or wander to Parts for flavour.</p>`;
+      const d = dist(player.x + 13, player.y + 13, n.x, n.y);
+      if (d < bestD) {
+        bestD = d;
+        best = { kind: "npc", id: n.id, label: promptForNpc(n), npc: n };
       }
-      if (js.stage === "parts_ok") {
-        extra += `<p class="ambient">Parts are here. Finish the repair with the tech.</p>`;
+    }
+
+    // Job cars in lot
+    for (const c of cars) {
+      if (!c.interactable || !c.inLot || !c.jobId) continue;
+      const js = jobState(c.jobId);
+      if (js.stage !== "assigned") continue;
+      const d = dist(player.x + 13, player.y + 13, c.x + c.w / 2, c.y + c.h / 2);
+      if (d < 110 && d < bestD + 40) {
+        bestD = d;
+        best = { kind: "car", id: c.id, label: `Get ${c.plate}`, car: c };
       }
-      return extra;
     }
-    return "";
+
+    // Washroom interact
+    const washCx = 760, washCy = 365;
+    if (dist(player.x + 13, player.y + 13, washCx, washCy) < 50) {
+      if (!best || bestD > 48) {
+        best = { kind: "wash", id: "wash", label: "Use washroom" };
+      }
+    }
+
+    // Bay doors flavour
+    const doorSpots = [
+      { x: 1700, y: 240, label: "Peek bay door" },
+      { x: 1700, y: 460, label: "Peek bay door" },
+      { x: 1700, y: 680, label: "Peek bay door" },
+    ];
+    for (const dspot of doorSpots) {
+      if (dist(player.x + 13, player.y + 13, dspot.x, dspot.y) < 48) {
+        if (!best) best = { kind: "baydoor", id: "door", label: dspot.label };
+      }
+    }
+
+    // Shop entrance marker (optional flavour when near door from lot)
+    if (player.x < 700 && dist(player.x + 13, player.y + 13, 690, 490) < 55) {
+      if (!best) best = { kind: "entrance", id: "ent", label: "Enter shop" };
+    }
+
+    return best;
   }
 
-  function renderLocationActions() {
-    const loc = state.location;
-    switch (loc) {
-      case "office":
-        renderOffice();
-        break;
-      case "lot":
-        renderLot();
-        break;
-      case "rolando":
-        renderTechBay("rolando");
-        break;
-      case "won":
-        renderTechBay("won");
-        break;
-      case "nima":
-        renderTechBay("nima");
-        break;
-      case "parts":
-        renderParts();
-        break;
-      case "floor":
-        addAction("Look around / stretch", () => {
-          showDialogue("You", [
-            "You crack your knuckles. Grease has already found your sleeves. Rite of passage, greenhorn.",
-          ]);
-          clearActions();
-          addAction("Continue", () => {
-            hideDialogue();
-            renderScene();
-          });
-        });
-        addAction("Head toward front office", () => goTo("office"));
-        addAction("Check the lot", () => goTo("lot"));
-        break;
-      case "washroom":
-        addAction("Wash hands (optimistic)", () => {
-          showDialogue("Washroom", [
-            "The water is lukewarm. The soap is a suggestion. You emerge 4% cleaner, 100% still a rook.",
-          ]);
-          clearActions();
-          addAction("Leave", () => {
-            hideDialogue();
-            renderScene();
-          });
-        });
-        addAction("Read the graffiti", () => {
-          showDialogue("Stall door", [
-            "\"Torque is a lifestyle.\" — anonymous",
-            "\"Kim's sticky notes know too much.\"",
-            "\"Apprentices: rinse twice, still greasy.\"",
-            "A tiny pigeon doodle. Respect.",
-          ]);
-          clearActions();
-          addAction("Back", () => {
-            hideDialogue();
-            renderScene();
-          });
-        });
-        break;
-      case "doors":
-        addAction("Step out toward the lot", () => goTo("lot"));
-        addAction("Duck back to the shop floor", () => goTo("floor"));
-        addAction("Watch the pigeons", () => {
-          showDialogue("Bay doors", [
-            "Two pigeons escort a third through the door gap like VIPs. You've seen worse onboarding, knucklehead.",
-          ]);
-          clearActions();
-          addAction("Alright", () => {
-            hideDialogue();
-            renderScene();
-          });
-        });
-        break;
-      default:
-        break;
+  function promptForNpc(n) {
+    if (n.role === "foh") return `Talk to ${n.name}`;
+    if (n.id === "moe") {
+      if (moeDelivery && moeDelivery.phase === "arrive") return "Wait for Moe";
+      return "Talk to Moe";
+    }
+    return `Talk to ${n.name}`;
+  }
+
+  function doInteract() {
+    const tgt = nearTarget;
+    if (!tgt) return;
+    if (tgt.kind === "npc") interactNpc(tgt.npc);
+    else if (tgt.kind === "car") fetchCar(tgt.car);
+    else if (tgt.kind === "wash") {
+      showDialogue("Washroom", [
+        "One working soap dispenser. Sign: \"DO NOT WASH PARTS IN SINK — Moe\".",
+        "You emerge 4% cleaner, 100% still a rook. A pigeon stares through the high window.",
+      ]);
+    } else if (tgt.kind === "baydoor") {
+      showDialogue("Bay Doors", [
+        "Roll-up doors rattle in the draft. Outside: alley grit. Inside: hoist drama.",
+        "Pigeons use the door tracks as a highway. Classic hole-in-the-wall infrastructure.",
+      ]);
+    } else if (tgt.kind === "entrance") {
+      player.x = 720;
+      player.y = 480;
+      showFlash("Into the grease pit.", 60);
     }
   }
 
-  // ─── Front office ───────────────────────────────────────────────────
-  function renderOffice() {
-    addAction("Talk to Kim", () => talkFOH("kim"));
-    addAction("Talk to Ryan", () => talkFOH("ryan"));
-    addAction("Talk to Jordan Sham", () => talkFOH("jordan"));
-    addAction("Ask anyone for a general tip", () => {
-      const tips = [FOH.kim.tip, FOH.ryan.tip, FOH.jordan.tip];
-      const t = tips[state.ambientIdx % tips.length];
-      showDialogue("Front desk", [t]);
-      clearActions();
-      addAction("Thanks", () => {
-        hideDialogue();
-        renderScene();
-      });
-    });
+  // ─── FOH / Tech / Moe logic ─────────────────────────────────────────
+  function interactNpc(n) {
+    if (n.role === "foh") return talkFOH(n);
+    if (n.role === "tech") return talkTech(n);
+    if (n.id === "moe") return talkMoe(n);
   }
 
-  function talkFOH(fohId) {
-    const foh = FOH[fohId];
-    clearActions();
+  function talkFOH(n) {
+    const id = n.id;
+    const name = n.name;
 
-    if (fohAllDone(fohId)) {
-      showDialogue(foh.name, [...foh.greet.slice(0, 1), foh.doneAll, foh.other]);
-      addAction("Back", () => {
-        hideDialogue();
-        renderScene();
-      });
+    if (state.activeJob && fohInProgress(id) === state.activeJob) {
+      const job = JOBS[state.activeJob];
+      if (id === "jordan") {
+        showDialogue(name, jordanBusyLines(job));
+      } else {
+        showDialogue(name, [
+          `"I already hung a ticket on you, grease-stain. ${job.plate} — lot's that way. Car isn't gonna levitate in, rook."`,
+        ]);
+      }
       return;
     }
 
-    const inProg = fohHasInProgress(fohId);
-    if (inProg) {
-      showDialogue(foh.name, [foh.busy]);
-      addAction("Back", () => {
-        hideDialogue();
-        renderScene();
-      });
+    if (state.activeJob && !fohInProgress(id)) {
+      if (id === "jordan") {
+        showDialogue(name, jordanOtherTicketLines());
+        return;
+      }
+      const tips = {
+        kim: "\"Different flavour of misery? Ryan does the heavy metal. Jordan does the ghost cars. I do wet and flat, knucklehead.\"",
+        ryan: "\"Kim does leaks and flats. Jordan does haunted electronics. I do brakes and drive units. Division of labour, idiot.\"",
+      };
+      showDialogue(name, [tips[id] || "\"Busy ticket elsewhere, greenhorn.\""]);
       return;
     }
 
-    const nextId = nextJobForFOH(fohId);
+    if (fohAllDone(id)) {
+      if (id === "jordan") {
+        showDialogue(name, jordanDoneLines());
+        return;
+      }
+      const done = {
+        kim: "\"My tickets are closed. Miracles happen. Don't get cocky, rook.\"",
+        ryan: "\"My heavy jobs are done. Won grunted. That's a standing ovation.\"",
+      };
+      showDialogue(name, [done[id]]);
+      return;
+    }
+
+    const nextId = nextJobForFOH(id);
     if (!nextId) {
-      showDialogue(foh.name, [foh.other]);
-      addAction("Back", () => {
-        hideDialogue();
-        renderScene();
-      });
+      showDialogue(name, ["\"Nothing for you right now, wet-behind-the-ears. Check the others.\""]);
       return;
     }
 
     const job = JOBS[nextId];
-
-    if (state.activeJob && state.activeJob !== job.id) {
-      showDialogue(foh.name, [
-        ...foh.greet,
-        `"You've already got a live ticket, rook. Finish ${JOBS[state.activeJob].short} before I pile on. We're a hole in the wall, not a circus."`,
-        foh.other,
-      ]);
-      addAction("Back", () => {
-        hideDialogue();
-        renderScene();
-      });
-      return;
-    }
-
-    showDialogue(foh.name, foh.greet);
-    addAction(`Take job: ${job.repairType} (${job.vehicle.nickname})`, () => assignJob(fohId, nextId));
-    addAction("Not yet", () => {
-      hideDialogue();
-      renderScene();
+    const assignLines = assignDialogue(id, job);
+    showDialogue(name, assignLines, () => {
+      state.activeJob = nextId;
+      jobState(nextId).stage = "assigned";
+      addItem("ticket_" + nextId, `Ticket: ${job.plate}`);
+      refreshHUD();
+      showFlash(`Ticket: ${job.repairType}`, 100);
     });
   }
 
-  function assignJob(fohId, jobId) {
-    const foh = FOH[fohId];
-    const job = JOBS[jobId];
-    state.activeJob = job.id;
-    state.jobs[job.id].stage = "assigned";
-    addItem(`ticket_${job.id}`, `Ticket: ${job.repairType} · ${job.vehicle.plate}`);
-    bumpRep(fohId, 1);
 
-    const lines = foh.assign[jobId](state);
-    showDialogue(foh.name, lines);
-    clearActions();
-    addAction("Head to the lot", () => {
-      hideDialogue();
-      goTo("lot");
-    });
-    addAction("Stay in the office", () => {
-      hideDialogue();
-      renderScene();
-    });
-    refreshStatus();
-  }
-
-  // ─── Lot ────────────────────────────────────────────────────────────
-  function renderLot() {
-    let any = false;
-    Object.values(JOBS).forEach((job) => {
-      const js = jobState(job.id);
-      if (js.stage === "assigned" && state.activeJob === job.id) {
-        any = true;
-        addAction(
-          `Get ${job.vehicle.plate} (${job.vehicle.nickname}) — ${job.repairType}`,
-          () => fetchCar(job.id)
-        );
-      }
-    });
-
-    JOB_ORDER.forEach((id) => {
-      if (hasItem(`car_${id}`)) {
-        any = true;
-        const job = JOBS[id];
-        addAction(
-          `Drive ${job.vehicle.plate} into ${LOCATIONS[job.vehicle.bay].name}`,
-          () => deliverCar(id)
-        );
-      }
-    });
-
-    if (!any) {
-      addAction("Wander the rows", () => {
-        showDialogue("Lot", [
-          "You pass a Cybertruck with a handwritten note under the wiper: \"Please don't.\"",
-          "Pigeons have claimed a charging cable as a throne. Relatable energy, rook.",
-        ]);
-        clearActions();
-        addAction("Enough wandering", () => {
-          hideDialogue();
-          renderScene();
-        });
-      });
-    }
-
-    addAction("Enter via bay doors", () => goTo("doors"));
-    addAction("Back to shop floor", () => goTo("floor"));
-  }
-
-  function fetchCar(jobId) {
-    const job = JOBS[jobId];
-    const js = jobState(jobId);
-    if (js.stage !== "assigned") return;
-
-    js.stage = "car_fetched";
-    addItem(`car_${jobId}`, `Car: ${job.vehicle.plate} (${job.vehicle.nickname})`);
-    bumpRep(job.fohId, 1);
-
-    showDialogue("Lot", [
-      `You find ${job.vehicle.desc}.`,
-      `Repair type on the ticket: <strong>${job.repairType}</strong>. Even you can read that, knucklehead.`,
-      "Key card works. The car wakes with a soft whoom. Pigeons scatter like unpaid interns.",
-      `Take it to ${LOCATIONS[job.vehicle.bay].name}.`,
-    ]);
-    clearActions();
-    addAction(`Go to ${LOCATIONS[job.vehicle.bay].name}`, () => {
-      hideDialogue();
-      goTo(job.vehicle.bay);
-    });
-    addAction("Stay in the lot", () => {
-      hideDialogue();
-      renderScene();
-    });
-    refreshStatus();
-  }
-
-  function deliverCar(jobId) {
-    const job = JOBS[jobId];
-    state.carInBay[jobId] = true;
-    removeItem(`car_${jobId}`);
-    addItem(`baycar_${jobId}`, `${job.vehicle.plate} on hoist`);
-    goTo(job.vehicle.bay);
-    showDialogue("Bay", [
-      `You ease ${job.vehicle.plate} (${job.vehicle.nickname}) onto the hoist lines. Chocks in. Hazards off.`,
-      `${job.repairType} — the shop accepts another patient. Time to talk to the tech, rook.`,
-    ]);
-    clearActions();
-    addAction("Continue", () => {
-      hideDialogue();
-      renderScene();
-    });
-    refreshStatus();
-  }
-
-  // ─── Tech bays ──────────────────────────────────────────────────────
-  function renderTechBay(techId) {
-    const tech = TECHS[techId];
-    const job = activeJobData();
-
-    addAction(`Talk to ${tech.name}`, () => talkTech(techId));
-
-    if (job && job.vehicle.bay === techId && hasItem(`car_${job.id}`)) {
-      addAction(`Park ${job.vehicle.plate} on this hoist`, () => deliverCar(job.id));
-    }
-
-    // Canonical parts wait beat
-    if (
-      job &&
-      job.tech === techId &&
-      job.needsParts &&
-      jobState(job.id).stage === "tech_ok" &&
-      state.carInBay[job.id]
-    ) {
-      addAction("Wait for Moe to deliver parts", () => waitForPartsDelivery());
-    }
-
-    if (job && canCompleteAtBay(job, techId)) {
-      addAction("Complete the repair", () => completeJob(job.id));
-    }
-  }
-
-  function canCompleteAtBay(job, techId) {
-    if (job.tech !== techId) return false;
-    const js = jobState(job.id);
-    if (!state.carInBay[job.id]) return false;
-    if (job.needsParts) return js.stage === "parts_ok";
-    return js.stage === "tech_ok";
-  }
-
-  function needPartsLines(techId, job) {
-    const tech = TECHS[techId];
-    if (tech.needParts && tech.needParts[job.id]) {
-      return tech.needParts[job.id](state);
-    }
+  /** Jordan Sham — "Yuuh" interrupt quirk. Lines may be {who,text} for mid-sentence cut-ins. */
+  function jordanAssignLines(job) {
+    const s = playerName;
     return [
-      `"Need parts for this ${job.repairType}, rook. Radioing Moe. Stay put."`,
+      { who: "Jordan Sham", text: `Jordan spins a pen like a tiny drive shaft. "Yuuh. Apprentice. Circus called — they want their rook back, ${s}."` },
+      { who: s, text: `"Hey Jordan, I was hopi—"` },
+      { who: "Jordan Sham", text: `"Yuh. Didn't ask. Eyes up, knucklehead."` },
+      { who: "Jordan Sham", text: `"Yuuh — this is a 12V / PHANTOM DRAIN diag. Red Model S Plaid, plate ${job.plate}, nickname Ghost Plaid. Phantom alerts, 12V sulking, charge-port attitude."` },
+      { who: s, text: `"So I should grab it from the lo—"` },
+      { who: "Jordan Sham", text: `"Yuuh. Lot. Then Nima's far-left bay. He radios Moe for the 12V and clips. Don't poke HV with your feelings, wet-behind-the-ears."` },
+      { who: s, text: `"Got it, I'll head out and—"` },
+      { who: "Jordan Sham", text: `"Yuh. Ticket. Try not to lose a staring contest to a Plaid, grease-stain. You're already losing to the pigeons. Yuuh."` },
     ];
   }
 
-  function helpLines(techId, job) {
-    const tech = TECHS[techId];
-    if (typeof tech.help === "function") return tech.help(state);
-    if (tech.help && tech.help[job.id]) return tech.help[job.id](state);
-    return [`"Let's finish this ${job.repairType}, knucklehead."`];
+  function jordanBusyLines(job) {
+    const s = playerName;
+    return [
+      { who: s, text: `"Jordan, about the ticke—"` },
+      { who: "Jordan Sham", text: `"Yuuh. Already hung one on you, ${s}. ${job.plate} — Ghost Plaid. Lot's that way."` },
+      { who: s, text: `"I was gonna say I might need—"` },
+      { who: "Jordan Sham", text: `"Yuh. Car isn't gonna levitate in, rook. Scram. Yuuh."` },
+    ];
   }
 
-  function talkTech(techId) {
-    const tech = TECHS[techId];
-    const job = activeJobData();
-    clearActions();
+  function jordanOtherTicketLines() {
+    const s = playerName;
+    return [
+      { who: s, text: `"Hey, do you have anythin—"` },
+      { who: "Jordan Sham", text: `"Yuuh. Different flavour of pain. Kim and Ryan own the other tickets."` },
+      { who: "Jordan Sham", text: `"Yuh. Shoo, parts-runner. Come back when your live ticket stops haunting you. Yuuh."` },
+    ];
+  }
+
+  function jordanDoneLines() {
+    const s = playerName;
+    return [
+      { who: s, text: `"Jordan, diag's closed, so I thought maybe—"` },
+      { who: "Jordan Sham", text: `"Yuuh. Diag closed. Nima looked smug for thirty seconds. Record."` },
+      { who: "Jordan Sham", text: `"Yuh. You almost helped, ${s}. Don't let it go to your head, idiot. Yuuh."` },
+    ];
+  }
+
+  function assignDialogue(fohId, job) {
+    const s = playerName;
+    if (fohId === "kim" && job.id === "leak") {
+      return [
+        `Kim glances up, sticky note stuck to her sleeve. "Oh good — another greenhorn."`,
+        `"Listen up, knucklehead — WATER LEAK. White Model Y, plate ${job.plate}, nickname ${job.nickname}. Wet carpet after every rain."`,
+        `"Grab it from the lot, roll it into Rolando's bay — far right. He speaks fluent drain clog. You speak fluent wrong turns, ${s}."`,
+      ];
+    }
+    if (fohId === "kim" && job.id === "tire") {
+      return [
+        `"Wake up, parts-runner — TIRE / TPMS. Deep Blue Model X, plate ${job.plate}, Flatliner. Nail in the sidewall."`,
+        `"Lot → Won Song's middle bay. He'll radio Moe for the tire and sensor. Don't lose the lug nuts, wet-behind-the-ears."`,
+      ];
+    }
+    if (fohId === "ryan" && job.id === "brakes") {
+      return [
+        `Ryan looks like he slept here. "${s} — BRAKE SERVICE. Pearl White Model Y, ${job.plate}, Squeaky Y. Pads screaming."`,
+        `"Won Song, middle bay. He'll call Moe for pads and rotors — you don't freelance brake parts, rook."`,
+      ];
+    }
+    if (fohId === "ryan" && job.id === "drive") {
+      return [
+        `"Listen, grease-stain — DRIVE UNIT. Midnight Model 3, ${job.plate}, Clunk Cub. Rear unit howling."`,
+        `"Won Song, middle bay. When he radios Moe, wait at the bay for the forklift like a civilized parts-runner."`,
+      ];
+    }
+    if (fohId === "jordan" && job.id === "diag") {
+      return jordanAssignLines(job);
+    }
+    return [`"Ticket for ${job.plate}. Lot. Then the right bay. Go, idiot."`];
+  }
+
+  function talkTech(n) {
+    const techId = n.id;
+    const job = activeJob();
+    const s = playerName;
 
     if (!job) {
-      showDialogue(
-        tech.name,
-        tech.wrong(state).slice(0, 2).concat([
-          "\"No ticket? Front desk — Kim, Ryan, or Jordan. They feed us cars. Shoo, greenhorn.\"",
-        ])
-      );
-      addAction("Back", () => {
-        hideDialogue();
-        renderScene();
-      });
+      showDialogue(n.name, [
+        `"No ticket, no show, ${s}. Front desk first — Kim, Ryan, or Jordan. Don't decorate my bay empty-handed, rook."`,
+      ]);
       return;
     }
 
     const js = jobState(job.id);
 
+    // Wrong tech
     if (job.tech !== techId) {
-      showDialogue(tech.name, tech.wrong(state));
-      bumpRep(techId, 1);
-      addAction("Thanks for the redirect", () => {
-        hideDialogue();
-        renderScene();
-      });
+      showDialogue(n.name, wrongTechLines(techId, job, s));
       return;
     }
 
+    // Right tech, no car yet
     if (js.stage === "assigned") {
-      showDialogue(tech.name, tech.early);
-      addAction("Go to the lot", () => {
-        hideDialogue();
-        goTo("lot");
-      });
+      showDialogue(n.name, [
+        `"Where's the car, rook? I don't repair air. Lot's west — fetch ${job.plate}, then come back."`,
+      ]);
       return;
     }
 
-    if (js.stage === "car_fetched" && !state.carInBay[job.id]) {
-      if (hasItem(`car_${job.id}`)) {
-        showDialogue(tech.name, [
-          `"You're holding the car in spirit, idiot. Park ${job.vehicle.plate} on my hoist and we'll talk."`,
-        ]);
-        addAction("Park it now", () => deliverCar(job.id));
-        addAction("Back", () => {
-          hideDialogue();
-          renderScene();
+    // Car fetched / in bay — first contact
+    if (js.stage === "car_fetched") {
+      if (job.needsParts) {
+        const lines = needPartsLines(techId, job, s);
+        showDialogue(n.name, lines, () => {
+          js.stage = "tech_ok";
+          startMoeDelivery(job.id);
+          refreshHUD();
         });
       } else {
-        showDialogue(tech.name, tech.early);
-        addAction("Back", () => {
-          hideDialogue();
-          renderScene();
+        // leak — finish immediately
+        showDialogue(n.name, finishLines(techId, job, s), () => {
+          completeJob(job.id);
         });
       }
       return;
     }
 
-    // Right tech, car in bay, first real talk
-    if (js.stage === "car_fetched" && state.carInBay[job.id]) {
-      if (job.needsParts) {
-        js.stage = "tech_ok";
-        showDialogue(tech.name, needPartsLines(techId, job));
-        bumpRep(techId, 1);
-        clearActions();
-        addAction("Wait for Moe to deliver parts", () => waitForPartsDelivery());
-        addAction("Visit Parts anyway (flavour)", () => {
-          hideDialogue();
-          goTo("parts");
-        });
-        addAction("Stay", () => {
-          hideDialogue();
-          renderScene();
-        });
-        refreshStatus();
-        return;
-      }
-      // No parts needed — do the repair
-      js.stage = "tech_ok";
-      showDialogue(tech.name, helpLines(techId, job));
-      bumpRep(techId, 1);
-      clearActions();
-      addAction("Finish the job", () => completeJob(job.id));
-      refreshStatus();
-      return;
-    }
-
-    if (job.needsParts && js.stage === "tech_ok") {
-      showDialogue(tech.name, [
-        tech.waiting || "\"Moe's coming. Wait here, rook.\"",
-        ...needPartsLines(techId, job).slice(-1),
+    if (js.stage === "tech_ok") {
+      showDialogue(n.name, [
+        `"Moe's rolling. Stand there and look decorative, grease-stain. Parts aren't here yet."`,
       ]);
-      addAction("Wait for Moe to deliver parts", () => waitForPartsDelivery());
-      addAction("Wander to Parts", () => {
-        hideDialogue();
-        goTo("parts");
+      return;
+    }
+
+    if (js.stage === "parts_ok") {
+      showDialogue(n.name, finishLines(techId, job, s), () => {
+        completeJob(job.id);
       });
-      return;
-    }
-
-    if (job.needsParts && js.stage === "parts_ok") {
-      showDialogue(tech.name, helpLines(techId, job));
-      bumpRep(techId, 1);
-      clearActions();
-      addAction("Finish the job", () => completeJob(job.id));
-      refreshStatus();
-      return;
-    }
-
-    if (js.stage === "tech_ok" && !job.needsParts) {
-      showDialogue(tech.name, [tech.after, tech.praise]);
-      addAction("Complete repair", () => completeJob(job.id));
       return;
     }
 
     if (js.done) {
-      showDialogue(tech.name, [tech.after]);
-      addAction("Back", () => {
-        hideDialogue();
-        renderScene();
-      });
-      return;
+      showDialogue(n.name, [`"We're good here. Next ticket, wet-behind-the-ears."`]);
     }
-
-    showDialogue(tech.name, [tech.after]);
-    addAction("Back", () => {
-      hideDialogue();
-      renderScene();
-    });
   }
 
-  function waitForPartsDelivery() {
-    const job = activeJobData();
-    if (!job || !job.needsParts) return;
-    const js = jobState(job.id);
-    if (js.stage !== "tech_ok") return;
-
-    state.partsArriving = true;
-    clearActions();
-    showDialogue("Bay", [
-      "You lean on a toolbox that definitely has a name. Somewhere a pigeon judges your posture.",
-      "Radio static. Forklift beep — or cart wheels. Footsteps with purpose.",
-    ]);
-    addAction("…parts arrive", () => {
-      js.stage = "parts_ok";
-      state.partsArriving = false;
-      addItem(
-        `parts_${job.id}`,
-        job.partsHeavy ? `${job.partsLabel} (forklift)` : job.partsLabel
-      );
-      bumpRep("moe", 2);
-      showDialogue("Moe", TECHS.moe.arriveBay(state, job));
-      clearActions();
-      addAction("Talk to the tech — finish the repair", () => {
-        hideDialogue();
-        talkTech(job.tech);
-      });
-      addAction("Hang at the bay", () => {
-        hideDialogue();
-        renderScene();
-      });
-      refreshStatus();
-    });
+  function wrongTechLines(techId, job, s) {
+    if (techId === "rolando") {
+      return [
+        `Rolando wipes sealant off a rag that has seen wars.`,
+        `"${s}, you look lost in a helpful-idiot way. That's not my puddle."`,
+        `"Water leaks: me — far right. Brakes/tires/drive units: Won, middle. Ghost codes: Nima, left. Parts: Moe. Don't cosplay a forklift, greenhorn."`,
+      ];
+    }
+    if (techId === "won") {
+      return [
+        `Won Song doesn't stop torquing. He speaks to the bolt, then to you.`,
+        `"Wrong bay for that ticket, ${s}. Pay attention, greenhorn."`,
+        `"Leaks: Rolando. Diag: Nima. Heavy metal — me. Parts: I radio Moe. Don't mix the playlist, knucklehead."`,
+      ];
+    }
+    return [
+      `Nima flips hair that somehow survives a shop environment.`,
+      `"Wrong specialty, ${s}. I do the mysteries. You're in the wrong aisle, rook."`,
+      `"Wet carpets: Rolando. Heavy iron: Won. Me: when the car is lying — 12V, phantom drains, weird codes."`,
+    ];
   }
 
-  // ─── Parts / Moe ────────────────────────────────────────────────────
-  function renderParts() {
-    addAction("Talk to Moe", () => talkMoe());
-    addAction("Admire the forklift", () => {
-      showDialogue("Forklift", [
-        "It has a name written in paint pen: \"Subtle.\" The irony is not subtle, rook.",
-      ]);
-      clearActions();
-      addAction("Back", () => {
-        hideDialogue();
-        renderScene();
-      });
-    });
+  function needPartsLines(techId, job, s) {
+    if (job.id === "brakes") {
+      return [
+        `Won Song spins a wheel, grimaces like the rotor insulted his family.`,
+        `"Brake service — pads cooked, rotors done. Radioing Moe. Stay put, ${s}."`,
+        `"Moe — middle bay, Squeaky Y. Pads and rotors. Send 'em before this greenhorn invents a new noise."`,
+      ];
+    }
+    if (job.id === "drive") {
+      return [
+        `Won Song inspects the Model 3, nods once.`,
+        `"Drive unit's coming out. Radioing Moe for the forklift. Wait at the bay, knucklehead."`,
+        `"Moe. Heavy. Clunk Cub. Forklift. Now."`,
+      ];
+    }
+    if (job.id === "tire") {
+      return [
+        `Won Song eyes the Model X sidewall like it owes him money.`,
+        `"Puncture's ugly. Calling Moe for a tire and sensor. Park yourself here, rook."`,
+        `"Moe — Flatliner needs rubber and a sensor. Middle bay."`,
+      ];
+    }
+    if (job.id === "diag") {
+      return [
+        `Nima plugs in. Screens bloom. He winces at a voltage plot.`,
+        `"Phantom drain + tired 12V. Radioing Moe. Stay in the bay, ${s}."`,
+        `"Moe — far left. Ghost Plaid needs a 12V and charge-port clips."`,
+      ];
+    }
+    return [`"Radioing Moe for ${job.partsLabel}. Wait here, idiot."`];
+  }
+
+  function finishLines(techId, job, s) {
+    if (job.id === "leak") {
+      return [
+        `Rolando circles the Model Y like a detective who enjoys bullying apprentices.`,
+        `"Clogged drain + tired seal. Classic. Pass me that trim tool before you drop it, ${s}."`,
+        `"Dry. Nice assist for a wet-behind-the-ears. Don't let it go to your head, idiot."`,
+      ];
+    }
+    if (job.id === "brakes") {
+      return [
+        `Pads and rotors hit the cart. Won points. You fetch. He works.`,
+        `"Hold the caliper like you mean it, ${s}. Torque's not a suggestion."`,
+        `"Brakes are solid. Go tell Ryan before he drinks the whole pot, greenhorn."`,
+      ];
+    }
+    if (job.id === "drive") {
+      return [
+        `Moe's forklift hums. Won points. You spot.`,
+        `"Hold that harness clear. ${s}, you're not completely useless. Keep it that way."`,
+        `"Job's solid. Tell Ryan I grunted approvingly — he'll translate, rook."`,
+      ];
+    }
+    if (job.id === "tire") {
+      return [
+        `New tire, fresh TPMS. Won balances the wheel.`,
+        `"Hand me the torque stick, knucklehead. Lug order matters — look at me, ${s}."`,
+        `"She's round again. Miracle. Go bother Kim before I invent more work for you."`,
+      ];
+    }
+    if (job.id === "diag") {
+      return [
+        `Parts on the bench. Nima guides your hands like you're a slightly dangerous intern.`,
+        `"Intermittent drain on a harness the last shop 'fixed.' Classic swagger failure, rook."`,
+        `"${s}, you just outsmarted a Plaid. Wash your hands, idiot."`,
+      ];
+    }
+    return [`"Done. Scram, rook."`];
   }
 
   function talkMoe() {
-    const moe = TECHS.moe;
-    const job = activeJobData();
-    clearActions();
+    const s = playerName;
+    const job = activeJob();
+
+    if (moeDelivery && moeDelivery.phase === "arrive") {
+      showDialogue("Moe", [
+        moeDelivery.heavy
+          ? `Moe beeps in on the forklift. "Package for Clunk Cub. Signed for by one apprentice idiot — that's you, ${s}."`
+          : `Moe rolls a cart over. "${JOBS[moeDelivery.jobId].partsLabel}. Fresh from the cage. Try not to drop them, grease-stain."`,
+        `"Tell the tech the parts fairy arrived. And if anyone asks — I never speed indoors."`,
+      ], () => {
+        finishMoeDelivery();
+      });
+      return;
+    }
 
     if (!job) {
-      showDialogue(moe.name, moe.noJob);
-      addAction("Back", () => {
-        hideDialogue();
-        renderScene();
-      });
+      showDialogue("Moe", [
+        `"Parts counter's open. Your pockets look empty of purpose though, greenhorn. Hit the front desk."`,
+      ]);
       return;
     }
 
     const js = jobState(job.id);
-
-    if (!job.needsParts) {
-      showDialogue(moe.name, moe.flavour());
-      bumpRep("moe", 1);
-      addAction("Got it", () => {
-        hideDialogue();
-        renderScene();
-      });
-      return;
-    }
-
-    if (js.stage === "assigned") {
-      showDialogue(moe.name, moe.needCarFirst);
-      addAction("Back", () => {
-        hideDialogue();
-        renderScene();
-      });
-      return;
-    }
-
-    if (js.stage === "car_fetched") {
-      showDialogue(moe.name, moe.needTechFirst);
-      addAction(`See ${TECHS[job.tech].name}`, () => {
-        hideDialogue();
-        goTo(job.tech);
-      });
-      return;
-    }
-
-    // Tech already radioed — player took the flavour path to parts
-    if (js.stage === "tech_ok") {
-      showDialogue(moe.name, [
-        ...moe.alreadyRadioed(state, job),
-        ...moe.deliverHere(state, job).slice(1),
+    if (js.stage === "assigned" || js.stage === "car_fetched") {
+      showDialogue("Moe", [
+        `"Tech hasn't radioed the play yet. Get their blessing at the bay, then I roll. Don't freelance my schedule, parts-runner."`,
       ]);
-      js.stage = "parts_ok";
-      addItem(
-        `parts_${job.id}`,
-        job.partsHeavy ? `${job.partsLabel} (forklift)` : job.partsLabel
-      );
-      bumpRep("moe", 2);
-      clearActions();
-      addAction(`Back to ${TECHS[job.tech].name}'s bay`, () => {
-        hideDialogue();
-        goTo(job.tech);
-      });
-      refreshStatus();
       return;
     }
-
-    if (js.stage === "parts_ok" || js.done) {
-      showDialogue(moe.name, [moe.after]);
-      addAction("Back", () => {
-        hideDialogue();
-        renderScene();
-      });
+    if (js.stage === "tech_ok") {
+      showDialogue("Moe", [
+        `"Yeah yeah — already barked. ${job.partsLabel}. I'm heading over. Wait at the bay like a civilized rook, ${s}."`,
+      ]);
       return;
     }
-
-    showDialogue(moe.name, moe.flavour());
-    addAction("Back", () => {
-      hideDialogue();
-      renderScene();
-    });
+    showDialogue("Moe", [
+      `"Looking for vibes? Canonical path is the tech radios me and I deliver. You're the optional tour group, knucklehead."`,
+    ]);
   }
 
-  // ─── Complete job ───────────────────────────────────────────────────
+  function startMoeDelivery(jobId) {
+    const job = JOBS[jobId];
+    const moe = npcs.find((n) => n.id === "moe");
+    const bay = BAYS[job.bay];
+    moeDelivery = {
+      jobId,
+      phase: "walk",
+      timer: 0,
+      heavy: !!job.partsHeavy,
+      targetX: bay.park.x - 80,
+      targetY: bay.park.y + 40,
+    };
+    moe.delivering = true;
+    showFlash(job.partsHeavy ? "Moe en route (forklift)…" : "Moe delivering parts…", 100);
+  }
+
+  function finishMoeDelivery() {
+    if (!moeDelivery) return;
+    const jobId = moeDelivery.jobId;
+    jobState(jobId).stage = "parts_ok";
+    const moe = npcs.find((n) => n.id === "moe");
+    moe.delivering = false;
+    moe.x = moe.homeX;
+    moe.y = moe.homeY;
+    moeDelivery = null;
+    addItem("parts_" + jobId, JOBS[jobId].partsLabel);
+    refreshHUD();
+    showFlash("Parts delivered!", 80);
+  }
+
   function completeJob(jobId) {
     const job = JOBS[jobId];
-    const tech = TECHS[job.tech];
     const js = jobState(jobId);
     js.stage = "done";
     js.done = true;
     state.activeJob = null;
-    removeItem(`ticket_${jobId}`);
-    removeItem(`baycar_${jobId}`);
-    removeItem(`parts_${jobId}`);
-    delete state.carInBay[jobId];
-    bumpRep(job.tech, 2);
-    bumpRep(job.fohId, 1);
+    removeItem("ticket_" + jobId);
+    removeItem("parts_" + jobId);
+    removeItem("car_" + jobId);
+    // leave car in bay as done prop
+    const car = cars.find((c) => c.jobId === jobId);
+    if (car) {
+      car.inBay = true;
+      car.inLot = false;
+      car.interactable = false;
+    }
+    refreshHUD();
+    showFlash(`Job done: ${job.repairType}`, 110);
+    addFloater(player.x, player.y - 20, "+1 SHIFT", "#6ecf6a");
 
-    showDialogue(tech.name, [tech.praise, tech.after]);
-    setNarration(
-      `<p>Job closed: <strong>${job.repairType}</strong> — ${job.title}. The hoist lowers. Somewhere, a pigeon applauds with its feet.</p>` +
-        `<p class="ambient">Front desk will want the good news — and maybe another chance to call you rook.</p>`
-    );
-    clearActions();
-    refreshStatus();
-
-    if (allJobsDone()) {
-      addAction("See how the shift went…", () => showWin());
-    } else {
-      addAction("Go to front office for another job", () => {
-        hideDialogue();
-        goTo("office");
-      });
-      addAction("Hang out here", () => {
-        hideDialogue();
-        renderScene();
-      });
+    if (allDone()) {
+      setTimeout(() => {
+        els.winText.textContent =
+          `${playerName} survived the hole in the wall. Five tickets closed. ` +
+          `The pigeons remain unimpressed. The techs remain lightly abusive. You, somehow, are still employed.`;
+        els.win.classList.remove("hidden");
+      }, 600);
     }
   }
 
-  function showWin() {
-    const totalRep = Object.values(state.rep).reduce((a, b) => a + b, 0);
-    els.winText.textContent =
-      `${state.name}, you somehow closed all five tickets: water leak with Rolando, brakes & tires & drive unit with Won Song (Moe delivering like a parts fairy with insults), ` +
-      `and the phantom-drain diag with Nima. Kim, Ryan, and Jordan might keep your name on the sticky notes — under "greenhorn, surprisingly not fired." ` +
-      `Rep score: ${totalRep}. The pigeons are proud. The coffee still isn't. Don't get cocky, rook.`;
-    els.winModal.classList.remove("hidden");
+  function fetchCar(car) {
+    const job = JOBS[car.jobId];
+    const js = jobState(car.jobId);
+    if (!job || js.stage !== "assigned") return;
+    if (state.activeJob !== car.jobId) {
+      showDialogue("You", ["Wrong car, knucklehead. Check the ticket plate."]);
+      return;
+    }
+
+    showDialogue("Lot", [
+      `You unlock ${job.plate} (${job.nickname}). The ${job.model === "X" ? "Model X" : "Model " + job.model} sighs awake.`,
+      `"Alright, rook — rolling it into ${job.bay === "nima" ? "Nima's" : job.bay === "won" ? "Won Song's" : "Rolando's"} bay. Try not to scrape the door seals."`,
+    ], () => {
+      startCarCutscene(car, job);
+    });
   }
 
-  function resetGame() {
-    state.location = "floor";
-    state.activeJob = null;
-    state.jobs = Object.fromEntries(JOB_ORDER.map((id) => [id, { stage: null, done: false }]));
-    state.inventory = [];
-    state.rep = { rolando: 0, won: 0, nima: 0, moe: 0, kim: 0, ryan: 0, jordan: 0 };
-    state.carInBay = {};
-    state.introDone = false;
-    state.ambientIdx = 0;
-    state.partsArriving = false;
-    els.winModal.classList.add("hidden");
-    goTo("floor");
+  function startCarCutscene(car, job) {
+    const bay = BAYS[job.bay];
+    const tech = npcs.find((n) => n.id === job.tech);
+    cutscene = {
+      type: "drive",
+      timer: 0,
+      dur: 90,
+      car,
+      job,
+      fromX: car.x,
+      fromY: car.y,
+      toX: bay.park.x - car.w / 2,
+      toY: bay.park.y - car.h / 2,
+      // Stand next to the right tech so interact is immediate
+      playerToX: (tech ? tech.x : bay.park.x) - 50,
+      playerToY: (tech ? tech.y : bay.park.y) + 36,
+    };
+    showFlash("Driving into bay…", 70);
   }
 
-  // ─── Boot ───────────────────────────────────────────────────────────
+  // ─── Update ─────────────────────────────────────────────────────────
+  function update(dt) {
+    t += dt;
+    ambientTimer += dt;
+    if (ambientTimer > 8) {
+      ambientTimer = 0;
+      ambientIdx = (ambientIdx + 1) % AMBIENT.length;
+    }
+
+    if (flash) {
+      flash.t--;
+      if (flash.t <= 0) flash = null;
+    }
+
+    updateFx(dt);
+
+    if (dialogueQueue || !playing) {
+      nearTarget = null;
+      setPrompt("");
+      return;
+    }
+
+    if (els.help && !els.help.classList.contains("hidden")) return;
+    if (els.win && !els.win.classList.contains("hidden")) return;
+
+    // Cutscene: auto-drive car to bay
+    if (cutscene && cutscene.type === "drive") {
+      cutscene.timer++;
+      const u = Math.min(1, cutscene.timer / cutscene.dur);
+      const ease = u * u * (3 - 2 * u);
+      const car = cutscene.car;
+      car.x = cutscene.fromX + (cutscene.toX - cutscene.fromX) * ease;
+      car.y = cutscene.fromY + (cutscene.toY - cutscene.fromY) * ease;
+      car.inLot = false;
+      // camera follows car
+      cam.x = car.x + car.w / 2 - CW / 2;
+      cam.y = car.y + car.h / 2 - CH / 2;
+      clampCam();
+      if (u >= 1) {
+        car.inBay = true;
+        car.interactable = false;
+        player.x = cutscene.playerToX;
+        player.y = cutscene.playerToY;
+        const job = cutscene.job;
+        jobState(job.id).stage = "car_fetched";
+        state.carInBay[job.id] = true;
+        addItem("car_" + job.id, `Car: ${job.plate}`);
+        removeItem("ticket_" + job.id);
+        addItem("ticket_" + job.id, `Ticket: ${job.plate} (in bay)`);
+        cutscene = null;
+        refreshHUD();
+        showFlash(`${job.plate} parked in bay`, 90);
+      }
+      setPrompt("");
+      return;
+    }
+
+    // Moe delivery walk
+    if (moeDelivery && moeDelivery.phase === "walk") {
+      const moe = npcs.find((n) => n.id === "moe");
+      const tx = moeDelivery.targetX;
+      const ty = moeDelivery.targetY;
+      const dx = tx - moe.x;
+      const dy = ty - moe.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const spd = moeDelivery.heavy ? 90 : 120;
+      moe.x += (dx / d) * spd * dt;
+      moe.y += (dy / d) * spd * dt;
+      moe.facing = dx >= 0 ? 1 : -1;
+      if (d < 12) {
+        moe.x = tx;
+        moe.y = ty;
+        moeDelivery.phase = "arrive";
+        showFlash("Moe arrived — talk to him", 100);
+      }
+    }
+
+    // Player move
+    const { dx, dy } = moveVec();
+    if (dx || dy) {
+      const sp = player.speed * dt;
+      let nx = player.x + dx * sp;
+      let ny = player.y + dy * sp;
+      if (!collides(nx, player.y, player.w, player.h)) player.x = nx;
+      else {
+        // slide
+        if (!collides(player.x + dx * sp * 0.5, player.y, player.w, player.h)) player.x += dx * sp * 0.5;
+      }
+      if (!collides(player.x, ny, player.w, player.h)) player.y = ny;
+      else {
+        if (!collides(player.x, player.y + dy * sp * 0.5, player.w, player.h)) player.y += dy * sp * 0.5;
+      }
+      if (dx) player.facing = dx > 0 ? 1 : -1;
+      // keep in world
+      player.x = Math.max(40, Math.min(WORLD_W - 60, player.x));
+      player.y = Math.max(70, Math.min(WORLD_H - 90, player.y));
+    }
+
+    // Camera
+    cam.x = player.x + player.w / 2 - CW / 2;
+    cam.y = player.y + player.h / 2 - CH / 2;
+    clampCam();
+
+    // Proximity
+    nearTarget = findNearTarget();
+    setPrompt(nearTarget ? nearTarget.label + "  [E / USE]" : "");
+
+    if (wantsInteract()) {
+      if (nearTarget) doInteract();
+    }
+
+    // Idle intro ping
+    if (!state.introShown && playing) {
+      state.introShown = true;
+      showDialogue("Shop Floor", [
+        `You clock in as ${playerName}. Concrete slick with old oil. Pigeons argue in the rafters.`,
+        "Front desk is west of the bays — Kim, Ryan, and Jordan Sham. Lot is further west. Three bays on the east wall: Nima · Won · Rolando.",
+        "Walk over. Talk to FOH. Try not to reverse into the parts cage, rook.",
+      ]);
+    }
+  }
+
+  function clampCam() {
+    cam.x = Math.max(0, Math.min(WORLD_W - CW, cam.x));
+    cam.y = Math.max(0, Math.min(WORLD_H - CH, cam.y));
+  }
+
+  function setPrompt(text) {
+    els.prompt.textContent = text || "";
+  }
+
+  function refreshHUD() {
+    const job = activeJob();
+    if (!job) {
+      const left = JOB_ORDER.length - doneCount();
+      els.hudJob.textContent = left
+        ? `No ticket — talk to Kim / Ryan / Jordan (${left} left)`
+        : "All tickets closed";
+    } else {
+      const js = jobState(job.id);
+      els.hudJob.innerHTML = `<strong>${job.repairType}</strong><br/>${job.plate} · ${stageHint(job, js.stage)}`;
+    }
+    if (state.inventory.length === 0) {
+      els.hudInv.textContent = "Pockets: empty";
+    } else {
+      els.hudInv.textContent = "Inv: " + state.inventory.map((i) => i.label).join(" · ");
+    }
+    els.hudProgress.textContent = `Jobs ${doneCount()}/5`;
+  }
+
+  // ─── FX ─────────────────────────────────────────────────────────────
+  function addFloater(x, y, text, color) {
+    floaters.push({ x, y, text, color: color || "#e8a838", life: 90 });
+  }
+  function updateFx() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life--;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+    for (let i = floaters.length - 1; i >= 0; i--) {
+      const f = floaters[i];
+      f.y -= 0.4; f.life--;
+      if (f.life <= 0) floaters.splice(i, 1);
+    }
+  }
+
+  // ─── Draw ───────────────────────────────────────────────────────────
+  function draw() {
+    ctx.clearRect(0, 0, CW, CH);
+    ctx.save();
+    ctx.translate(-cam.x, -cam.y);
+
+    drawGround();
+    drawLot();
+    drawShop();
+    drawCars();
+    drawNPCs();
+    drawPlayer();
+    drawPigeons();
+    drawLabels();
+    drawFx();
+
+    ctx.restore();
+
+    if (flash) {
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(CW / 2 - 160, 40, 320, 36);
+      ctx.strokeStyle = "#e8a838";
+      ctx.strokeRect(CW / 2 - 160, 40, 320, 36);
+      ctx.fillStyle = "#f2efe6";
+      ctx.font = "bold 14px Segoe UI, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(flash.msg, CW / 2, 63);
+      ctx.textAlign = "left";
+    }
+
+    // minimap
+    drawMinimap();
+  }
+
+  function drawGround() {
+    // asphalt lot
+    ctx.fillStyle = "#3a4240";
+    ctx.fillRect(0, 0, 700, WORLD_H);
+    // shop floor
+    ctx.fillStyle = "#2e3430";
+    ctx.fillRect(700, 0, WORLD_W - 700, WORLD_H);
+    // lot stripes
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    ctx.lineWidth = 2;
+    for (let y = 100; y < WORLD_H - 80; y += 90) {
+      ctx.beginPath();
+      ctx.moveTo(60, y);
+      ctx.lineTo(640, y);
+      ctx.stroke();
+    }
+    // concrete stain
+    ctx.fillStyle = "rgba(20,20,16,0.25)";
+    ctx.beginPath();
+    ctx.ellipse(900, 500, 120, 60, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawLot() {
+    // lot label
+    ctx.fillStyle = "rgba(232,168,56,0.35)";
+    ctx.font = "bold 22px Segoe UI, sans-serif";
+    ctx.fillText("CUSTOMER LOT", 200, 90);
+    // dumpster
+    ctx.fillStyle = "#2a5028";
+    ctx.fillRect(560, 820, 70, 50);
+    ctx.fillStyle = "#1a3018";
+    ctx.fillRect(560, 815, 70, 10);
+    ctx.fillStyle = "#8a9488";
+    ctx.font = "10px sans-serif";
+    ctx.fillText("DUMPSTER", 568, 848);
+  }
+
+  function drawShop() {
+    // shop walls visual
+    ctx.fillStyle = "#1a201c";
+    // west wall segments
+    ctx.fillRect(680, 60, 28, 360);
+    ctx.fillRect(680, 560, 28, 360);
+    // door opening glow
+    ctx.fillStyle = "rgba(232,168,56,0.15)";
+    ctx.fillRect(680, 420, 28, 140);
+    ctx.fillStyle = "#e8a838";
+    ctx.font = "bold 11px sans-serif";
+    ctx.fillText("DOOR", 682, 495);
+
+    // north/south
+    ctx.fillStyle = "#1a201c";
+    ctx.fillRect(700, 60, 1000, 20);
+    ctx.fillRect(700, WORLD_H - 80, 1000, 20);
+    ctx.fillRect(WORLD_W - 44, 60, 24, WORLD_H - 140);
+
+    // FOH area
+    ctx.fillStyle = "#3a3228";
+    ctx.fillRect(780, 120, 260, 36);
+    ctx.fillStyle = "#e8a838";
+    ctx.font = "bold 12px sans-serif";
+    ctx.fillText("FRONT DESK — FOH", 820, 112);
+    // monitors
+    ctx.fillStyle = "#4a8";
+    ctx.fillRect(800, 128, 30, 18);
+    ctx.fillRect(860, 128, 30, 18);
+    ctx.fillRect(920, 128, 30, 18);
+
+    // Parts
+    ctx.fillStyle = "#3a3020";
+    ctx.fillRect(760, 640, 40, 200);
+    ctx.fillRect(920, 640, 40, 200);
+    ctx.fillRect(760, 860, 200, 30);
+    ctx.fillStyle = "#d08040";
+    ctx.font = "bold 12px sans-serif";
+    ctx.fillText("PARTS — MOE", 800, 630);
+    // forklift parked
+    ctx.fillStyle = "#c8a020";
+    ctx.fillRect(980, 780, 50, 28);
+    ctx.fillStyle = "#222";
+    ctx.beginPath(); ctx.arc(990, 810, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(1020, 810, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#888";
+    ctx.font = "9px sans-serif";
+    ctx.fillText("FORKLIFT", 982, 798);
+
+    // Washroom alcove
+    ctx.fillStyle = "#252a28";
+    ctx.fillRect(720, 312, 76, 106);
+    ctx.strokeStyle = "#4a5550";
+    ctx.strokeRect(720, 312, 76, 106);
+    ctx.fillStyle = "#8af";
+    ctx.font = "bold 10px sans-serif";
+    ctx.fillText("🚻", 744, 360);
+    ctx.fillText("WASH", 732, 378);
+
+    // Divider
+    ctx.fillStyle = "#1a201c";
+    ctx.fillRect(1100, 80, 20, 120);
+    ctx.fillRect(1100, 320, 20, 60);
+    ctx.fillRect(1100, 540, 20, 60);
+    ctx.fillRect(1100, 760, 20, 140);
+
+    // Bays
+    Object.entries(BAYS).forEach(([id, b]) => {
+      ctx.fillStyle = "rgba(50,70,90,0.35)";
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.strokeStyle = "rgba(232,168,56,0.4)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      ctx.fillStyle = "#e8a838";
+      ctx.font = "bold 13px sans-serif";
+      ctx.fillText(b.label, b.x + 16, b.y + 22);
+      // hoist arms
+      ctx.fillStyle = "#555";
+      ctx.fillRect(b.x + 40, b.y + 40, 14, 90);
+      ctx.fillRect(b.x + 200, b.y + 40, 14, 90);
+      ctx.fillStyle = "#777";
+      ctx.fillRect(b.x + 30, b.y + 120, 200, 8);
+    });
+
+    // Bay doors east
+    ["NIMA", "WON", "ROL"].forEach((lab, i) => {
+      const y = 160 + i * 220;
+      ctx.fillStyle = "#4a5560";
+      ctx.fillRect(1680, y, 36, 100);
+      ctx.fillStyle = "#222";
+      ctx.font = "9px sans-serif";
+      ctx.save();
+      ctx.translate(1698, y + 70);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText(lab, 0, 0);
+      ctx.restore();
+    });
+
+    // Shop title
+    ctx.fillStyle = "rgba(232,168,56,0.25)";
+    ctx.font = "bold 18px sans-serif";
+    ctx.fillText("SHOP FLOOR", 860, 560);
+  }
+
+  function drawCars() {
+    for (const c of cars) {
+      if (!c.inLot && !c.inBay) continue;
+      drawCarSprite(c);
+    }
+    // Moe forklift during heavy delivery
+    if (moeDelivery && moeDelivery.heavy && moeDelivery.phase === "walk") {
+      const moe = npcs.find((n) => n.id === "moe");
+      ctx.fillStyle = "#c8a020";
+      ctx.fillRect(moe.x - 30, moe.y - 10, 50, 24);
+      ctx.fillStyle = "#222";
+      ctx.beginPath(); ctx.arc(moe.x - 20, moe.y + 16, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(moe.x + 10, moe.y + 16, 6, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  function drawCarSprite(c) {
+    const highlight = c.jobId && jobState(c.jobId).stage === "assigned" && c.inLot;
+    if (highlight) {
+      ctx.strokeStyle = "#e8a838";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(c.x - 4, c.y - 4, c.w + 8, c.h + 8);
+      // pulse
+      ctx.globalAlpha = 0.3 + 0.2 * Math.sin(t * 4);
+      ctx.fillStyle = "#e8a838";
+      ctx.fillRect(c.x - 4, c.y - 4, c.w + 8, c.h + 8);
+      ctx.globalAlpha = 1;
+    }
+    // body
+    ctx.fillStyle = c.color;
+    roundRect(c.x, c.y, c.w, c.h, 6);
+    ctx.fill();
+    // windows
+    ctx.fillStyle = "rgba(40,60,80,0.7)";
+    ctx.fillRect(c.x + c.w * 0.2, c.y + 4, c.w * 0.45, c.h * 0.4);
+    // wheels
+    ctx.fillStyle = "#111";
+    ctx.fillRect(c.x + 6, c.y + c.h - 4, 12, 6);
+    ctx.fillRect(c.x + c.w - 18, c.y + c.h - 4, 12, 6);
+    // plate
+    if (c.plate) {
+      ctx.fillStyle = "#f2efe6";
+      ctx.fillRect(c.x + c.w * 0.25, c.y + c.h - 14, c.w * 0.5, 10);
+      ctx.fillStyle = "#111";
+      ctx.font = "bold 8px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(c.plate, c.x + c.w / 2, c.y + c.h - 6);
+      ctx.textAlign = "left";
+    }
+    // model badge
+    if (c.model) {
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.font = "9px sans-serif";
+      ctx.fillText("M" + c.model, c.x + 4, c.y + 12);
+    }
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function drawNPCs() {
+    for (const n of npcs) {
+      // shadow
+      ctx.fillStyle = "rgba(0,0,0,0.3)";
+      ctx.beginPath();
+      ctx.ellipse(n.x, n.y + 14, 14, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // body
+      ctx.fillStyle = n.color;
+      ctx.fillRect(n.x - 12, n.y - 16, 24, 28);
+      // head
+      ctx.fillStyle = "#e8c8a0";
+      ctx.beginPath();
+      ctx.arc(n.x, n.y - 22, 10, 0, Math.PI * 2);
+      ctx.fill();
+      // emoji hint
+      ctx.font = "12px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(n.emoji, n.x, n.y - 18);
+      // name tag
+      ctx.fillStyle = "rgba(0,0,0,0.65)";
+      ctx.fillRect(n.x - 28, n.y + 14, 56, 14);
+      ctx.fillStyle = "#f2efe6";
+      ctx.font = "bold 9px sans-serif";
+      ctx.fillText(n.name.split(" ")[0], n.x, n.y + 24);
+      ctx.textAlign = "left";
+
+      // proximity ring
+      if (nearTarget && nearTarget.kind === "npc" && nearTarget.id === n.id) {
+        ctx.strokeStyle = "#e8a838";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, 28 + Math.sin(t * 6) * 2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
+
+  function drawPlayer() {
+    if (!player) return;
+    const bob = Math.sin(t * 10) * (moveVec().dx || moveVec().dy ? 2 : 0);
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(player.x + 13, player.y + 24, 12, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Tesla red shirt apprentice
+    ctx.fillStyle = "#c43828";
+    ctx.fillRect(player.x + 2, player.y + 4 + bob, 22, 20);
+    ctx.fillStyle = "#e8c8a0";
+    ctx.beginPath();
+    ctx.arc(player.x + 13, player.y + bob, 9, 0, Math.PI * 2);
+    ctx.fill();
+    // eyes
+    ctx.fillStyle = "#222";
+    ctx.fillRect(player.x + 9 + player.facing * 2, player.y - 2 + bob, 3, 3);
+    ctx.fillRect(player.x + 15 + player.facing * 2, player.y - 2 + bob, 3, 3);
+    // name
+    ctx.fillStyle = "#e8a838";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(playerName.slice(0, 12), player.x + 13, player.y + 36 + bob);
+    ctx.textAlign = "left";
+  }
+
+  function drawPigeons() {
+    for (const p of pigeons) {
+      const px = p.x + Math.sin(t * 0.7 + p.phase) * 18;
+      const py = p.y + Math.cos(t * 0.5 + p.phase) * 6;
+      ctx.font = "14px sans-serif";
+      ctx.fillText("🐦", px, py);
+    }
+  }
+
+  function drawLabels() {
+    ctx.fillStyle = "rgba(242,239,230,0.5)";
+    ctx.font = "11px sans-serif";
+    ctx.fillText("← LOT", 620, 500);
+    ctx.fillText("BAYS →", 1125, 500);
+  }
+
+  function drawFx() {
+    for (const f of floaters) {
+      ctx.globalAlpha = Math.min(1, f.life / 30);
+      ctx.fillStyle = f.color;
+      ctx.font = "bold 14px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(f.text, f.x, f.y);
+      ctx.textAlign = "left";
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function drawMinimap() {
+    const mw = 140, mh = 78;
+    const mx = CW - mw - 10, my = CH - mh - 10;
+    ctx.fillStyle = "rgba(10,12,10,0.75)";
+    ctx.fillRect(mx, my, mw, mh);
+    ctx.strokeStyle = "#e8a838";
+    ctx.strokeRect(mx, my, mw, mh);
+    const sx = mw / WORLD_W, sy = mh / WORLD_H;
+    // lot
+    ctx.fillStyle = "#3a4240";
+    ctx.fillRect(mx, my, 700 * sx, mh);
+    // shop
+    ctx.fillStyle = "#2e3430";
+    ctx.fillRect(mx + 700 * sx, my, (WORLD_W - 700) * sx, mh);
+    // bays
+    ctx.fillStyle = "#4a6a8a";
+    Object.values(BAYS).forEach((b) => {
+      ctx.fillRect(mx + b.x * sx, my + b.y * sy, b.w * sx, b.h * sy);
+    });
+    // npcs
+    for (const n of npcs) {
+      ctx.fillStyle = n.color;
+      ctx.fillRect(mx + n.x * sx - 1, my + n.y * sy - 1, 3, 3);
+    }
+    // player
+    if (player) {
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(mx + player.x * sx - 2, my + player.y * sy - 2, 4, 4);
+    }
+    // job cars assigned
+    for (const c of cars) {
+      if (c.jobId && c.inLot && jobState(c.jobId).stage === "assigned") {
+        ctx.fillStyle = "#e8a838";
+        ctx.fillRect(mx + c.x * sx - 1, my + c.y * sy - 1, 3, 3);
+      }
+    }
+  }
+
+  // ─── Loop ───────────────────────────────────────────────────────────
+  function frame(ts) {
+    if (!lastTs) lastTs = ts;
+    let dt = (ts - lastTs) / 1000;
+    lastTs = ts;
+    if (dt > 0.05) dt = 0.05;
+    if (playing) update(dt);
+    if (playing) draw();
+    requestAnimationFrame(frame);
+
+  }
+  requestAnimationFrame(frame);
+
+
+  // ─── Start / reset ──────────────────────────────────────────────────
   function startGame() {
-    const raw = (els.nameInput.value || "").trim();
-    state.name = raw || "Apprentice";
-    els.title.classList.remove("active");
-    els.game.classList.add("active");
-    goTo("floor");
+    playerName = (els.nameInput.value || "").trim() || "Apprentice";
+    resetJobs();
+    buildWorld();
+    playing = true;
+    moeDelivery = null;
+    cutscene = null;
+    dialogueQueue = null;
+    flash = null;
+    els.title.classList.add("hidden");
+    els.hud.classList.remove("hidden");
+    els.touch.classList.remove("hidden");
+    els.win.classList.add("hidden");
+    els.dialogue.classList.add("hidden");
+    refreshHUD();
+    setPrompt("");
+    // center cam
+    cam.x = player.x - CW / 2;
+    cam.y = player.y - CH / 2;
+    clampCam();
   }
 
   els.btnStart.addEventListener("click", startGame);
   els.nameInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") startGame();
   });
-  els.btnHelp.addEventListener("click", () => els.helpModal.classList.remove("hidden"));
-  els.btnCloseHelp.addEventListener("click", () => els.helpModal.classList.add("hidden"));
-  els.btnReplay.addEventListener("click", resetGame);
 
+  els.btnHelp.addEventListener("click", () => els.help.classList.remove("hidden"));
+  els.btnCloseHelp.addEventListener("click", () => els.help.classList.add("hidden"));
 
-  // Schematic click-to-navigate
-  if (els.schematic) {
-    els.schematic.querySelectorAll("[data-loc]").forEach((el) => {
-      el.style.cursor = "pointer";
-      el.addEventListener("click", () => {
-        const id = el.getAttribute("data-loc");
-        if (id && LOCATIONS[id]) goTo(id);
-      });
-    });
-  }
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      els.helpModal.classList.add("hidden");
-      return;
-    }
-    if (!els.game.classList.contains("active")) return;
-    if (e.target.matches("input, textarea")) return;
-    const loc = Object.values(LOCATIONS).find((l) => l.key === e.key);
-    if (loc) goTo(loc.id);
+  els.btnReplay.addEventListener("click", () => {
+    els.win.classList.add("hidden");
+    startGame();
   });
+
+  // Show touch on coarse pointers
+  if (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) {
+    els.touch.style.opacity = "1";
+  }
 })();
