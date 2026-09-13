@@ -339,6 +339,12 @@ html, body {
   background: rgba(125, 255, 58, 0.25) !important;
   border-color: var(--lime) !important;
 }
+#btn-beam.hidden {
+  display: none !important;
+}
+#beamed-label.hidden {
+  display: none !important;
+}
 
 @media (min-width: 900px) and (pointer: fine) {
   #touch { display: none !important; }

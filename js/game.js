@@ -1,7 +1,7 @@
 /**
  * Mothership — Chilliwack skies
- * Flow: Shed (grab cassette) → Yard → BoardCutscene → Cassette insert → Fly
- * Pilots: Zakk (char-ref-2) & Tayler (char-ref-1)
+ * Flow: title → shed → yard → cockpit (insert tape) → seat → fly → results
+ * (no boarding cutscene). Pilots: Zakk (char-ref-2) & Tayler (char-ref-1)
  */
 (function () {
   const W = MothershipWorld;
@@ -43,11 +43,10 @@
   let interactQueued = false;
   let beamQueued = false;
   let jumpQueued = false;
-  let skipQueued = false;
   let prevInteractHeld = false;
   let prevBeamHeld = false;
 
-  // title | shed | yard | boardCutscene | cassette | fly | results
+  // title | shed | yard | cockpit | fly | results
   let mode = 'title';
   let t = 0;
   let lastTs = 0;
@@ -63,11 +62,12 @@
   let camX = 0;
   let tayler = null;
   let landing = null;
-  let cutscene = null;
   let cassette = null;
   let fly = null;
-  let hasCassette = false; // inventory: grabbed in shed
-  let tapeInDeck = false; // inserted in cockpit deck this run
+  let hasCassette = false;
+  let tapeInDeck = false;
+  /** 0..1 UFO fly-in seen through shed window; continues into yard settle */
+  let windowUfo = 0;
 
   function getHigh() {
     return parseInt(localStorage.getItem(HS_KEY) || '0', 10) || 0;
@@ -91,8 +91,7 @@
     const labels = {
       shed: 'SHED',
       yard: 'YARD',
-      boardCutscene: 'BOARDING',
-      cassette: 'CASSETTE',
+      cockpit: 'COCKPIT',
       fly: 'FLY',
     };
     el.modeLabel.textContent = labels[mode] || '';
@@ -105,6 +104,7 @@
       el.district.classList.add('hidden');
     }
     syncInvHud();
+    syncBeamUi();
   }
 
   function syncInvHud() {
@@ -113,6 +113,16 @@
     el.invCassette.classList.toggle('hidden', !show);
     el.invCassette.classList.toggle('used', !!tapeInDeck);
     el.invCassette.textContent = tapeInDeck ? '📼 In deck' : '📼 Cassette';
+  }
+
+  /** Beam touch control + fly-only HUD bits — hidden until fly after driver’s seat. */
+  function syncBeamUi() {
+    const flying = mode === 'fly';
+    if (el.btnBeam) el.btnBeam.classList.toggle('hidden', !flying);
+    if (el.beamed) {
+      const wrap = document.getElementById('beamed-label');
+      if (wrap) wrap.classList.toggle('hidden', !flying);
+    }
   }
 
   function setPrompt(text) {
@@ -125,15 +135,23 @@
     const playing = name === 'play';
     el.hud.classList.toggle('hidden', !playing);
     el.touch.classList.toggle('hidden', !playing);
+    syncBeamUi();
   }
 
   function makeAvatar(x, y) {
-    return { x, y, vx: 0, vy: 0, facing: 1, onGround: true, w: 20, h: 48 };
+    // Hitbox sized for CHAR_SCALE ~1.48 sprites
+    return { x, y, vx: 0, vy: 0, facing: 1, onGround: true, w: 28, h: 70 };
+  }
+
+  function gestureUnlock() {
+    Audio.unlock();
+    Audio.warm();
   }
 
   // ——— Mode transitions ———
   function startGame() {
-    Audio.unlock();
+    gestureUnlock();
+    Audio.warm();
     Audio.stopTheme();
     Audio.play('ui');
     score = 0;
@@ -143,9 +161,10 @@
     flashMsg = null;
     fly = null;
     cassette = null;
-    cutscene = null;
+    landing = null;
     hasCassette = false;
     tapeInDeck = false;
+    windowUfo = 0;
     syncInvHud();
     enterShed();
   }
@@ -161,7 +180,7 @@
     showScreen('play');
     syncHud();
     setPrompt('Grab the cassette, then leave through EXIT');
-    showFlash('Find & grab the cassette — then EXIT', 150);
+    showFlash('Find & grab the cassette — UFO landing out back!', 150);
   }
 
   function enterYard() {
@@ -169,69 +188,59 @@
     interactQueued = false;
     jumpQueued = false;
     prevInteractHeld = true;
-    // Tayler follows into yard
     tayler = { x: 240, y: GROUND };
     Audio.play('ui');
     camX = 0;
     avatar = makeAvatar(280, GROUND);
-    landing = {
-      phase: 'approach',
-      x: 720,
-      y: -80,
-      targetY: GROUND - 55,
-      scale: 1.4,
-      lights: true,
-      timer: 0,
-    };
+
+    // Outside: UFO already landed or finishing a short settle (no long wait)
+    const targetY = GROUND - 72;
+    if (windowUfo >= 0.92) {
+      landing = {
+        phase: 'landed',
+        x: 720,
+        y: targetY,
+        targetY: targetY,
+        scale: 1.85,
+        lights: true,
+        timer: 0,
+      };
+      Audio.play('landing');
+      showFlash('Mothership waiting. Walk up and ENTER.', 120);
+      setPrompt('Walk to the UFO and ENTER');
+    } else {
+      const remain = 1 - windowUfo;
+      landing = {
+        phase: 'descend',
+        x: 720,
+        y: targetY - Math.max(18, remain * 70),
+        targetY: targetY,
+        scale: 1.85,
+        lights: true,
+        timer: 0,
+      };
+      setPrompt("UFO finishing landing — then walk up and ENTER");
+      showFlash('Short settle — then hop aboard.', 110);
+    }
     showScreen('play');
     syncHud();
-    setPrompt("Something's landing in the backyard…");
-    showFlash('UFO inbound — dry ice budget approved!', 130);
   }
 
-  function enterBoardCutscene() {
-    mode = 'boardCutscene';
-    skipQueued = false;
+  function enterCockpit() {
+    mode = 'cockpit';
     interactQueued = false;
-    Audio.play('landing');
-    Audio.play('power');
-    const ufoX = landing ? landing.x : 720;
-    const ufoY = landing ? landing.y : GROUND - 55;
-    cutscene = {
-      camX: Math.max(0, ufoX - CW * 0.55),
-      ufoX: ufoX,
-      ufoY: ufoY,
-      zakk: { x: (avatar ? avatar.x : 400), y: GROUND },
-      tayler: { x: (tayler ? tayler.x : 360), y: GROUND },
-      progress: 0,
-      walking: true,
-      phase: 'walk', // walk | enter | done
-      timer: 0,
-    };
-    avatar = null;
-    landing = null;
-    tayler = null;
-    showScreen('play');
-    syncHud();
-    setPrompt('Space / Enter / click — skip');
-    showFlash('Zakk & Tayler boarding…', 100);
-  }
-
-  function enterCassette() {
-    mode = 'cassette';
-    interactQueued = false;
-    skipQueued = false;
     prevInteractHeld = true;
-    cutscene = null;
+    landing = null;
     cassette = {
       inserted: false,
       insertProgress: 0,
       inserting: false,
-      doneTimer: 0,
+      seated: false,
+      seatTimer: 0,
       hasTape: !!hasCassette,
+      musicStarted: false,
     };
     Audio.play('ui');
-    // Theme does NOT start yet — insert gate
     showScreen('play');
     syncHud();
     if (hasCassette) {
@@ -274,7 +283,6 @@
       shakeY: 0,
       controlsUnlocked: true,
     };
-    // seed world
     for (let i = 0; i < 12; i++) spawnProp(200 + i * 160);
     for (let i = 0; i < 5; i++) spawnFlyTarget(300 + i * 200);
     showScreen('play');
@@ -285,7 +293,6 @@
 
   function endMission() {
     Audio.play('gameOver');
-    // Theme keeps playing through results until title / new game
     mode = 'results';
     const high = getHigh();
     const isNew = score > high;
@@ -312,7 +319,6 @@
 
   function spawnFlyTarget(atX) {
     if (!fly) return;
-    // ~65% people (good), ~35% hazards (bad)
     const human = Math.random() < 0.65;
     const kind = human ? W.pick(W.PEOPLE_KINDS) : W.pick(W.HAZARD_KINDS);
     fly.targets.push({
@@ -355,11 +361,6 @@
     return edge;
   }
 
-  function wantsSkip() {
-    if (skipQueued) { skipQueued = false; return true; }
-    return false;
-  }
-
   function beamHeld() {
     return !!(keys[' '] || keys['space'] || keys['b']);
   }
@@ -379,6 +380,7 @@
       e.preventDefault();
     }
     if (k === 'm') {
+      gestureUnlock();
       Audio.toggle();
       updateMuteUI();
     }
@@ -387,11 +389,7 @@
 
     if (k === 'e' || k === 'enter') interactQueued = true;
 
-    if (mode === 'boardCutscene' && (k === 'enter' || k === ' ' || k === 'e')) {
-      skipQueued = true;
-    }
-
-    if (mode === 'cassette' && (k === 'e' || k === ' ' || k === 'enter')) {
+    if (mode === 'cockpit' && (k === 'e' || k === ' ' || k === 'enter')) {
       interactQueued = true;
     }
 
@@ -411,10 +409,8 @@
     keys[e.key.toLowerCase()] = false;
   });
 
-  // click to skip cutscene / insert cassette
   canvas.addEventListener('click', () => {
-    if (mode === 'boardCutscene') skipQueued = true;
-    else if (mode === 'cassette' && cassette && !cassette.inserted) interactQueued = true;
+    if (mode === 'cockpit' && cassette) interactQueued = true;
     else if (mode === 'title') startGame();
   });
 
@@ -432,7 +428,7 @@
     el.titleHigh.textContent = 'High Score: ' + getHigh();
   });
   el.muteBtn.addEventListener('click', () => {
-    Audio.unlock();
+    gestureUnlock();
     Audio.toggle();
     updateMuteUI();
   });
@@ -454,30 +450,24 @@
   el.btnBeam.addEventListener('touchstart', (e) => {
     e.preventDefault();
     if (mode === 'fly') beamQueued = true;
-    else if (mode === 'cassette') interactQueued = true;
-    else if (mode === 'boardCutscene') skipQueued = true;
+    else if (mode === 'cockpit') interactQueued = true;
     else if (mode === 'shed' || mode === 'yard') interactQueued = true;
   }, { passive: false });
   el.btnBeam.addEventListener('mousedown', (e) => {
     e.preventDefault();
     if (mode === 'fly') beamQueued = true;
-    else if (mode === 'cassette') interactQueued = true;
-    else if (mode === 'boardCutscene') skipQueued = true;
+    else if (mode === 'cockpit') interactQueued = true;
     else if (mode === 'shed' || mode === 'yard') interactQueued = true;
   });
 
   el.btnInteract.addEventListener('touchstart', (e) => {
     e.preventDefault();
     if (mode === 'fly') endMission();
-    else if (mode === 'boardCutscene') skipQueued = true;
-    else if (mode === 'cassette') interactQueued = true;
     else interactQueued = true;
   }, { passive: false });
   el.btnInteract.addEventListener('mousedown', (e) => {
     e.preventDefault();
     if (mode === 'fly') endMission();
-    else if (mode === 'boardCutscene') skipQueued = true;
-    else if (mode === 'cassette') interactQueued = true;
     else interactQueued = true;
   });
 
@@ -540,6 +530,8 @@
 
   // ——— Updates ———
   function updateShed() {
+    // UFO progresses through shed window while hanging out
+    windowUfo = Math.min(1, windowUfo + 0.00135);
     updateSideScroller(W.SHED_WORLD_W);
 
     if (tayler && Math.abs(avatar.x - tayler.x) < 60 && Math.random() < 0.012) {
@@ -550,6 +542,8 @@
       setPrompt('↑ / E / USE — Grab cassette tape');
       if (wantsInteract()) {
         hasCassette = true;
+        gestureUnlock();
+        Audio.warm();
         Audio.play('ui');
         Audio.play('cassette');
         showFlash('Cassette acquired!', 130);
@@ -575,7 +569,7 @@
     } else {
       prevInteractHeld = interactHeld();
       if (!hasCassette) {
-        setPrompt('← → walk · find cassette near amp · then EXIT →');
+        setPrompt('← → walk · find cassette near amp · watch the window · EXIT →');
       } else {
         setPrompt('← → walk · Space jump · hang with Tayler · EXIT →');
       }
@@ -585,92 +579,47 @@
   function updateYard() {
     updateSideScroller(1200);
     landing.timer++;
+    windowUfo = Math.min(1, windowUfo + 0.01);
 
-    // Tayler wanders toward UFO slowly once landed
     if (tayler && landing.phase === 'landed') {
       const tx = landing.x - 50;
       if (tayler.x < tx - 4) tayler.x += 1.2;
       else if (tayler.x > tx + 4) tayler.x -= 1.2;
     }
 
-    if (landing.phase === 'approach') {
-      landing.x = 700 + Math.sin(t * 0.003) * 20;
-      landing.y += 1.2;
-      if (landing.y >= landing.targetY - 80) landing.phase = 'descend';
-    } else if (landing.phase === 'descend') {
-      landing.y += 0.8;
+    if (landing.phase === 'descend') {
+      // Fast settle — no long wait
+      landing.y += 2.4;
       landing.lights = true;
-      if (landing.timer % 8 === 0) {
+      if (landing.timer % 6 === 0) {
         W.burst(particles, landing.x - camX, GROUND - 10, '#c8d8e0', 3);
       }
       if (landing.y >= landing.targetY) {
         landing.y = landing.targetY;
         landing.phase = 'landed';
+        windowUfo = 1;
         Audio.play('landing');
         Audio.play('power');
-        showFlash('Mothership landed. Walk up with Tayler and BOARD.', 140);
+        showFlash('Mothership ready. Walk up and ENTER.', 130);
       }
     }
 
     if (landing.phase === 'landed') {
       if (nearInteract()) {
-        setPrompt('↑ / E / USE — Board with Tayler');
+        setPrompt('↑ / E / USE — Enter UFO');
         if (wantsInteract()) {
-          enterBoardCutscene();
+          Audio.play('power');
+          enterCockpit();
           return;
         }
       } else {
         prevInteractHeld = interactHeld();
-        setPrompt('Walk to the UFO ramp and board');
+        setPrompt('Walk to the UFO and ENTER');
       }
     }
   }
 
-  function updateBoardCutscene() {
-    cutscene.timer++;
-    if (wantsSkip() || wantsInteract()) {
-      enterCassette();
-      return;
-    }
-
-    const targetX = cutscene.ufoX;
-    const rampTopY = cutscene.ufoY + 10;
-
-    // walk both toward ramp
-    if (cutscene.phase === 'walk') {
-      cutscene.walking = true;
-      let done = true;
-      for (const who of [cutscene.zakk, cutscene.tayler]) {
-        if (who.x < targetX - 10) {
-          who.x += 2.2;
-          done = false;
-        }
-        // climb ramp as approaching
-        if (who.x > targetX - 55) {
-          const climb = Math.min(1, (who.x - (targetX - 55)) / 45);
-          who.y = GROUND + (rampTopY - GROUND) * climb;
-        }
-      }
-      cutscene.progress = Math.min(1, (cutscene.zakk.x - (targetX - 120)) / 120);
-      cutscene.camX += (Math.max(0, targetX - CW * 0.55) - cutscene.camX) * 0.08;
-      if (done || cutscene.timer > 280) {
-        cutscene.phase = 'enter';
-        cutscene.timer = 0;
-        cutscene.walking = false;
-        showFlash('Into the clay mothership…', 80);
-      }
-    } else if (cutscene.phase === 'enter') {
-      // fade into door — shrink / rise
-      cutscene.progress = Math.min(1, cutscene.timer / 50);
-      cutscene.zakk.y -= 0.8;
-      cutscene.tayler.y -= 0.8;
-      if (cutscene.timer > 55) {
-        enterCassette();
-      }
-    }
-  }
-
-  function updateCassette() {
+  function updateCockpit() {
     cassette.hasTape = !!hasCassette;
 
     if (!hasCassette) {
@@ -679,6 +628,7 @@
       return;
     }
 
+    // Insert: music MUST start on this same gesture tick (iOS/Safari)
     if (!cassette.inserted) {
       setPrompt('E / Space / USE — insert cassette into deck');
       if (wantsInteract()) {
@@ -686,6 +636,11 @@
         cassette.inserted = true;
         cassette.insertProgress = 0;
         Audio.play('cassette');
+        // Same tick as user press — unlock + playTheme for gesture-tied HTMLAudioElement.play()
+        gestureUnlock();
+        Audio.playTheme();
+        cassette.musicStarted = true;
+        tapeInDeck = true;
         showFlash('Click. Clunk. Theme engaged.', 90);
         syncInvHud();
       } else {
@@ -694,24 +649,41 @@
     }
 
     if (cassette.inserting) {
-      cassette.insertProgress = Math.min(1, cassette.insertProgress + 0.04);
+      cassette.insertProgress = Math.min(1, cassette.insertProgress + 0.05);
       if (cassette.insertProgress >= 1) {
         cassette.inserting = false;
-        cassette.doneTimer = 1;
-        // START THEME now — respect mute; plays rest of run
-        Audio.unlock();
-        Audio.playTheme();
+        // Theme already started on gesture; reinforce play in case of flaky resume
+        if (!cassette.musicStarted) {
+          gestureUnlock();
+          Audio.playTheme();
+          cassette.musicStarted = true;
+        } else {
+          Audio.playTheme();
+        }
         Audio.play('power');
-        tapeInDeck = true;
-        showFlash('Mothership theme: ON. Flight controls unlocked!', 110);
+        showFlash('Tape locked. Sit in the driver’s seat to fly.', 120);
         syncInvHud();
       }
     }
 
-    if (cassette.doneTimer > 0) {
-      cassette.doneTimer++;
-      setPrompt('Get ready…');
-      if (cassette.doneTimer > 55) {
+    // After insert animation: sit in driver’s seat → unlock flight
+    if (cassette.inserted && cassette.insertProgress >= 1 && !cassette.seated) {
+      setPrompt('E / Space / USE — sit in the driver’s seat');
+      if (wantsInteract()) {
+        cassette.seated = true;
+        cassette.seatTimer = 1;
+        Audio.play('ui');
+        Audio.play('power');
+        showFlash('Driver’s seat — flight controls unlocked!', 100);
+      } else {
+        prevInteractHeld = interactHeld() || beamHeld();
+      }
+    }
+
+    if (cassette.seated) {
+      cassette.seatTimer++;
+      setPrompt('Launching…');
+      if (cassette.seatTimer > 40) {
         enterFly();
       }
     }
@@ -721,7 +693,6 @@
     const ix = inputX();
     const iy = inputY();
 
-    // Free flight L/R/U/D — flying right reveals world
     fly.vx += ix * 0.45;
     fly.vy += iy * 0.35;
     fly.vx *= 0.88;
@@ -734,7 +705,6 @@
     fly.ufoX = Math.max(50, Math.min(CW - 50, fly.ufoX));
     fly.ufoY = Math.max(50, Math.min(CH * 0.62, fly.ufoY));
 
-    // World scrolls based on rightward intent + always mild drift when moving right
     const scrollSpeed = 1.8 + Math.max(0, ix) * 2.8 + Math.max(0, fly.vx) * 0.35;
     fly.scrollX += scrollSpeed;
 
@@ -759,7 +729,6 @@
       showFlash('MOON JUICE! Wider beam!', 100);
     }
 
-    // props
     fly.propTimer--;
     if (fly.propTimer <= 0) {
       spawnProp();
@@ -767,7 +736,6 @@
     }
     fly.props = fly.props.filter((p) => p.x > fly.scrollX - 100);
 
-    // targets
     fly.spawnTimer--;
     if (fly.spawnTimer <= 0) {
       spawnFlyTarget();
@@ -775,7 +743,6 @@
     }
     fly.targets = fly.targets.filter((tg) => tg.x > fly.scrollX - 60 && !tg.beamed);
 
-    // beam
     const fireEdge = wantsBeamEdge();
     const holdBeam = beamHeld();
     if ((fireEdge || holdBeam) && fly.beamTimer <= 5) {
@@ -815,7 +782,6 @@
   function tryFlyBeam() {
     if (!fly) return;
     const half = (fly.beamWide ? 96 : 64) / 2;
-    // Beam hits targets near UFO screen X, converted to world
     const beamWorldX = fly.scrollX + fly.ufoX;
     let hit = false;
     for (const tg of fly.targets) {
@@ -833,7 +799,6 @@
           if (Math.random() < 0.45) showFlash(W.pick(W.ONE_LINERS), 130);
           else showFlash('Beamed: ' + tg.kind.label + '!', 70);
         } else {
-          // DAMAGE
           if (fly.invuln <= 0) {
             fly.lives--;
             fly.invuln = 50;
@@ -863,8 +828,7 @@
   function update() {
     if (mode === 'shed') updateShed();
     else if (mode === 'yard') updateYard();
-    else if (mode === 'boardCutscene') updateBoardCutscene();
-    else if (mode === 'cassette') updateCassette();
+    else if (mode === 'cockpit') updateCockpit();
     else if (mode === 'fly') updateFly();
 
     W.updateFx(particles, floaters);
@@ -902,7 +866,10 @@
     }
 
     if (mode === 'shed') {
-      W.drawShed(ctx, CW, CH, camX, t, { cassetteTaken: hasCassette });
+      W.drawShed(ctx, CW, CH, camX, t, {
+        cassetteTaken: hasCassette,
+        windowUfo: windowUfo,
+      });
       if (tayler) {
         W.drawTayler(ctx, tayler.x - camX, tayler.y, 1, false, t, { seated: true, smoking: true });
       }
@@ -912,7 +879,7 @@
         ctx.fillStyle = hasCassette ? '#7dff3a' : '#ff8866';
         ctx.font = 'bold 16px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(hasCassette ? '▲ ENTER' : '▲ NEED CASSETTE', W.SHED_DOOR_X - camX, GROUND - 150);
+        ctx.fillText(hasCassette ? '▲ ENTER' : '▲ NEED CASSETTE', W.SHED_DOOR_X - camX, GROUND - 170);
         ctx.textAlign = 'left';
       }
     } else if (mode === 'yard') {
@@ -926,12 +893,10 @@
         ctx.fillStyle = '#7dff3a';
         ctx.font = 'bold 16px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('▲ BOARD', landing.x - camX, landing.y - 70);
+        ctx.fillText('▲ ENTER', landing.x - camX, landing.y - 70);
         ctx.textAlign = 'left';
       }
-    } else if (mode === 'boardCutscene') {
-      W.drawBoardCutscene(ctx, CW, CH, cutscene, t);
-    } else if (mode === 'cassette') {
+    } else if (mode === 'cockpit') {
       W.drawCassetteScene(ctx, CW, CH, cassette, t);
     } else if (mode === 'fly') {
       W.drawFlyScene(ctx, CW, CH, fly, t);
@@ -964,6 +929,9 @@
   el.titleHigh.textContent = 'High Score: ' + getHigh();
   updateMuteUI();
   showScreen('title');
+  syncBeamUi();
+  // Warm theme element on load (fetch only — play still needs a gesture)
+  if (Audio && Audio.warm) Audio.warm();
   requestAnimationFrame(frame);
 
   function fitCanvas() {

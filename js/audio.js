@@ -1,6 +1,7 @@
 /**
  * Tiny Web Audio beep engine + theme music for Mothership.
- * Mute persists in localStorage. Theme starts on cockpit cassette insert;
+ * Mute persists in localStorage. Theme starts on cockpit cassette insert
+ * (must call playTheme inside the same user gesture for iOS/Safari);
  * keeps playing through fly + results; stops on title / new game only.
  */
 (function (global) {
@@ -12,6 +13,7 @@
   let musicEl = null;
   let musicWanted = false;
   let musicUnlocked = false;
+  let playRetryTimer = null;
 
   function ensureCtx() {
     if (!ctx) {
@@ -19,7 +21,9 @@
       if (!AC) return null;
       ctx = new AC();
     }
-    if (ctx.state === 'suspended') ctx.resume();
+    if (ctx.state === 'suspended') {
+      try { ctx.resume(); } catch (_) { /* ignore */ }
+    }
     return ctx;
   }
 
@@ -29,22 +33,61 @@
       musicEl.loop = true;
       musicEl.preload = 'auto';
       musicEl.volume = 0.55;
+      // Kick off network fetch early (does not require a gesture)
+      try { musicEl.load(); } catch (_) { /* ignore */ }
     }
     return musicEl;
+  }
+
+  function clearPlayRetry() {
+    if (playRetryTimer != null) {
+      clearTimeout(playRetryTimer);
+      playRetryTimer = null;
+    }
+  }
+
+  function tryPlayElement(el) {
+    if (!el) return;
+    let p;
+    try {
+      p = el.play();
+    } catch (_) {
+      schedulePlayRetry();
+      return;
+    }
+    if (p && typeof p.then === 'function') {
+      p.then(function () {
+        clearPlayRetry();
+      }).catch(function () {
+        // Autoplay / gesture may have expired — retry briefly while wanted
+        schedulePlayRetry();
+      });
+    }
+  }
+
+  function schedulePlayRetry() {
+    if (!musicWanted || muted || !musicUnlocked) return;
+    if (playRetryTimer != null) return;
+    playRetryTimer = setTimeout(function () {
+      playRetryTimer = null;
+      syncMusicPlayback();
+    }, 280);
   }
 
   function syncMusicPlayback() {
     const el = ensureMusic();
     if (!el) return;
     if (muted || !musicWanted) {
+      clearPlayRetry();
       try { el.pause(); } catch (_) { /* ignore */ }
       return;
     }
-    if (!musicUnlocked) return;
-    const p = el.play();
-    if (p && typeof p.catch === 'function') {
-      p.catch(function () { /* wait for unlock */ });
+    if (!musicUnlocked) {
+      // Still try — some browsers allow it after prior unlock; retry if rejected
+      tryPlayElement(el);
+      return;
     }
+    tryPlayElement(el);
   }
 
   function tone(freq, dur, type, gain) {
@@ -122,6 +165,7 @@
       this.setMuted(!muted);
       return muted;
     },
+    /** Mark gesture unlock + warm AudioContext / HTMLAudioElement. Safe to call often. */
     unlock() {
       musicUnlocked = true;
       ensureCtx();
@@ -129,21 +173,41 @@
       const el = musicEl;
       if (el) {
         const wasWanted = musicWanted && !muted;
-        el.play().then(function () {
-          if (!wasWanted) el.pause();
-          else syncMusicPlayback();
-        }).catch(function () {
-          syncMusicPlayback();
-        });
+        // Prime play() inside the gesture; pause again if theme not wanted yet
+        const p = el.play();
+        if (p && typeof p.then === 'function') {
+          p.then(function () {
+            if (!wasWanted) {
+              try { el.pause(); } catch (_) { /* ignore */ }
+            } else {
+              syncMusicPlayback();
+            }
+          }).catch(function () {
+            // Gesture may still unlock on a later successful playTheme
+            if (wasWanted) syncMusicPlayback();
+          });
+        }
       }
     },
+    /** Create + preload theme element early (Start / grab). Does not require unlock. */
+    warm() {
+      ensureMusic();
+      ensureCtx();
+    },
+    /**
+     * Start looping theme. Call inside the same user-gesture tick as insert
+     * (iOS/Safari blocks delayed play()). Retries if play() rejects.
+     */
     playTheme() {
       musicWanted = true;
+      musicUnlocked = true;
+      ensureCtx();
       ensureMusic();
       syncMusicPlayback();
     },
     stopTheme() {
       musicWanted = false;
+      clearPlayRetry();
       const el = musicEl;
       if (el) {
         try {
@@ -159,5 +223,6 @@
       }
     },
     isThemeWanted() { return musicWanted; },
+    isUnlocked() { return musicUnlocked; },
   };
 })(window);
