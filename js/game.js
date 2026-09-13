@@ -152,10 +152,11 @@
 
   function makeCaminoDriverDraw() {
     return function (ctx) {
-      // Local nose-left space: seat under side glass, facing hood (-x)
-      W.drawZakk(ctx, W.CAMINO_DOOR_DX, -8, -1, false, t, {
+      // Bust only — drawElCamino clips to the side-window path.
+      // y/scale place head+shoulders in the glass, not through the door.
+      W.drawZakk(ctx, W.CAMINO_DOOR_DX + 6, -78, -1, false, t, {
         seated: true,
-        scale: 0.82,
+        scale: 0.4,
         noLabel: true,
         noShadow: true,
         smoking: false,
