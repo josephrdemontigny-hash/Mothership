@@ -709,9 +709,8 @@
 
   function puffProg() {
     if (puffTimer <= 0) return 0;
-    // Peak mid-puff (~32 frames)
-    const p = puffTimer / 32;
-    return Math.max(0, Math.min(1, p > 0.5 ? (1 - (p - 0.5) * 2) * 0.3 + 0.7 : p * 2));
+    // Count-down timer: strong at start, soft fade at end
+    return Math.max(0, Math.min(1, puffTimer / 22));
   }
 
   function interactHeld() {
