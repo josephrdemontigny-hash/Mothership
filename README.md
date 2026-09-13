@@ -1,7 +1,7 @@
 # Mothership — Chilliwack Skies
 
 Arcade comedy game inspired by Retrofit’s song **“Mothership”**.  
-You start in **mom’s shed**, watch a clay UFO land in the backyard, board it, pilot from the **cockpit**, then drop into **Beam Mode** to abduct Chilliwackians.
+You start in **mom’s shed** (chilling with Taylor), watch a clay UFO land in the backyard, board it, **fly** from the **cockpit**, then drop into **Beam Mode** to abduct Chilliwackians.
 
 **Tone:** absurd cheesy comedy, green B-movie aliens (the band in bad costumes).  
 **Pilots (copy/UI):** Zakk & Taylor (T).
@@ -38,9 +38,9 @@ Works in modern Chrome / Safari; phone landscape is supported (on-screen pad + U
 ## Game flow
 
 1. **Title** → Start  
-2. **SHED** (side-scroller) — walk around mom’s garage, leave through the exit door  
+2. **SHED** (tight side-scroller) — hang with **Taylor**, smoke, leave through the nearby exit door  
 3. **YARD** (side-scroller) — mothership landing beat (lights + fog), walk up and **enter** the UFO  
-4. **COCKPIT** — interior / window view; steer the Chilliwack scenery outside  
+4. **COCKPIT** — full 2D flight (bank / climb / dive); dodge birds, towers, power lines; theme song plays  
 5. **BEAM** — separate side-scroller mode; align over ground targets and beam them up  
 6. Exit beam → cockpit again, or **Enter** from cockpit for mission debrief / results  
 
@@ -50,16 +50,27 @@ HUD mode label always shows: **SHED / YARD / COCKPIT / BEAM**.
 
 | Action | Desktop | Touch |
 |--------|---------|--------|
-| Move / steer | ← → or A D | On-screen ◀ ▶ |
+| Walk (shed/yard) | ← → or A D | On-screen ◀ ▶ |
 | Jump (shed/yard) | Space | ▲ (when not at a door) |
 | Interact / enter | ↑ / W / E / Enter | USE button |
+| **Fly — bank** | ← → or A D | ◀ ▶ |
+| **Fly — climb / dive** | ↑ ↓ or W S | ▲ ▼ |
+| **Boost** | Shift (stronger with Moon Juice) | — |
 | Beam Mode on/off | **B** (cockpit ↔ beam) | BEAM (cockpit) / USE (exit beam) |
 | Fire beam | Space (in Beam Mode) | BEAM button |
 | End mission | Enter (cockpit) | USE in cockpit |
 | Mute | M or 🔊 button | 🔊 button |
 | Start / again | Start button or Enter / Space | Tap buttons |
 
-**Moon Juice:** random cockpit power-up — wider beam + slight speed boost while it lasts.
+**Moon Juice:** random cockpit power-up — wider beam + stronger Shift boost while it lasts.
+
+**Cockpit hazards:** birds, radio towers, power lines. Collisions cost a life (−75 score, screen shake). Three lives.
+
+## Music
+
+Boarding the mothership (`enterCockpit`) starts `assets/mothership-theme.mp3` on loop.  
+Mute pauses/stops playback; unmute resumes if you are still in cockpit or beam.  
+Theme stops on title, results, or ending the mission.
 
 ## Chilliwack flavour
 
@@ -80,9 +91,11 @@ mothership/
 ├── index.html          # shell + screens + HUD
 ├── css/style.css       # layout, title/results, touch UI
 ├── js/
-│   ├── audio.js        # Web Audio beeps + mute (localStorage)
+│   ├── audio.js        # SFX beeps + theme music + mute
 │   ├── world.js        # Shed / yard / cockpit / beam drawing + copy
-│   └── game.js         # modes, avatar, landing, cockpit, beam, score
+│   └── game.js         # modes, avatar, landing, flight, beam, score
+├── assets/
+│   └── mothership-theme.mp3
 ├── package.json        # npm start / npm run dev → serve
 └── README.md
 ```
@@ -95,7 +108,6 @@ Stored in `localStorage` under `mothership_highscore`. Mute preference: `mothers
 
 ## Suggested next features
 
-- Longer shed gag beats / Taylor as second avatar  
 - Chicken operating table bonus after beaming a fried-chicken target  
 - Guitar shred score-multiplier / boss fanfare  
 - More Fraser Valley POIs (Promontory, Sardis, Bridal Falls)  

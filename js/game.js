@@ -53,21 +53,15 @@
   let particles = [];
   let floaters = [];
 
-  // shared run stats
   let score = 0;
   let beamed = 0;
 
-  // side-scroller avatar (shed / yard)
   let avatar = null;
   let camX = 0;
+  let taylor = null; // shed companion
 
-  // landing state (yard)
   let landing = null;
-
-  // cockpit flight
   let fly = null;
-
-  // beam mode
   let beam = null;
 
   function getHigh() {
@@ -98,7 +92,11 @@
     el.modeLabel.textContent = labels[mode] || '';
     if (mode === 'cockpit' && fly) {
       el.district.classList.remove('hidden');
-      el.district.textContent = W.DISTRICTS[fly.districtIndex % W.DISTRICTS.length].name;
+      const altFt = Math.round(200 + fly.alt * 1800);
+      const spd = Math.round(40 + fly.speed * 28);
+      el.district.textContent =
+        W.DISTRICTS[fly.districtIndex % W.DISTRICTS.length].name +
+        ' · ' + altFt + 'ft · ' + spd;
     } else if (mode === 'beam') {
       el.district.classList.remove('hidden');
       el.district.textContent = 'Align & beam';
@@ -134,12 +132,15 @@
   // ——— Mode transitions ———
   function startGame() {
     Audio.unlock();
+    Audio.stopTheme();
     Audio.play('ui');
     score = 0;
     beamed = 0;
     particles = [];
     floaters = [];
     flashMsg = null;
+    fly = null;
+    beam = null;
     enterShed();
   }
 
@@ -147,27 +148,30 @@
     mode = 'shed';
     interactQueued = false;
     jumpQueued = false;
-    prevInteractHeld = true; // require fresh press
+    prevInteractHeld = true;
 
     camX = 0;
-    avatar = makeAvatar(120, GROUND);
+    // Start near the chill couch with Taylor — both visible
+    avatar = makeAvatar(200, GROUND);
+    taylor = { x: 355, y: GROUND }; // near couch / table
     showScreen('play');
     syncHud();
     setPrompt('← → walk · Space jump · ↑/E leave shed');
-    showFlash(W.pick(W.SHED_GAGS), 140);
+    showFlash(W.pick(W.SHED_GAGS), 160);
   }
 
   function enterYard() {
     mode = 'yard';
     interactQueued = false;
     jumpQueued = false;
-    prevInteractHeld = true; // require fresh press
+    prevInteractHeld = true;
+    taylor = null;
 
     Audio.play('ui');
     camX = 0;
     avatar = makeAvatar(280, GROUND);
     landing = {
-      phase: 'approach', // approach | descend | landed
+      phase: 'approach',
       x: 720,
       y: -80,
       targetY: GROUND - 50,
@@ -185,32 +189,52 @@
     mode = 'cockpit';
     interactQueued = false;
     jumpQueued = false;
-    prevInteractHeld = true; // require fresh press
+    prevInteractHeld = true;
 
     Audio.play('power');
+    Audio.unlock();
+    Audio.playTheme();
+
     avatar = null;
     landing = null;
     fly = {
       scrollX: 0,
-      speed: 2.2,
+      speed: 2.4,
+      targetSpeed: 2.4,
+      alt: 0.5,
+      bank: 0,
+      vy: 0,
       districtIndex: 0,
       districtTimer: 0,
       moonJuice: 0,
-      tilt: 0,
+      boosting: false,
+      lives: 3,
+      hazards: [],
+      spawnTimer: 90,
+      invuln: 0,
+      hitFlash: 0,
+      shakeX: 0,
+      shakeY: 0,
+      shake: 0,
     };
+    // seed a couple hazards ahead
+    for (let i = 0; i < 3; i++) spawnHazard(400 + i * 280);
     showScreen('play');
     syncHud();
-    setPrompt('← → steer · B Beam Mode · Enter end mission');
-    showFlash('Welcome aboard, Zakk & T. Clay UFO online.', 120);
+    setPrompt('←→ bank · ↑↓ climb/dive · Shift boost · B Beam · Enter end');
+    showFlash('Welcome aboard, Zakk & T. Theme song: ON. Fly!', 130);
   }
 
   function enterBeam() {
     mode = 'beam';
     interactQueued = false;
     jumpQueued = false;
-    prevInteractHeld = true; // require fresh press
+    prevInteractHeld = true;
 
     Audio.play('ui');
+    // theme keeps looping while aboard
+    if (Audio.isThemeWanted) Audio.playTheme();
+
     beam = {
       ufoX: CW / 2,
       scrollX: fly ? fly.scrollX : 0,
@@ -221,7 +245,6 @@
       wide: fly && fly.moonJuice > 0,
       moonJuice: fly ? fly.moonJuice : 0,
     };
-    // seed a few targets
     for (let i = 0; i < 4; i++) spawnBeamTarget(200 + i * 180);
     showScreen('play');
     syncHud();
@@ -237,13 +260,15 @@
     mode = 'cockpit';
     beam = null;
     Audio.play('ui');
+    Audio.playTheme();
     syncHud();
-    setPrompt('← → steer · B Beam Mode · Enter end mission');
-    showFlash('Back in the cockpit.', 80);
+    setPrompt('←→ bank · ↑↓ climb/dive · Shift boost · B Beam · Enter end');
+    showFlash('Back in the cockpit. Fly!', 80);
   }
 
   function endMission() {
     Audio.play('gameOver');
+    Audio.stopTheme();
     mode = 'results';
     const high = getHigh();
     const isNew = score > high;
@@ -270,12 +295,41 @@
     });
   }
 
+  function spawnHazard(atX) {
+    if (!fly) return;
+    const kinds = ['bird', 'bird', 'tower', 'powerline', 'bird'];
+    const kind = W.pick(kinds);
+    let alt;
+    if (kind === 'bird') alt = W.rand(0.35, 0.9);
+    else if (kind === 'tower') alt = W.rand(0.05, 0.35);
+    else alt = W.rand(0.25, 0.55); // powerline mid-low
+    fly.hazards.push({
+      x: atX != null ? atX : fly.scrollX + CW + W.rand(40, 220),
+      kind,
+      alt,
+      size: W.rand(0.4, 1),
+      phase: W.rand(0, Math.PI * 2),
+      hit: false,
+    });
+  }
+
   // ——— Input ———
   function inputX() {
     let v = 0;
     if (keys['arrowleft'] || keys['a'] || touchDirs.left) v -= 1;
     if (keys['arrowright'] || keys['d'] || touchDirs.right) v += 1;
     return v;
+  }
+
+  function inputY() {
+    let v = 0;
+    if (keys['arrowup'] || keys['w'] || touchDirs.up) v -= 1; // up = climb
+    if (keys['arrowdown'] || keys['s'] || touchDirs.down) v += 1; // down = dive
+    return v;
+  }
+
+  function wantsBoost() {
+    return !!(keys['shift'] || keys['shiftleft'] || keys['shiftright']);
   }
 
   function wantsJump() {
@@ -312,6 +366,7 @@
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     keys[k] = true;
+    if (e.key === 'Shift') keys['shift'] = true;
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k) || e.code === 'Space') {
       e.preventDefault();
     }
@@ -322,10 +377,8 @@
     if ((k === 'enter' || k === ' ') && mode === 'title') startGame();
     if ((k === 'enter' || k === ' ') && mode === 'results') startGame();
 
-    // interact
     if (k === 'e' || k === 'enter') interactQueued = true;
 
-    // beam mode toggle / fire
     if (k === 'b') {
       if (mode === 'cockpit') enterBeam();
       else if (mode === 'beam') exitBeamToCockpit();
@@ -337,7 +390,6 @@
       else if (mode === 'shed' || mode === 'yard') jumpQueued = true;
     }
 
-    // end mission from cockpit
     if (k === 'enter' && mode === 'cockpit') {
       endMission();
     }
@@ -345,17 +397,20 @@
 
   window.addEventListener('keyup', (e) => {
     keys[e.key.toLowerCase()] = false;
+    if (e.key === 'Shift') keys['shift'] = false;
   });
 
   el.btnStart.addEventListener('click', startGame);
   el.btnAgain.addEventListener('click', startGame);
   el.btnTitle.addEventListener('click', () => {
     Audio.play('ui');
+    Audio.stopTheme();
     mode = 'title';
     showScreen('title');
     el.titleHigh.textContent = 'High Score: ' + getHigh();
   });
   el.muteBtn.addEventListener('click', () => {
+    Audio.unlock();
     Audio.toggle();
     updateMuteUI();
   });
@@ -414,7 +469,6 @@
     if (Math.abs(avatar.vx) > maxSpd) avatar.vx = Math.sign(avatar.vx) * maxSpd;
     if (ix !== 0) avatar.facing = ix > 0 ? 1 : -1;
 
-    // Jump: Space (queued) or touch ▲ when not standing at an interactable
     if (avatar.onGround) {
       const touchJump = touchDirs.up && !nearInteract();
       if (wantsJump() || touchJump) {
@@ -435,13 +489,12 @@
     }
 
     avatar.x = Math.max(40, Math.min(worldW - 40, avatar.x));
-    camX = Math.max(0, Math.min(worldW - CW, avatar.x - CW * 0.4));
+    camX = Math.max(0, Math.min(Math.max(0, worldW - CW), avatar.x - CW * 0.4));
   }
 
   function nearInteract() {
     if (mode === 'shed') {
-      const doorX = 860;
-      return Math.abs(avatar.x - doorX) < 55;
+      return Math.abs(avatar.x - W.SHED_DOOR_X) < 50;
     }
     if (mode === 'yard' && landing && landing.phase === 'landed') {
       return Math.abs(avatar.x - landing.x) < 70;
@@ -451,10 +504,10 @@
 
   // ——— Update modes ———
   function updateShed() {
-    updateSideScroller(1000);
+    updateSideScroller(W.SHED_WORLD_W);
 
-    // gag near table
-    if (Math.abs(avatar.x - 650) < 40 && Math.random() < 0.01) {
+    // gag near chill table / Taylor
+    if (taylor && Math.abs(avatar.x - taylor.x) < 55 && Math.random() < 0.012) {
       showFlash(W.pick(W.SHED_GAGS), 100);
     }
 
@@ -466,7 +519,7 @@
       }
     } else {
       prevInteractHeld = interactHeld();
-      setPrompt('← → walk · Space jump · walk to EXIT →');
+      setPrompt('← → walk · Space jump · hang with T · EXIT →');
     }
   }
 
@@ -481,7 +534,6 @@
     } else if (landing.phase === 'descend') {
       landing.y += 0.8;
       landing.lights = true;
-      // fog particles
       if (landing.timer % 8 === 0) {
         W.burst(particles, landing.x, GROUND - 10, '#c8d8e0', 3);
       }
@@ -510,13 +562,40 @@
 
   function updateCockpit() {
     const ix = inputX();
-    fly.speed = 2.0 + Math.abs(ix) * 1.5 + (fly.moonJuice > 0 ? 0.8 : 0);
-    // steer: left scrolls "backward" feel, right forward — always drifts forward a bit
-    fly.scrollX += fly.speed + ix * 1.8;
-    fly.tilt = ix * 0.05;
+    const iy = inputY();
+
+    // Bank toward input; snappy
+    const bankTarget = ix * 0.28;
+    fly.bank += (bankTarget - fly.bank) * 0.12;
+
+    // Climb / dive
+    fly.vy += (-iy) * 0.0045; // up key => climb (alt up)
+    // slight auto-level
+    fly.vy *= 0.92;
+    fly.alt += fly.vy;
+    // also bank slightly affects "slide"
+    fly.alt += -fly.bank * 0.002;
+    fly.alt = Math.max(0.08, Math.min(0.95, fly.alt));
+
+    // Speed: base + lateral throttle feel + boost
+    const boost = wantsBoost() || (fly.moonJuice > 0 && wantsBoost());
+    fly.boosting = wantsBoost() && (fly.moonJuice > 0 || true);
+    // Moon Juice enables stronger boost; Shift always gives mild boost
+    let boostAmt = 0;
+    if (wantsBoost()) {
+      boostAmt = fly.moonJuice > 0 ? 2.2 : 0.9;
+    } else if (fly.moonJuice > 0) {
+      boostAmt = 0.5; // passive sip of juice
+    }
+    fly.boosting = boostAmt > 0.8;
+    const targetSpd = 2.2 + Math.abs(ix) * 1.4 + boostAmt + (1 - Math.abs(fly.alt - 0.5)) * 0.3;
+    fly.speed += (targetSpd - fly.speed) * 0.18;
+
+    // Always advance; bank adds lateral "strafe" to scroll feel
+    fly.scrollX += fly.speed + ix * 0.6;
 
     fly.districtTimer += fly.speed;
-    if (fly.districtTimer > 600) {
+    if (fly.districtTimer > 550) {
       fly.districtTimer = 0;
       fly.districtIndex++;
       syncHud();
@@ -525,18 +604,84 @@
 
     if (fly.moonJuice > 0) fly.moonJuice--;
 
-    // random moon juice pickup while flying (cheesy)
-    if (Math.random() < 0.002 && fly.moonJuice <= 0) {
+    if (Math.random() < 0.0018 && fly.moonJuice <= 0) {
       fly.moonJuice = 300;
       Audio.play('power');
-      showFlash('MOON JUICE! Beam Mode will be wider.', 100);
+      showFlash('MOON JUICE! Hold Shift for BOOST.', 100);
     }
 
-    if (consumeBeamKey()) {
-      // beam button from cockpit already handled via B
+    // Spawn hazards
+    fly.spawnTimer--;
+    if (fly.spawnTimer <= 0) {
+      spawnHazard();
+      fly.spawnTimer = W.rand(50, 110) - Math.min(40, fly.speed * 5);
     }
 
-    setPrompt('← → steer view · B Beam Mode · Enter = debrief');
+    // Move / cull hazards; collision vs ship "nose" at center alt
+    const shipWorldX = fly.scrollX + CW * 0.55;
+    for (const hz of fly.hazards) {
+      // birds drift a bit
+      if (hz.kind === 'bird') {
+        hz.alt += Math.sin(t * 0.01 + hz.phase) * 0.0015;
+        hz.alt = Math.max(0.2, Math.min(0.95, hz.alt));
+      }
+    }
+    fly.hazards = fly.hazards.filter((hz) => hz.x > fly.scrollX - 120);
+
+    if (fly.invuln > 0) fly.invuln--;
+    if (fly.hitFlash > 0) fly.hitFlash--;
+    if (fly.shake > 0) {
+      fly.shake--;
+      fly.shakeX = (Math.random() - 0.5) * fly.shake * 0.6;
+      fly.shakeY = (Math.random() - 0.5) * fly.shake * 0.6;
+    } else {
+      fly.shakeX = 0;
+      fly.shakeY = 0;
+    }
+
+    if (fly.invuln <= 0) {
+      for (const hz of fly.hazards) {
+        if (hz.hit) continue;
+        const dx = hz.x - shipWorldX;
+        // collision window in front of ship view
+        if (dx < -30 || dx > 90) continue;
+        const dAlt = Math.abs(hz.alt - fly.alt);
+        let thresh = hz.kind === 'bird' ? 0.12 : hz.kind === 'powerline' ? 0.1 : 0.18;
+        // towers only hit if flying low
+        if (hz.kind === 'tower' && fly.alt > 0.4) continue;
+        if (hz.kind === 'tower') thresh = 0.22;
+        if (dAlt < thresh) {
+          hz.hit = true;
+          fly.lives--;
+          fly.invuln = 55;
+          fly.hitFlash = 35;
+          fly.shake = 28;
+          score = Math.max(0, score - 75);
+          Audio.play('hit');
+          W.burst(particles, CW / 2, CH * 0.4, '#ff6644', 14);
+          W.addFloater(floaters, CW / 2, CH * 0.35, '-75', '#ff6644');
+          showFlash(hz.kind === 'bird' ? 'Bird strike! Watch the altitude!' :
+            hz.kind === 'tower' ? 'Tower! Pull up!' : 'Power lines! Climb!', 100);
+          syncHud();
+          if (fly.lives <= 0) {
+            showFlash('Ship too toasted — emergency debrief!', 120);
+            setTimeout(function () {
+              if (mode === 'cockpit') endMission();
+            }, 700);
+          }
+          break;
+        }
+      }
+    }
+
+    // passive score for flying
+    if ((t / 16 | 0) % 30 === 0) {
+      score += 1;
+      syncHud();
+    }
+
+    setPrompt('←→ bank · ↑↓ climb/dive · Shift boost · B Beam · Enter end');
+    syncHud();
   }
 
   function updateBeam() {
@@ -545,7 +690,6 @@
     beam.ufoX = Math.max(60, Math.min(CW - 60, beam.ufoX));
     beam.scrollX += 1.6 + Math.abs(ix) * 0.5;
 
-    // move targets with scroll
     for (const tg of beam.targets) {
       tg.x -= 1.6;
       tg.x += tg.vx;
@@ -558,7 +702,6 @@
       beam.spawnTimer = W.rand(50, 100);
     }
 
-    // fire beam
     const fire = consumeBeamKey() || keys[' '] || keys['space'];
     if (fire && beam.beamTimer <= 0) {
       beam.beaming = true;
@@ -578,7 +721,6 @@
       beam.wide = false;
     }
 
-    // long-press B handled on keydown for exit; touch USE exits
     setPrompt('Align over targets · Space/BEAM · USE/B exit');
   }
 
@@ -605,7 +747,6 @@
     }
     syncHud();
 
-    // auto-offer results after enough beamed (optional continue)
     if (beamed > 0 && beamed % 8 === 0) {
       showFlash('Nice haul! Enter from cockpit to debrief anytime.', 120);
     }
@@ -620,9 +761,6 @@
     W.updateFx(particles, floaters);
     if (flashTimer > 0) flashTimer--;
     else flashMsg = null;
-
-    // clear one-shot interact edge for held keys — use rising edge-ish
-    // (held E would re-trigger; clear interactQueued only; key held is ok once per press via keydown)
   }
 
   function drawFlash() {
@@ -656,13 +794,17 @@
 
     if (mode === 'shed') {
       W.drawShed(ctx, CW, CH, camX, t);
-      W.drawHuman(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t);
-      // interact sparkle on door
+      // Taylor first (behind / beside), then Zakk
+      if (taylor) {
+        W.drawTaylor(ctx, taylor.x - camX, taylor.y, t);
+      }
+      const smoking = Math.abs(avatar.vx) < 0.5;
+      W.drawHuman(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, { smoking: smoking });
       if (nearInteract()) {
         ctx.fillStyle = '#7dff3a';
         ctx.font = 'bold 16px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('▲ ENTER', 890 - camX, GROUND - 160);
+        ctx.fillText('▲ ENTER', W.SHED_DOOR_X - camX, GROUND - 150);
         ctx.textAlign = 'left';
       }
     } else if (mode === 'yard') {
@@ -684,7 +826,6 @@
     W.drawFx(ctx, particles, floaters);
     drawFlash();
 
-    // moon juice bar in beam
     if (mode === 'beam' && beam.moonJuice > 0) {
       ctx.fillStyle = 'rgba(0,0,0,0.4)';
       ctx.fillRect(CW / 2 - 60, 36, 120, 8);
@@ -700,8 +841,6 @@
 
     if (mode !== 'title' && mode !== 'results') {
       update();
-    } else if (mode === 'title') {
-      // idle anim only
     }
 
     draw();

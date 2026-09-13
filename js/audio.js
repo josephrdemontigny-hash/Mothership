@@ -1,12 +1,16 @@
 /**
- * Tiny Web Audio beep engine for Mothership.
- * Mute persists in localStorage.
+ * Tiny Web Audio beep engine + theme music for Mothership.
+ * Mute persists in localStorage. Music respects mute and loops while aboard.
  */
 (function (global) {
   const STORAGE_KEY = 'mothership_muted';
+  const THEME_SRC = 'assets/mothership-theme.mp3';
 
   let ctx = null;
   let muted = localStorage.getItem(STORAGE_KEY) === '1';
+  let musicEl = null;
+  let musicWanted = false; // true while aboard (cockpit/beam)
+  let musicUnlocked = false;
 
   function ensureCtx() {
     if (!ctx) {
@@ -16,6 +20,33 @@
     }
     if (ctx.state === 'suspended') ctx.resume();
     return ctx;
+  }
+
+  function ensureMusic() {
+    if (!musicEl) {
+      musicEl = new Audio(THEME_SRC);
+      musicEl.loop = true;
+      musicEl.preload = 'auto';
+      musicEl.volume = 0.55;
+    }
+    return musicEl;
+  }
+
+  function syncMusicPlayback() {
+    const el = ensureMusic();
+    if (!el) return;
+    if (muted || !musicWanted) {
+      try {
+        el.pause();
+      } catch (_) { /* ignore */ }
+      return;
+    }
+    // Only attempt play after a user gesture unlocked audio
+    if (!musicUnlocked) return;
+    const p = el.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch(function () { /* autoplay still blocked — wait for next unlock */ });
+    }
   }
 
   function tone(freq, dur, type, gain) {
@@ -80,13 +111,54 @@
     setMuted(v) {
       muted = !!v;
       localStorage.setItem(STORAGE_KEY, muted ? '1' : '0');
+      syncMusicPlayback();
     },
     toggle() {
       this.setMuted(!muted);
       return muted;
     },
     unlock() {
+      musicUnlocked = true;
       ensureCtx();
+      ensureMusic();
+      // Nudge play/pause so browsers mark the element as user-activated
+      const el = musicEl;
+      if (el) {
+        const wasWanted = musicWanted && !muted;
+        el.play().then(function () {
+          if (!wasWanted) el.pause();
+          else syncMusicPlayback();
+        }).catch(function () {
+          syncMusicPlayback();
+        });
+      }
+    },
+    /** Start (or resume) looping theme while aboard the ship. */
+    playTheme() {
+      musicWanted = true;
+      ensureMusic();
+      syncMusicPlayback();
+    },
+    /** Stop theme (title / results / leaving mission). */
+    stopTheme() {
+      musicWanted = false;
+      const el = musicEl;
+      if (el) {
+        try {
+          el.pause();
+          el.currentTime = 0;
+        } catch (_) { /* ignore */ }
+      }
+    },
+    /** Pause without clearing wanted (used if needed). */
+    pauseTheme() {
+      const el = musicEl;
+      if (el) {
+        try { el.pause(); } catch (_) { /* ignore */ }
+      }
+    },
+    isThemeWanted() {
+      return musicWanted;
     },
   };
 })(window);

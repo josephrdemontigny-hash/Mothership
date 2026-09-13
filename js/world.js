@@ -46,11 +46,18 @@
   ];
 
   const SHED_GAGS = [
-    'Getting high in mom\'s shed. Peak Chilliwack.',
-    'Lawnmower judges you silently.',
+    'Chilling with Taylor in mom\'s shed. Peak Chilliwack.',
+    'Zakk & T: smoking, snacking, waiting for the UFO.',
+    'Lawnmower judges the sesh silently.',
+    'Taylor: "Pass it — wait, is that the mothership?"',
+    'Tiny shed. Big plans. Questionable life choices.',
     'Is that… moon juice? Or just apple juice?',
-    'Taylor: "We should go outside. The UFO is landing."',
   ];
+
+  /** Tight shed interior world width (px). */
+  const SHED_WORLD_W = 500;
+  /** Door center X in shed world space. */
+  const SHED_DOOR_X = 430;
 
   function rand(a, b) {
     return a + Math.random() * (b - a);
@@ -124,7 +131,6 @@
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
 
-    // stars / dusk dots
     ctx.fillStyle = 'rgba(255,255,255,0.35)';
     for (let i = 0; i < 18; i++) {
       const sx = ((i * 137 + t * 0.02) % w);
@@ -139,7 +145,7 @@
     ctx.beginPath();
     ctx.moveTo(0, base);
     for (let i = 0; i <= 12; i++) {
-      const x = ((i * 110 - (scrollX * 0.3) % 110) );
+      const x = ((i * 110 - (scrollX * 0.3) % 110));
       const peak = base - 60 - ((i * 37) % 50);
       ctx.lineTo(x, peak);
     }
@@ -147,7 +153,6 @@
     ctx.closePath();
     ctx.fill();
 
-    // snowcaps
     ctx.fillStyle = '#d8e8f0';
     for (let i = 0; i < 6; i++) {
       const x = ((i * 180 - (scrollX * 0.3) % 180) + 40);
@@ -160,7 +165,6 @@
       ctx.fill();
     }
 
-    // nearer ridge
     ctx.fillStyle = '#4a6a4a';
     ctx.beginPath();
     ctx.moveTo(0, base);
@@ -173,57 +177,92 @@
     ctx.fill();
   }
 
-  // ——— Act 1: Shed ———
+  // ——— Smoke puffs (cheesy comedy) ———
+  function drawSmokePuffs(ctx, x, y, t, seed) {
+    ctx.fillStyle = 'rgba(200,220,180,0.4)';
+    for (let i = 0; i < 3; i++) {
+      const ox = Math.sin(t * 0.003 + seed + i * 1.7) * 6;
+      const oy = -8 - i * 10 - Math.sin(t * 0.004 + i + seed) * 4;
+      const r = 5 + i * 2 + Math.sin(t * 0.005 + i) * 1.5;
+      ctx.beginPath();
+      ctx.arc(x + ox + i * 4, y + oy, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawJoint(ctx, x, y, angle) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle || -0.4);
+    ctx.strokeStyle = '#c4a070';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(18, 0);
+    ctx.stroke();
+    // ember tip
+    ctx.fillStyle = '#ff8844';
+    ctx.beginPath();
+    ctx.arc(18, 0, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ——— Act 1: Shed (tight interior) ———
   function drawShed(ctx, w, h, camX, t) {
+    const floorY = h * 0.72;
+
     // interior walls
     ctx.fillStyle = '#3a2a1a';
     ctx.fillRect(0, 0, w, h);
 
     // back wall wood planks
     ctx.fillStyle = '#5a4030';
-    ctx.fillRect(0, 0, w, h * 0.72);
+    ctx.fillRect(0, 0, w, floorY);
     ctx.strokeStyle = '#2a1810';
     ctx.lineWidth = 2;
-    for (let y = 0; y < h * 0.72; y += 28) {
+    for (let y = 0; y < floorY; y += 28) {
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(w, y);
       ctx.stroke();
     }
 
-    // window (night / dusk outside)
-    const wx = 180 - camX * 0.1;
+    // small window
+    const wx = 70 - camX * 0.15;
     ctx.fillStyle = '#1a3048';
-    ctx.fillRect(wx, 60, 120, 80);
+    ctx.fillRect(wx, 50, 90, 70);
     ctx.fillStyle = '#6ec8ff';
     ctx.globalAlpha = 0.35;
-    ctx.fillRect(wx, 60, 120, 80);
+    ctx.fillRect(wx, 50, 90, 70);
     ctx.globalAlpha = 1;
     ctx.strokeStyle = '#8a6a40';
-    ctx.lineWidth = 6;
-    ctx.strokeRect(wx, 60, 120, 80);
+    ctx.lineWidth = 5;
+    ctx.strokeRect(wx, 50, 90, 70);
     ctx.beginPath();
-    ctx.moveTo(wx + 60, 60);
-    ctx.lineTo(wx + 60, 140);
-    ctx.moveTo(wx, 100);
-    ctx.lineTo(wx + 120, 100);
+    ctx.moveTo(wx + 45, 50);
+    ctx.lineTo(wx + 45, 120);
+    ctx.moveTo(wx, 85);
+    ctx.lineTo(wx + 90, 85);
     ctx.stroke();
 
-    // shelves
-    drawShelf(ctx, 40 - camX, 100, t);
-    drawShelf(ctx, 40 - camX, 200, t);
+    // compact shelves (left)
+    drawShelf(ctx, 20 - camX, 110, t);
+    drawShelf(ctx, 20 - camX, 190, t);
 
-    // lawnmower
-    drawLawnmower(ctx, 320 - camX, h * 0.72 - 8);
+    // lawnmower crammed in
+    drawLawnmower(ctx, 160 - camX, floorY - 8);
 
-    // fridge / cooler
-    drawFridge(ctx, 480 - camX, h * 0.72 - 100);
+    // mini fridge
+    drawFridge(ctx, 250 - camX, floorY - 90);
 
-    // joint gag table (optional comedy prop)
-    drawTable(ctx, 620 - camX, h * 0.72 - 4, t);
+    // couch / chill area (where Taylor hangs)
+    drawCouch(ctx, 300 - camX, floorY);
+
+    // tiny table with ashtray vibe
+    drawChillTable(ctx, 340 - camX, floorY - 4, t);
 
     // floor
-    const floorY = h * 0.72;
     ctx.fillStyle = '#6a5040';
     ctx.fillRect(0, floorY, w, h - floorY);
     ctx.strokeStyle = '#4a3020';
@@ -234,106 +273,174 @@
       ctx.stroke();
     }
 
-    // exit door (right)
-    const doorX = 860 - camX;
+    // exit door — close, right side of tiny shed
+    const doorX = SHED_DOOR_X - camX;
     ctx.fillStyle = '#2a1a10';
-    ctx.fillRect(doorX, floorY - 140, 70, 140);
+    ctx.fillRect(doorX - 28, floorY - 130, 56, 130);
     ctx.fillStyle = '#8a6030';
-    ctx.fillRect(doorX + 4, floorY - 136, 62, 132);
+    ctx.fillRect(doorX - 24, floorY - 126, 48, 122);
     ctx.fillStyle = '#c4a35a';
     ctx.beginPath();
-    ctx.arc(doorX + 55, floorY - 70, 5, 0, Math.PI * 2);
+    ctx.arc(doorX + 14, floorY - 65, 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#7dff3a';
     ctx.font = 'bold 11px Segoe UI, sans-serif';
-    ctx.fillText('EXIT →', doorX + 8, floorY - 150);
+    ctx.textAlign = 'center';
+    ctx.fillText('EXIT →', doorX, floorY - 140);
+    ctx.textAlign = 'left';
 
-    // hanging lightbulb
-    const lx = 480;
+    // hanging lightbulb (center of small shed)
+    const lx = w / 2;
     ctx.strokeStyle = '#222';
     ctx.beginPath();
     ctx.moveTo(lx, 0);
-    ctx.lineTo(lx, 40);
+    ctx.lineTo(lx, 36);
     ctx.stroke();
     ctx.fillStyle = '#ffe88a';
     ctx.beginPath();
-    ctx.arc(lx, 52, 12, 0, Math.PI * 2);
+    ctx.arc(lx, 48, 11, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = 'rgba(255,230,120,0.12)';
+    ctx.fillStyle = 'rgba(255,230,120,0.14)';
     ctx.beginPath();
-    ctx.arc(lx, 80, 120, 0, Math.PI * 2);
+    ctx.arc(lx, 70, 90, 0, Math.PI * 2);
     ctx.fill();
 
     // title plaque
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.fillRect(w / 2 - 90, 12, 180, 22);
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(w / 2 - 100, 10, 200, 22);
     ctx.fillStyle = '#c8e0b8';
     ctx.font = '12px Segoe UI, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText("Mom's Shed — Chilliwack", w / 2, 27);
+    ctx.fillText("Mom's Shed — chill with T", w / 2, 25);
     ctx.textAlign = 'left';
   }
 
   function drawShelf(ctx, x, y, t) {
     ctx.fillStyle = '#8a6a40';
-    ctx.fillRect(x, y, 100, 8);
+    ctx.fillRect(x, y, 80, 7);
     ctx.fillStyle = '#5a4030';
-    ctx.fillRect(x + 5, y - 40, 18, 40);
-    ctx.fillRect(x + 40, y - 30, 14, 30);
+    ctx.fillRect(x + 5, y - 36, 16, 36);
+    ctx.fillRect(x + 32, y - 26, 12, 26);
     ctx.fillStyle = '#44aa66';
-    ctx.fillRect(x + 70, y - 28, 16, 28); // mystery bottle
-    // tiny "moon juice?" label flicker
+    ctx.fillRect(x + 55, y - 24, 14, 24);
     if (Math.sin(t * 0.004) > 0.7) {
       ctx.fillStyle = '#44ddff';
       ctx.font = '9px Segoe UI, sans-serif';
-      ctx.fillText('?', x + 74, y - 32);
+      ctx.fillText('?', x + 58, y - 28);
     }
   }
 
   function drawLawnmower(ctx, x, y) {
     ctx.fillStyle = '#cc3333';
-    ctx.fillRect(x, y - 28, 55, 22);
+    ctx.fillRect(x, y - 24, 48, 18);
     ctx.fillStyle = '#333';
     ctx.beginPath();
-    ctx.arc(x + 10, y, 10, 0, Math.PI * 2);
-    ctx.arc(x + 45, y, 10, 0, Math.PI * 2);
+    ctx.arc(x + 8, y, 8, 0, Math.PI * 2);
+    ctx.arc(x + 38, y, 8, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#888';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(x + 55, y - 20);
-    ctx.lineTo(x + 80, y - 45);
+    ctx.moveTo(x + 48, y - 16);
+    ctx.lineTo(x + 68, y - 38);
     ctx.stroke();
   }
 
   function drawFridge(ctx, x, y) {
     ctx.fillStyle = '#9a9aaa';
-    ctx.fillRect(x, y, 50, 100);
+    ctx.fillRect(x, y, 42, 90);
     ctx.fillStyle = '#6a6a7a';
-    ctx.fillRect(x + 4, y + 8, 42, 40);
-    ctx.fillRect(x + 4, y + 54, 42, 40);
+    ctx.fillRect(x + 3, y + 6, 36, 36);
+    ctx.fillRect(x + 3, y + 48, 36, 36);
     ctx.fillStyle = '#ccc';
-    ctx.fillRect(x + 40, y + 25, 4, 16);
+    ctx.fillRect(x + 34, y + 22, 3, 14);
   }
 
-  function drawTable(ctx, x, y, t) {
+  function drawCouch(ctx, x, y) {
+    // low couch / bench
+    ctx.fillStyle = '#5a3a4a';
+    ctx.fillRect(x, y - 28, 90, 28);
+    ctx.fillStyle = '#4a2a3a';
+    ctx.fillRect(x - 4, y - 48, 14, 48);
+    ctx.fillRect(x + 80, y - 48, 14, 48);
+    ctx.fillStyle = '#6a4a5a';
+    ctx.fillRect(x + 8, y - 40, 74, 14);
+  }
+
+  function drawChillTable(ctx, x, y, t) {
     ctx.fillStyle = '#6a4a30';
-    ctx.fillRect(x, y - 36, 70, 8);
-    ctx.fillRect(x + 6, y - 28, 6, 28);
-    ctx.fillRect(x + 58, y - 28, 6, 28);
-    // optional joint gag — tiny stick + smoke puffs (cheesy, not graphic)
-    ctx.strokeStyle = '#c4a070';
-    ctx.lineWidth = 2;
+    ctx.fillRect(x, y - 32, 54, 7);
+    ctx.fillRect(x + 4, y - 25, 5, 25);
+    ctx.fillRect(x + 44, y - 25, 5, 25);
+    // ashtray blob
+    ctx.fillStyle = '#555';
     ctx.beginPath();
-    ctx.moveTo(x + 20, y - 42);
-    ctx.lineTo(x + 48, y - 48);
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(200,220,180,0.35)';
-    const puff = 4 + Math.sin(t * 0.005) * 2;
-    ctx.beginPath();
-    ctx.arc(x + 52, y - 55 - Math.sin(t * 0.004) * 6, puff, 0, Math.PI * 2);
-    ctx.arc(x + 60, y - 68 - Math.cos(t * 0.003) * 5, puff * 0.8, 0, Math.PI * 2);
+    ctx.ellipse(x + 27, y - 36, 10, 4, 0, 0, Math.PI * 2);
     ctx.fill();
+    // spare joint on table
+    drawJoint(ctx, x + 12, y - 40, -0.2);
+    drawSmokePuffs(ctx, x + 40, y - 42, t, 2.1);
+  }
+
+  /**
+   * Taylor companion NPC — labelled, sitting near chill area, smoking.
+   * sx/sy are screen coords (already cam-adjusted), feet at ground.
+   */
+  function drawTaylor(ctx, sx, sy, t) {
+    ctx.save();
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, 12, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // seated pose — legs tucked
+    ctx.strokeStyle = '#2a4a3a';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(sx - 6, sy - 10);
+    ctx.lineTo(sx - 14, sy - 2);
+    ctx.moveTo(sx + 4, sy - 10);
+    ctx.lineTo(sx + 16, sy - 4);
+    ctx.stroke();
+
+    // body (hoodie green-ish)
+    ctx.fillStyle = '#3a8a5a';
+    ctx.fillRect(sx - 11, sy - 38, 22, 28);
+
+    // head
+    ctx.fillStyle = '#e0b890';
+    ctx.beginPath();
+    ctx.arc(sx, sy - 48, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // hair (lighter / different from Zakk)
+    ctx.fillStyle = '#6a4a28';
+    ctx.beginPath();
+    ctx.arc(sx, sy - 52, 9, Math.PI, 0);
+    ctx.fill();
+    ctx.fillRect(sx - 10, sy - 52, 4, 12);
+
+    // arm holding joint
+    ctx.strokeStyle = '#e0b890';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(sx + 11, sy - 30);
+    ctx.lineTo(sx + 20, sy - 22);
+    ctx.stroke();
+    drawJoint(ctx, sx + 18, sy - 24, -0.55);
+    drawSmokePuffs(ctx, sx + 32, sy - 28, t, 0.8);
+
+    // label
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.font = 'bold 10px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Taylor', sx, sy + 14);
+    ctx.fillStyle = '#9bc87a';
+    ctx.font = '9px Segoe UI, sans-serif';
+    ctx.fillText('T', sx, sy + 26);
+    ctx.textAlign = 'left';
+    ctx.restore();
   }
 
   // ——— Act 2: Yard ———
@@ -342,7 +449,6 @@
     const groundY = h * 0.72;
     drawMountains(ctx, w, groundY, camX);
 
-    // grass
     ctx.fillStyle = '#4a9a3a';
     ctx.fillRect(0, groundY, w, h - groundY);
     ctx.fillStyle = '#3a7a2a';
@@ -350,7 +456,6 @@
       ctx.fillRect(x, groundY, 3, 8);
     }
 
-    // house left
     const hx = 40 - camX * 0.4;
     ctx.fillStyle = '#8a6050';
     ctx.fillRect(hx, groundY - 160, 160, 160);
@@ -369,24 +474,23 @@
     ctx.font = '11px Segoe UI, sans-serif';
     ctx.fillText("Mom's house", hx + 20, groundY - 170);
 
-    // shed behind (left-ish) — where we came from
+    // tiny shed outside
     const sx = 220 - camX;
     ctx.fillStyle = '#6a5040';
-    ctx.fillRect(sx, groundY - 90, 90, 90);
+    ctx.fillRect(sx, groundY - 70, 70, 70);
     ctx.fillStyle = '#4a3020';
     ctx.beginPath();
-    ctx.moveTo(sx - 5, groundY - 90);
-    ctx.lineTo(sx + 45, groundY - 120);
-    ctx.lineTo(sx + 95, groundY - 90);
+    ctx.moveTo(sx - 4, groundY - 70);
+    ctx.lineTo(sx + 35, groundY - 95);
+    ctx.lineTo(sx + 74, groundY - 70);
     ctx.closePath();
     ctx.fill();
     ctx.fillStyle = '#2a1a10';
-    ctx.fillRect(sx + 30, groundY - 50, 30, 50);
+    ctx.fillRect(sx + 22, groundY - 40, 24, 40);
     ctx.fillStyle = '#9bc87a';
     ctx.font = '10px Segoe UI, sans-serif';
-    ctx.fillText('SHED', sx + 28, groundY - 95);
+    ctx.fillText('SHED', sx + 18, groundY - 76);
 
-    // fence
     ctx.strokeStyle = '#8a6a40';
     ctx.lineWidth = 3;
     for (let x = -((camX | 0) % 40); x < w; x += 40) {
@@ -400,7 +504,6 @@
     ctx.lineTo(w, groundY - 30);
     ctx.stroke();
 
-    // fog / dry ice vibe during landing
     if (landing && landing.phase !== 'idle') {
       ctx.fillStyle = 'rgba(200,220,230,0.18)';
       for (let i = 0; i < 8; i++) {
@@ -412,12 +515,10 @@
       }
     }
 
-    // mothership
     if (landing) {
       drawClayUFO(ctx, landing.x - camX, landing.y, landing.scale || 1, t, landing.lights);
     }
 
-    // Yale Rd sign far right flavour
     const signX = 1100 - camX;
     ctx.fillStyle = '#4a4a4a';
     ctx.fillRect(signX, groundY - 70, 6, 70);
@@ -433,7 +534,6 @@
     ctx.translate(x, y);
     ctx.scale(scale, scale);
 
-    // landing lights / beams
     if (lightsOn) {
       const pulse = 0.35 + Math.sin(t * 0.01) * 0.15;
       ctx.fillStyle = 'rgba(125,255,58,' + pulse + ')';
@@ -446,13 +546,11 @@
       ctx.fill();
     }
 
-    // shadow
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
     ctx.beginPath();
     ctx.ellipse(4, 22, 40, 8, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // clay body
     ctx.fillStyle = '#8a9a3a';
     ctx.beginPath();
     ctx.ellipse(0, 6, 48, 16, 0, 0, Math.PI * 2);
@@ -462,13 +560,11 @@
     ctx.ellipse(0, 0, 52, 14, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // dome
     ctx.fillStyle = 'rgba(160, 230, 255, 0.9)';
     ctx.beginPath();
     ctx.ellipse(0, -12, 22, 18, 0, Math.PI, 0);
     ctx.fill();
 
-    // green alien heads (band costumes)
     ctx.fillStyle = '#5dcc3a';
     ctx.beginPath();
     ctx.arc(-7, -14, 6, 0, Math.PI * 2);
@@ -482,7 +578,6 @@
     ctx.arc(8.5, -15, 1.8, 0, Math.PI * 2);
     ctx.fill();
 
-    // rim lights
     const cols = ['#ff4466', '#44ff88', '#4488ff', '#ffcc22', '#ff4466'];
     for (let i = 0; i < 5; i++) {
       ctx.fillStyle = lightsOn && Math.floor(t / 120 + i) % 2 === 0 ? '#fff' : cols[i];
@@ -491,89 +586,224 @@
       ctx.fill();
     }
 
-    // door hatch underside
     ctx.fillStyle = '#3a4a20';
     ctx.fillRect(-10, 12, 20, 6);
 
     ctx.restore();
   }
 
-  // ——— Act 3: Cockpit ———
+  // ——— Hazards for cockpit ———
+  function drawHazardSprite(ctx, hz, t) {
+    if (hz.kind === 'bird') {
+      const flap = Math.sin(t * 0.022 + hz.phase) * 8;
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(-14, flap);
+      ctx.quadraticCurveTo(-5, -6, 0, 0);
+      ctx.quadraticCurveTo(5, -6, 14, flap);
+      ctx.stroke();
+      ctx.fillStyle = '#2a2a2a';
+      ctx.beginPath();
+      ctx.arc(0, 0, 4, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (hz.kind === 'tower') {
+      const hgt = 55 + hz.size * 45;
+      ctx.fillStyle = '#555560';
+      ctx.fillRect(-6, -hgt, 12, hgt);
+      ctx.fillStyle = '#e84444';
+      ctx.beginPath();
+      ctx.arc(0, -hgt, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#777';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-6, -hgt * 0.4);
+      ctx.lineTo(-18, 0);
+      ctx.moveTo(6, -hgt * 0.4);
+      ctx.lineTo(18, 0);
+      ctx.stroke();
+    } else if (hz.kind === 'powerline') {
+      ctx.strokeStyle = '#1a1a1a';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(-80, 4);
+      ctx.quadraticCurveTo(0, 16, 80, 4);
+      ctx.stroke();
+      ctx.fillStyle = '#4a3520';
+      ctx.fillRect(-84, 0, 10, 50);
+      ctx.fillRect(74, 0, 10, 50);
+    }
+  }
+
+  // ——— Act 3: Cockpit (reactive flying view) ———
   function drawCockpit(ctx, w, h, fly, t) {
-    // outside through windows (side-scrolling Chilliwack)
+    const bank = fly.bank || 0;
+    const alt = fly.alt != null ? fly.alt : 0.45;
+    const scrollX = fly.scrollX || 0;
+    const speed = fly.speed || 2;
+    const shakeX = fly.shakeX || 0;
+    const shakeY = fly.shakeY || 0;
+
+    const winX = 80;
+    const winY = 56;
+    const winW = w - 160;
+    const winH = h - 180;
+
+    // Clip to window, then draw tilted world
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(winX, winY, winW, winH);
+    ctx.clip();
+
+    ctx.save();
+    ctx.translate(w / 2 + shakeX, h * 0.45 + shakeY);
+    ctx.rotate(bank);
+    ctx.translate(-w / 2, -h * 0.45);
+
     drawSky(ctx, w, h, t);
-    const horizon = h * 0.55;
-    drawMountains(ctx, w, horizon, fly.scrollX);
 
-    // farmland / road scrolling
+    // Horizon shifts with altitude (higher alt = more sky)
+    const horizon = h * (0.42 + (1 - alt) * 0.28);
+    drawMountains(ctx, w, horizon, scrollX);
+
     ctx.fillStyle = '#5a9a3a';
-    ctx.fillRect(0, horizon, w, h - horizon);
+    ctx.fillRect(-40, horizon, w + 80, h);
 
-    // Yale Road stripe
-    const roadY = horizon + 40;
+    const d = DISTRICTS[fly.districtIndex % DISTRICTS.length];
+    if (d.id === 'vedder' || d.id === 'cultus') {
+      ctx.fillStyle = d.accent;
+      ctx.globalAlpha = 0.55;
+      const wy = horizon + 55 + Math.sin(scrollX * 0.01) * 8;
+      ctx.fillRect(-40, wy, w + 80, 28);
+      ctx.globalAlpha = 1;
+    }
+
+    // Yale Road
+    const roadY = horizon + 38 + (1 - alt) * 20;
     ctx.fillStyle = '#4a4a4a';
-    ctx.fillRect(0, roadY, w, 36);
+    ctx.fillRect(-40, roadY, w + 80, 40);
     ctx.strokeStyle = '#e8e8a0';
     ctx.lineWidth = 3;
-    ctx.setLineDash([20, 18]);
+    ctx.setLineDash([22, 16]);
     ctx.beginPath();
-    ctx.moveTo(-((fly.scrollX | 0) % 38), roadY + 18);
-    ctx.lineTo(w, roadY + 18);
+    const dashOff = -((scrollX * 1.2) % 38);
+    ctx.moveTo(dashOff - 40, roadY + 20);
+    ctx.lineTo(w + 40, roadY + 20);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // corn / houses scrolling
-    for (let i = 0; i < 8; i++) {
-      const bx = ((i * 160 - fly.scrollX * 0.9) % (w + 160)) - 40;
-      if (i % 3 === 0) {
+    // Parallax Chilliwack props
+    for (let i = 0; i < 10; i++) {
+      const bx = ((i * 140 - scrollX * 0.95) % (w + 180)) - 60;
+      if (i % 4 === 0) {
         ctx.fillStyle = '#8a6050';
-        ctx.fillRect(bx, horizon - 36, 40, 36);
+        ctx.fillRect(bx, horizon - 40, 44, 40);
         ctx.fillStyle = '#5a3030';
         ctx.beginPath();
-        ctx.moveTo(bx - 4, horizon - 36);
-        ctx.lineTo(bx + 20, horizon - 55);
-        ctx.lineTo(bx + 44, horizon - 36);
+        ctx.moveTo(bx - 4, horizon - 40);
+        ctx.lineTo(bx + 22, horizon - 62);
+        ctx.lineTo(bx + 48, horizon - 40);
         ctx.closePath();
         ctx.fill();
-      } else {
+      } else if (i % 4 === 1) {
         ctx.fillStyle = '#c8c040';
-        for (let c = 0; c < 5; c++) {
-          ctx.fillRect(bx + c * 10, horizon - 22, 6, 22);
+        for (let c = 0; c < 6; c++) {
+          ctx.fillRect(bx + c * 9, horizon - 26, 5, 26);
         }
+      } else if (i % 4 === 2) {
+        ctx.fillStyle = '#3a5a28';
+        ctx.beginPath();
+        ctx.moveTo(bx + 10, horizon);
+        ctx.lineTo(bx + 28, horizon - 45);
+        ctx.lineTo(bx + 46, horizon);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#5a3a20';
+        ctx.fillRect(bx + 24, horizon - 12, 8, 12);
+      } else {
+        ctx.fillStyle = '#a04040';
+        ctx.fillRect(bx, horizon - 34, 50, 34);
+        ctx.fillStyle = '#ccc';
+        ctx.beginPath();
+        ctx.moveTo(bx - 4, horizon - 34);
+        ctx.lineTo(bx + 25, horizon - 55);
+        ctx.lineTo(bx + 54, horizon - 34);
+        ctx.closePath();
+        ctx.fill();
       }
     }
 
-    // district label floating outside
-    const d = DISTRICTS[fly.districtIndex % DISTRICTS.length];
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillStyle = '#3a7a2a';
+    for (let i = 0; i < 20; i++) {
+      const gx = ((i * 60 - scrollX * 1.6) % (w + 80)) - 40;
+      ctx.fillRect(gx, horizon + 90, 4, 14);
+    }
+
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.font = 'bold 14px Segoe UI, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(d.name, w / 2, horizon - 70);
+    ctx.fillText(d.name, w / 2, horizon - 50);
     ctx.textAlign = 'left';
 
-    // interior frame / dashboard
-    // side pillars
+    // Hazards
+    if (fly.hazards) {
+      for (const hz of fly.hazards) {
+        const hx = hz.x - scrollX;
+        if (hx < -100 || hx > w + 100) continue;
+        ctx.save();
+        if (hz.kind === 'tower') {
+          ctx.translate(hx, horizon);
+        } else if (hz.kind === 'powerline') {
+          ctx.translate(hx, horizon - hz.alt * (horizon - 80));
+        } else {
+          // birds float by altitude
+          ctx.translate(hx, horizon - hz.alt * (horizon - 50));
+        }
+        drawHazardSprite(ctx, hz, t);
+        ctx.restore();
+      }
+    }
+
+    ctx.restore(); // un-tilt
+    ctx.restore(); // un-clip
+
+    // Interior frame / dashboard
     ctx.fillStyle = '#1a2818';
     ctx.fillRect(0, 0, 70, h);
     ctx.fillRect(w - 70, 0, 70, h);
-    // top beam
     ctx.fillRect(0, 0, w, 48);
-    // bottom dash
     ctx.fillStyle = '#243828';
     ctx.fillRect(0, h - 110, w, 110);
     ctx.fillStyle = '#1a2818';
     ctx.fillRect(0, h - 118, w, 10);
 
-    // window frames
     ctx.strokeStyle = '#3a5a3a';
     ctx.lineWidth = 8;
-    ctx.strokeRect(80, 56, w - 160, h - 180);
+    ctx.strokeRect(winX, winY, winW, winH);
     ctx.beginPath();
-    ctx.moveTo(w / 2, 56);
+    ctx.moveTo(w / 2, winY);
     ctx.lineTo(w / 2, h - 124);
     ctx.stroke();
 
-    // green alien pilots (Zakk & T) reflected in dash
+    // Artificial horizon (bank)
+    ctx.save();
+    ctx.translate(w / 2, 30);
+    ctx.rotate(bank);
+    ctx.fillStyle = '#4a90c8';
+    ctx.fillRect(-40, -10, 80, 10);
+    ctx.fillStyle = '#5a9a3a';
+    ctx.fillRect(-40, 0, 80, 10);
+    ctx.strokeStyle = '#7dff3a';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-40, -10, 80, 20);
+    ctx.beginPath();
+    ctx.moveTo(-8, 0);
+    ctx.lineTo(8, 0);
+    ctx.stroke();
+    ctx.restore();
+
+    // Pilots
     ctx.fillStyle = '#5dcc3a';
     ctx.beginPath();
     ctx.arc(w / 2 - 50, h - 70, 16, 0, Math.PI * 2);
@@ -592,48 +822,60 @@
     ctx.fillText('Zakk', w / 2 - 50, h - 45);
     ctx.fillText('T', w / 2 + 50, h - 45);
 
-    // instruments
+    // Instruments: alt / speed / lives
     ctx.fillStyle = '#0a1a0f';
-    ctx.fillRect(w / 2 - 80, h - 100, 160, 36);
+    ctx.fillRect(w / 2 - 100, h - 105, 200, 42);
     ctx.strokeStyle = '#7dff3a';
     ctx.lineWidth = 2;
-    ctx.strokeRect(w / 2 - 80, h - 100, 160, 36);
+    ctx.strokeRect(w / 2 - 100, h - 105, 200, 42);
     ctx.fillStyle = '#7dff3a';
-    ctx.font = 'bold 12px Segoe UI, sans-serif';
-    ctx.fillText('CLAY UFO — ONLINE', w / 2, h - 78);
+    ctx.font = 'bold 11px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    const altFt = Math.round(200 + alt * 1800);
+    const spd = Math.round(40 + speed * 28);
+    ctx.fillText('ALT ' + altFt + ' ft   SPD ' + spd, w / 2, h - 88);
+    ctx.fillStyle = '#9bc87a';
+    ctx.font = '10px Segoe UI, sans-serif';
+    const lives = fly.lives | 0;
+    ctx.fillText(lives > 0 ? ('LIVES ' + '♥'.repeat(lives)) : 'CRASH?', w / 2, h - 72);
 
-    // moon juice gauge
     ctx.fillStyle = '#0a1a0f';
     ctx.fillRect(100, h - 90, 100, 14);
     ctx.fillStyle = '#44ddff';
-    ctx.fillRect(100, h - 90, 100 * (fly.moonJuice / 300), 14);
+    ctx.fillRect(100, h - 90, 100 * Math.min(1, (fly.moonJuice || 0) / 300), 14);
     ctx.fillStyle = '#88eeff';
     ctx.font = '10px Segoe UI, sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText('MOON JUICE', 100, h - 96);
+    if (fly.boosting) {
+      ctx.fillStyle = '#ffcc44';
+      ctx.fillText('BOOST!', 100, h - 70);
+    }
 
-    // beam mode hint on dash
     ctx.fillStyle = '#c8e0b8';
     ctx.font = '11px Segoe UI, sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText('Press B — BEAM MODE', w - 100, h - 70);
+    ctx.fillText('B — BEAM   Enter — debrief', w - 100, h - 70);
     ctx.textAlign = 'left';
 
-    // rivets
     ctx.fillStyle = '#5a7a4a';
     for (let i = 0; i < 10; i++) {
       ctx.beginPath();
       ctx.arc(20 + i * ((w - 40) / 9), 24, 3, 0, Math.PI * 2);
       ctx.fill();
     }
+
+    if (fly.hitFlash > 0) {
+      ctx.fillStyle = 'rgba(255,40,40,' + Math.min(0.45, fly.hitFlash / 40) + ')';
+      ctx.fillRect(winX, winY, winW, winH);
+    }
   }
 
-  // ——— Act 4: Beam mode side-scroller ———
+  // ——— Act 4: Beam mode ———
   function drawBeamScene(ctx, w, h, beam, t) {
     drawSky(ctx, w, h * 0.55, t);
     drawMountains(ctx, w, h * 0.5, beam.scrollX);
 
-    // ground strip
     const gy = h * 0.78;
     ctx.fillStyle = '#5a9a3a';
     ctx.fillRect(0, gy, w, h - gy);
@@ -647,16 +889,13 @@
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // UFO at top (positioned)
     drawClayUFO(ctx, beam.ufoX, 70, 0.85, t, true);
 
-    // targets
     for (const tg of beam.targets) {
       if (tg.beamed) continue;
       drawTarget(ctx, tg.x, gy - 4, tg, t);
     }
 
-    // active beam cone
     if (beam.beaming) {
       const bw = beam.wide ? 100 : 56;
       const grad = ctx.createLinearGradient(beam.ufoX, 90, beam.ufoX, gy);
@@ -672,7 +911,6 @@
       ctx.fill();
     }
 
-    // exit hint
     ctx.fillStyle = 'rgba(10,30,16,0.7)';
     ctx.fillRect(w / 2 - 110, 8, 220, 22);
     ctx.fillStyle = '#7dff3a';
@@ -684,14 +922,12 @@
 
   function drawTarget(ctx, x, y, tg, t) {
     const bob = Math.sin(t * 0.008 + tg.wobble) * 3;
-    // body
     ctx.fillStyle = tg.kind.color;
     ctx.beginPath();
     ctx.arc(x, y - 22 + bob, 10, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = tg.kind.color;
     ctx.fillRect(x - 8, y - 14 + bob, 16, 18);
-    // legs
     ctx.strokeStyle = '#333';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -700,7 +936,6 @@
     ctx.moveTo(x + 4, y + 4 + bob);
     ctx.lineTo(x + 8, y + 14 + bob);
     ctx.stroke();
-    // label
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.font = '9px Segoe UI, sans-serif';
     ctx.textAlign = 'center';
@@ -709,12 +944,12 @@
   }
 
   // ——— Human avatar (Zakk) ———
-  function drawHuman(ctx, x, y, facing, moving, t) {
+  function drawHuman(ctx, x, y, facing, moving, t, opts) {
+    opts = opts || {};
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(facing, 1);
 
-    // shadow
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
     ctx.beginPath();
     ctx.ellipse(0, 0, 14, 5, 0, 0, Math.PI * 2);
@@ -722,7 +957,6 @@
 
     const leg = moving ? Math.sin(t * 0.02) * 6 : 0;
 
-    // legs
     ctx.strokeStyle = '#2a3a6a';
     ctx.lineWidth = 4;
     ctx.beginPath();
@@ -732,23 +966,19 @@
     ctx.lineTo(4 + leg * 0.3, 0);
     ctx.stroke();
 
-    // body
     ctx.fillStyle = '#3a6aaa';
     ctx.fillRect(-10, -36, 20, 28);
 
-    // head
     ctx.fillStyle = '#e8c4a0';
     ctx.beginPath();
     ctx.arc(0, -46, 10, 0, Math.PI * 2);
     ctx.fill();
 
-    // hair
     ctx.fillStyle = '#3a2a1a';
     ctx.beginPath();
     ctx.arc(0, -50, 9, Math.PI, 0);
     ctx.fill();
 
-    // arm
     ctx.strokeStyle = '#e8c4a0';
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -758,7 +988,12 @@
 
     ctx.restore();
 
-    // name tag
+    // smoking gag when idle-ish in shed
+    if (opts.smoking) {
+      drawJoint(ctx, x + facing * 14, y - 28, facing > 0 ? -0.5 : Math.PI + 0.5);
+      drawSmokePuffs(ctx, x + facing * 28, y - 34, t, 1.4);
+    }
+
     ctx.fillStyle = 'rgba(0,0,0,0.45)';
     ctx.font = 'bold 10px Segoe UI, sans-serif';
     ctx.textAlign = 'center';
@@ -782,6 +1017,8 @@
     ONE_LINERS,
     RESULTS_LINERS,
     SHED_GAGS,
+    SHED_WORLD_W,
+    SHED_DOOR_X,
     rand,
     pick,
     burst,
@@ -793,6 +1030,7 @@
     drawCockpit,
     drawBeamScene,
     drawHuman,
+    drawTaylor,
     drawClayUFO,
     drawTitleBackdrop,
   };
