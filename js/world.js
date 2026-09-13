@@ -1,6 +1,6 @@
 /**
  * Mothership — Chilliwack scenes, drawing helpers, flavour copy.
- * Modes: Shed / Yard / Fly (side-scroller + beam). Stereo starts theme; smoke with Tayler lands UFO.
+ * Modes: Shed / Yard / Fly (side-scroller + beam). Stereo starts theme; staged joint with Tayler then UFO lands.
  * Fly scroll is player-driven. No cockpit cassette.
  * Flight: North→South Chilliwack; Mt. Cheam (Lhílheqey) fixed EAST = LEFT of skyline.
  * Characters: Zakk (char-ref-2 all-black) & Tayler (char-ref-1 backwards cap).
@@ -354,21 +354,160 @@
     }
   }
 
-  function drawJoint(ctx, x, y, angle) {
+  function drawJoint(ctx, x, y, angle, opts) {
+    opts = opts || {};
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle || -0.4);
-    ctx.strokeStyle = '#c4a070';
-    ctx.lineWidth = 2.5;
+    const len = opts.len != null ? opts.len : 18;
+    ctx.strokeStyle = opts.color || '#c4a070';
+    ctx.lineWidth = opts.lineW || 2.5;
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.lineTo(18, 0);
+    ctx.lineTo(len, 0);
     ctx.stroke();
-    ctx.fillStyle = '#ff8844';
+    // paper tip / filter
+    ctx.fillStyle = '#e8d8b0';
+    ctx.fillRect(-2, -2.2, 5, 4.4);
+    if (opts.lit !== false && opts.lit !== 0) {
+      const glow = opts.lit === true || opts.lit == null ? 1 : opts.lit;
+      ctx.fillStyle = '#ff8844';
+      ctx.shadowColor = '#ff6622';
+      ctx.shadowBlur = 6 * glow;
+      ctx.beginPath();
+      ctx.arc(len, 0, 2.2 * (0.7 + glow * 0.3), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+    ctx.restore();
+  }
+
+  function drawRollingPaper(ctx, x, y, openAmt) {
+    const a = openAmt != null ? openAmt : 1;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(-0.15);
+    // cream rolling paper sheet
+    ctx.fillStyle = '#f2e6c8';
+    ctx.strokeStyle = '#c8b890';
+    ctx.lineWidth = 1;
+    const w = 22 * a + 6;
+    const h = 10;
     ctx.beginPath();
-    ctx.arc(18, 0, 2.2, 0, Math.PI * 2);
+    ctx.moveTo(-w / 2, -h / 2);
+    ctx.quadraticCurveTo(0, -h / 2 - 3 * a, w / 2, -h / 2);
+    ctx.lineTo(w / 2, h / 2);
+    ctx.quadraticCurveTo(0, h / 2 + 2 * a, -w / 2, h / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // gum strip
+    ctx.fillStyle = 'rgba(180,220,160,0.55)';
+    ctx.fillRect(-w / 2, -h / 2, w, 2.5);
+    ctx.restore();
+  }
+
+  function drawWeedPinch(ctx, x, y, t) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = '#3a7a28';
+    for (let i = 0; i < 5; i++) {
+      const ox = Math.sin(i * 1.7 + (t || 0) * 0.01) * 3;
+      const oy = Math.cos(i * 2.1) * 2;
+      ctx.beginPath();
+      ctx.ellipse(ox, oy, 3.2, 2.1, i * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#2a5a18';
+    ctx.beginPath();
+    ctx.arc(0, 1, 2.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+  }
+
+  function drawLighterFlame(ctx, x, y, t) {
+    ctx.save();
+    ctx.translate(x, y);
+    // lighter body
+    ctx.fillStyle = '#c0c8d0';
+    ctx.fillRect(-4, 2, 8, 14);
+    ctx.fillStyle = '#3a4048';
+    ctx.fillRect(-3, 0, 6, 4);
+    // flame
+    const flicker = 0.85 + Math.sin((t || 0) * 0.04) * 0.15;
+    const fg = ctx.createRadialGradient(0, -6, 1, 0, -8, 12);
+    fg.addColorStop(0, 'rgba(255,255,200,' + (0.95 * flicker) + ')');
+    fg.addColorStop(0.35, 'rgba(255,160,40,0.9)');
+    fg.addColorStop(1, 'rgba(255,60,0,0)');
+    ctx.fillStyle = fg;
+    ctx.beginPath();
+    ctx.moveTo(-4, 0);
+    ctx.quadraticCurveTo(-6, -10 * flicker, 0, -16 * flicker);
+    ctx.quadraticCurveTo(6, -10 * flicker, 4, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /**
+   * Staged joint sesh props between Tayler (left/seated) and Zakk.
+   * stage: 'paper' | 'roll' | 'light' | 'pass' | 'watch'
+   * stageProg: 0..1 within stage
+   */
+  function drawJointSesh(ctx, taylerX, taylerY, zakkX, zakkY, stage, stageProg, t) {
+    const p = Math.max(0, Math.min(1, stageProg || 0));
+    const midX = (taylerX + zakkX) / 2;
+    const handY = taylerY - 48;
+
+    if (stage === 'paper') {
+      drawRollingPaper(ctx, taylerX + 28, handY - 4, 0.6 + p * 0.4);
+      drawWeedPinch(ctx, taylerX + 18, handY + 8, t);
+      // cheesy sparkle
+      ctx.fillStyle = 'rgba(200,255,140,' + (0.35 + p * 0.4) + ')';
+      ctx.font = 'bold 11px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('📄 + 🌿', taylerX + 24, handY - 22);
+      ctx.textAlign = 'left';
+    } else if (stage === 'roll') {
+      // paper curling into joint
+      const curl = 1 - p;
+      if (curl > 0.15) drawRollingPaper(ctx, taylerX + 26, handY, curl);
+      drawJoint(ctx, taylerX + 22, handY + 2, -0.35, { len: 8 + p * 12, lit: false });
+      drawWeedPinch(ctx, taylerX + 14, handY + 10 - p * 6, t);
+      // roll motion arcs
+      ctx.strokeStyle = 'rgba(232,255,224,' + (0.25 + p * 0.35) + ')';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(taylerX + 26, handY + 2, 14, -1.2, -1.2 + p * 2.4);
+      ctx.stroke();
+    } else if (stage === 'light') {
+      drawJoint(ctx, taylerX + 24, handY, -0.45, { lit: 0.5 + p * 0.5 });
+      drawLighterFlame(ctx, taylerX + 40, handY + 6, t);
+      if (p > 0.35) {
+        drawSmokePuffs(ctx, taylerX + 42, handY - 8, t, 1.2);
+      }
+    } else if (stage === 'pass') {
+      // joint travels from Tayler → Zakk
+      const jx = taylerX + 24 + (zakkX - taylerX - 10) * p;
+      const jy = handY - Math.sin(p * Math.PI) * 18;
+      drawJoint(ctx, jx, jy, -0.3 + p * 0.2, { lit: true });
+      drawSmokePuffs(ctx, jx + 14, jy - 6, t, 1.5);
+      // handoff sparkles
+      ctx.fillStyle = 'rgba(255,220,120,' + (0.4 + Math.sin(t * 0.05) * 0.2) + ')';
+      ctx.beginPath();
+      ctx.arc(jx + 8, jy - 10, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#e8ffe0';
+      ctx.font = 'bold 12px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🙌 PASS', midX, handY - 36);
+      ctx.textAlign = 'left';
+    } else if (stage === 'watch') {
+      // Zakk holds lit joint; light smoke from both
+      drawJoint(ctx, zakkX + (zakkX < taylerX ? -22 : 22), zakkY - 32, -0.5, { lit: true });
+      drawSmokePuffs(ctx, zakkX + 18, zakkY - 40, t, 2.0);
+      drawSmokePuffs(ctx, taylerX + 20, taylerY - 52, t + 200, 1.4);
+    }
   }
 
   // ——— Characters (comic / pop-art readable) ———
@@ -1696,7 +1835,9 @@
       const ufoX = glassX + 55 + ufoProg * (glassW * 0.38);
       const ufoY = glassY + 14 + Math.min(1, ufoProg) * (glassH - 62);
       const ufoS = 0.48 + ufoProg * 0.32;
-      drawClayUFO(ctx, ufoX, ufoY, ufoS, t, ufoProg > 0.18);
+      // Legs deploy late in descent; fully down when landed
+      const winLegs = Math.max(0, Math.min(1, (ufoProg - 0.5) / 0.45));
+      drawClayUFO(ctx, ufoX, ufoY, ufoS, t, ufoProg > 0.18, { legExtend: winLegs });
       if (ufoProg > 0.45) {
         ctx.fillStyle = 'rgba(200,220,230,' + (0.12 + ufoProg * 0.28) + ')';
         ctx.beginPath();
@@ -2042,14 +2183,61 @@
     ctx.fillStyle = lightsOn ? 'rgba(80,255,180,' + (0.4 + pulse * 0.3) + ')' : '#1a3a2a';
     ctx.shadowColor = '#66ffaa'; ctx.shadowBlur = lightsOn ? 8 : 0;
     ctx.fillRect(-7, 17, 14, 4); ctx.shadowBlur = 0;
-    ctx.fillStyle = '#2a3238';
-    for (const px of [-42, 0, 42]) {
-      ctx.fillRect(px - 2.5, 18, 5, 16);
-      ctx.beginPath(); ctx.ellipse(px, 35, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
-      if (lightsOn) {
-        ctx.fillStyle = 'rgba(180,230,255,0.32)';
-        ctx.beginPath(); ctx.ellipse(px, 36, 7, 2, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#2a3238';
+    // Landing legs: legExtend 0 = tucked in hull, 1 = fully down (ground)
+    const legExt = opts.legExtend != null ? Math.max(0, Math.min(1, opts.legExtend)) : 1;
+    if (legExt > 0.02) {
+      const strut = 4 + legExt * 12; // length below bay
+      const footY = 18 + strut;
+      const bayOpen = 0.35 + legExt * 0.65;
+      ctx.fillStyle = '#1a2024';
+      for (const px of [-42, 0, 42]) {
+        // bay / hinge recess
+        ctx.fillRect(px - 3.5 * bayOpen, 16, 7 * bayOpen, 4);
+      }
+      ctx.fillStyle = '#2a3238';
+      for (const px of [-42, 0, 42]) {
+        // angled strut tucks sideways as legExt→0
+        const tuck = (1 - legExt) * 10;
+        const lean = px === 0 ? 0 : (px < 0 ? tuck : -tuck);
+        ctx.beginPath();
+        ctx.moveTo(px - 2.5, 18);
+        ctx.lineTo(px + 2.5, 18);
+        ctx.lineTo(px + 2.2 + lean * 0.3, footY);
+        ctx.lineTo(px - 2.2 + lean * 0.3, footY);
+        ctx.closePath();
+        ctx.fill();
+        // foot pad (shrinks when tucking)
+        const footW = 3 + legExt * 5;
+        ctx.beginPath();
+        ctx.ellipse(px + lean * 0.35, footY + 1, footW, 1.5 + legExt * 1.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        if (lightsOn && legExt > 0.45) {
+          ctx.fillStyle = 'rgba(180,230,255,' + (0.15 + legExt * 0.2) + ')';
+          ctx.beginPath();
+          ctx.ellipse(px + lean * 0.35, footY + 2, footW * 0.9, 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#2a3238';
+        }
+      }
+      // tiny hydraulic gleam when mid-retract
+      if (legExt > 0.15 && legExt < 0.9) {
+        ctx.strokeStyle = 'rgba(160,200,220,' + (0.25 + (1 - Math.abs(legExt - 0.5) * 2) * 0.35) + ')';
+        ctx.lineWidth = 1;
+        for (const px of [-42, 0, 42]) {
+          ctx.beginPath();
+          ctx.moveTo(px, 19);
+          ctx.lineTo(px, 18 + strut * 0.7);
+          ctx.stroke();
+        }
+      }
+    } else {
+      // fully retracted — sealed bay doors under hull
+      ctx.fillStyle = '#3a444c';
+      for (const px of [-42, 0, 42]) {
+        ctx.fillRect(px - 5, 17, 10, 3);
+        ctx.strokeStyle = 'rgba(20,28,32,0.5)';
+        ctx.lineWidth = 0.8;
+        ctx.strokeRect(px - 5, 17, 10, 3);
       }
     }
     if (opts.showPilots) {
@@ -2132,7 +2320,11 @@
     }
 
     if (landing) {
-      drawClayUFO(ctx, landing.x - camX, landing.y, landing.scale || 2.28, t, landing.lights);
+      const yardLegs = landing.legExtend != null ? landing.legExtend : 1;
+      drawClayUFO(ctx, landing.x - camX, landing.y, landing.scale || 2.28, t, landing.lights, {
+        legExtend: yardLegs,
+        showPilots: !!landing.showPilots,
+      });
       // ramp when landed
       if (landing.phase === 'landed' || landing.phase === 'boarding') {
         const rx = landing.x - camX;
@@ -2774,7 +2966,11 @@
     // UFO
     const ufoScreenX = fly.ufoX;
     const ufoScreenY = fly.ufoY;
-    drawClayUFO(ctx, ufoScreenX, ufoScreenY, 1.52, t, true, { showPilots: true });
+    const flyLegs = fly.legExtend != null ? fly.legExtend : 0;
+    drawClayUFO(ctx, ufoScreenX, ufoScreenY, 1.52, t, true, {
+      showPilots: true,
+      legExtend: flyLegs,
+    });
 
     // beam reticle under ship
     ctx.strokeStyle = 'rgba(125,255,58,0.45)';
@@ -2844,7 +3040,7 @@
     drawMountains(ctx, w, h * 0.7, t * 0.02);
     ctx.fillStyle = '#4a9a3a';
     ctx.fillRect(0, h * 0.7, w, h * 0.3);
-    drawClayUFO(ctx, w / 2 + Math.sin(t * 0.001) * 40, 118 + Math.cos(t * 0.0007) * 12, 1.72, t, true, { showPilots: true });
+    drawClayUFO(ctx, w / 2 + Math.sin(t * 0.001) * 40, 118 + Math.cos(t * 0.0007) * 12, 1.72, t, true, { showPilots: true, legExtend: 0 });
     // brothers on title
     drawZakk(ctx, w / 2 - 80, h * 0.7, 1, false, t, { smoking: true });
     drawTayler(ctx, w / 2 + 90, h * 0.7, -1, false, t, { smoking: true });
@@ -2889,5 +3085,11 @@
     drawClayUFO,
     drawCitizen,
     drawTitleBackdrop,
+    drawJointSesh,
+    drawRollingPaper,
+    drawWeedPinch,
+    drawLighterFlame,
+    drawJoint,
+    drawSmokePuffs,
   };
 })(window);

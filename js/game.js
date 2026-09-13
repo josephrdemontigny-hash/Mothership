@@ -1,8 +1,8 @@
 /**
  * Mothership — Chilliwack skies
- * Flow: title → shed (grab→stereo→smoke with Tayler→land) → yard (board/sit) → fly → results
+ * Flow: title → shed (grab→stereo→joint sequence→land) → yard (board/sit→legs tuck) → fly → results
  * (no cockpit cassette / boarding cutscene). Pilots: Zakk & Tayler
- * Fly scroll is player-driven (no auto-scroll).
+ * Fly scroll is player-driven (no auto-scroll). Landing legs extend on ground, tuck on takeoff.
  */
 (function () {
   const W = MothershipWorld;
@@ -68,16 +68,54 @@
   let hasCassette = false;
   /** Cassette inserted in shed stereo — theme playing */
   let tapeInStereo = false;
-  /** Shared sesh with Tayler active */
+  /** Shared sesh with Tayler active (staged joint sequence) */
   let smoking = false;
-  /** 0..1 smoke beat progress (joint + puffs); UFO lands during this */
+  /** Overall 0..1 progress across joint stages (HUD bar) */
   let smokeProgress = 0;
-  /** Finished smoking with Tayler (UFO land gate complete) */
+  /** Finished joint + UFO land gate complete */
   let smokeDone = false;
-  /** 0..1 UFO fly-in in shed window; advances during smoke beat only */
+  /** 0..1 UFO fly-in in shed window; advances ONLY during WATCH stage */
   let windowUfo = 0;
-  /** Brief sit-in-driver delay after boarding in yard */
+  /**
+   * Joint sequence stage after USE near Tayler:
+   * 'paper' | 'roll' | 'light' | 'pass' | 'watch' | null
+   */
+  let jointStage = null;
+  /** Frames elapsed in current joint stage */
+  let jointTimer = 0;
+  /** Brief sit + takeoff (legs tuck) after boarding in yard */
   let boardSit = null;
+
+  /** Staged joint beat timings + prompts (cheesy comedy, not graphic) */
+  const JOINT_STAGES = [
+    { id: 'paper', dur: 48, prompt: 'ROLL', label: 'Tayler pulls paper + weed…' },
+    { id: 'roll', dur: 52, prompt: 'ROLL', label: 'Quick roll…' },
+    { id: 'light', dur: 42, prompt: 'LIGHT', label: 'Flick — lit!' },
+    { id: 'pass', dur: 50, prompt: 'PASS', label: 'Pass it to Zakk…' },
+    { id: 'watch', dur: 110, prompt: 'WATCH', label: 'Watch the window…' },
+  ];
+
+  function jointStageIndex(id) {
+    for (let i = 0; i < JOINT_STAGES.length; i++) {
+      if (JOINT_STAGES[i].id === id) return i;
+    }
+    return -1;
+  }
+
+  function jointOverallProgress() {
+    if (!jointStage) return smokeDone ? 1 : 0;
+    const idx = jointStageIndex(jointStage);
+    if (idx < 0) return 0;
+    let done = 0;
+    let total = 0;
+    for (let i = 0; i < JOINT_STAGES.length; i++) {
+      total += JOINT_STAGES[i].dur;
+      if (i < idx) done += JOINT_STAGES[i].dur;
+    }
+    const cur = JOINT_STAGES[idx];
+    done += Math.min(cur.dur, jointTimer);
+    return Math.max(0, Math.min(1, done / total));
+  }
 
   function getHigh() {
     return parseInt(localStorage.getItem(HS_KEY) || '0', 10) || 0;
@@ -267,6 +305,8 @@
     smokeProgress = 0;
     smokeDone = false;
     windowUfo = 0;
+    jointStage = null;
+    jointTimer = 0;
     syncInvHud();
     enterShed();
   }
@@ -282,7 +322,7 @@
     tayler = { x: 940, y: GROUND };
     showScreen('play');
     syncHud();
-    setPrompt('Grab the cassette · play it on the stereo · then smoke with Tayler');
+    setPrompt('Grab the cassette · play it on the stereo · then roll with Tayler');
     showFlash('Grab the cassette and play it on the stereo!', 150);
   }
 
@@ -307,6 +347,8 @@
       scale: 2.28,
       lights: true,
       timer: 0,
+      legExtend: 1,
+      showPilots: false,
     };
     Audio.play('landing');
     showFlash("Mothership waiting. Walk up and sit in the driver's seat.", 130);
@@ -346,6 +388,8 @@
       shakeX: 0,
       shakeY: 0,
       controlsUnlocked: true,
+      /** Landing legs tucked for flight */
+      legExtend: 0,
     };
     for (let i = 0; i < 30; i++) spawnProp(60 + i * 68);
     for (let i = 0; i < 5; i++) spawnFlyTarget(300 + i * 200);
@@ -507,6 +551,8 @@
     smokeProgress = 0;
     smokeDone = false;
     windowUfo = 0;
+    jointStage = null;
+    jointTimer = 0;
     boardSit = null;
     syncInvHud();
     showScreen('title');
@@ -556,11 +602,12 @@
 
   // ——— Physics ———
   function updateSideScroller(worldW) {
-    const accel = 0.55;
-    const maxSpd = 4.2;
-    const friction = 0.78;
-    const grav = 0.55;
-    const jumpV = -9.5;
+    // ~1.8× prior walk feel — still controllable in shed/yard
+    const accel = 0.95;
+    const maxSpd = 7.6;
+    const friction = 0.80;
+    const grav = 0.62;
+    const jumpV = -11.4;
 
     const ix = inputX();
     avatar.vx += ix * accel;
@@ -614,7 +661,7 @@
     Audio.unlock();
     Audio.playTheme();
     Audio.play('cassette');
-    showFlash('Theme on! Smoke with Tayler — watch the window…', 130);
+    showFlash('Theme on! Roll with Tayler — then watch the window…', 130);
     syncInvHud();
     W.burst(particles, W.SHED_STEREO_X - camX + 30, GROUND - 50, '#7dff3a', 12);
     W.addFloater(floaters, W.SHED_STEREO_X - camX + 30, GROUND - 70, '♪ PLAYING', '#7dff3a');
@@ -648,24 +695,58 @@
 
   // ——— Updates ———
   function updateShed() {
-    // Smoke beat: joint + puffs while mothership descends in the window
-    if (smoking && !smokeDone) {
-      smokeProgress = Math.min(1, smokeProgress + 0.0065);
-      windowUfo = Math.min(1, smokeProgress);
-      if (Math.random() < 0.04) Audio.play('smoke');
-      if (smokeProgress >= 1) {
-        smoking = false;
-        smokeDone = true;
-        windowUfo = 1;
-        smokeProgress = 1;
-        Audio.play('landing');
-        Audio.play('power');
-        showFlash('Mothership landed! Head for EXIT →', 130);
-        W.addFloater(floaters, tayler.x - camX, GROUND - 90, 'LANDED', '#7dff3a');
+    // Staged joint sequence: ROLL → LIGHT → PASS → WATCH (UFO only on WATCH)
+    if (smoking && !smokeDone && jointStage) {
+      jointTimer++;
+      const idx = jointStageIndex(jointStage);
+      const stage = JOINT_STAGES[idx];
+      const stageProg = Math.min(1, jointTimer / stage.dur);
+      smokeProgress = jointOverallProgress();
+
+      if (jointStage === 'watch') {
+        windowUfo = Math.min(1, stageProg);
+        if (Math.random() < 0.035) Audio.play('smoke');
+      } else {
+        windowUfo = 0;
+        if (jointStage === 'light' && jointTimer === 8) Audio.play('smoke');
+        if (jointStage === 'pass' && jointTimer === 6) Audio.play('ui');
+        if (jointStage === 'roll' && jointTimer === 4) Audio.play('ui');
       }
-      setPrompt('Smoking with Tayler… mothership inbound');
-      // Soft lock movement a bit during automatic smoke scene
-      avatar.vx *= 0.5;
+
+      setPrompt(stage.prompt + ' — ' + stage.label);
+
+      if (jointTimer >= stage.dur) {
+        if (idx >= JOINT_STAGES.length - 1) {
+          smoking = false;
+          smokeDone = true;
+          windowUfo = 1;
+          smokeProgress = 1;
+          jointStage = null;
+          jointTimer = 0;
+          Audio.play('landing');
+          Audio.play('power');
+          showFlash('Mothership landed! Head for EXIT →', 130);
+          W.addFloater(floaters, tayler.x - camX, GROUND - 90, 'LANDED', '#7dff3a');
+        } else {
+          const next = JOINT_STAGES[idx + 1];
+          jointStage = next.id;
+          jointTimer = 0;
+          const flashes = {
+            roll: 'Rolling… classic shed craftsmanship',
+            light: 'Spark up — cheesy comedy mode',
+            pass: 'Pass it, Zakk!',
+            watch: 'Dude… the window!',
+          };
+          if (flashes[next.id]) showFlash(flashes[next.id], 90);
+          W.addFloater(floaters, tayler.x - camX, GROUND - 88, next.prompt, '#c8e8a0');
+          if (next.id === 'watch') {
+            Audio.play('smoke');
+            showFlash('WATCH — mothership inbound!', 110);
+          }
+        }
+      }
+
+      avatar.vx *= 0.45;
       updateSideScroller(W.SHED_WORLD_W);
       return;
     }
@@ -696,16 +777,17 @@
         if (!tapeInStereo) tryPlayStereoFromGesture();
       }
     } else if (nearTaylerSesh()) {
-      setPrompt('↑ / E / USE — SMOKE WITH TAYLER');
+      setPrompt('↑ / E / USE — ROLL WITH TAYLER');
       if (wantsInteract()) {
         smoking = true;
-        smokeProgress = Math.max(smokeProgress, 0.02);
-        windowUfo = Math.max(windowUfo, 0.02);
+        jointStage = 'paper';
+        jointTimer = 0;
+        smokeProgress = 0.02;
+        windowUfo = 0; // mothership waits until PASS → WATCH
         Audio.play('ui');
-        Audio.play('smoke');
-        showFlash('Shared sesh — look out the window…', 120);
+        showFlash('ROLL — paper + weed. Then light, pass, watch!', 120);
         W.burst(particles, tayler.x - camX, GROUND - 50, '#c8e8a0', 10);
-        W.addFloater(floaters, tayler.x - camX, GROUND - 80, 'SMOKE', '#c8e8a0');
+        W.addFloater(floaters, tayler.x - camX, GROUND - 80, 'ROLL', '#c8e8a0');
       }
     } else if (nearDoor()) {
       if (!ufoLanded()) {
@@ -715,7 +797,7 @@
             ? 'Play the cassette on the stereo first!'
             : 'Grab the cassette · play it on the stereo';
         } else if (!smokeDone && !smoking) {
-          msg = 'Smoke with Tayler first — then the mothership lands';
+          msg = 'Roll with Tayler first — then the mothership lands';
         } else {
           msg = 'Wait for it to land…';
         }
@@ -725,7 +807,7 @@
           showFlash(
             !tapeInStereo
               ? (hasCassette ? 'Stereo first — insert the tape!' : 'Grab the cassette first!')
-              : (!smokeDone ? 'SMOKE WITH TAYLER first!' : 'Wait for it to land…'),
+              : (!smokeDone ? 'ROLL WITH TAYLER first!' : 'Wait for it to land…'),
             100
           );
           Audio.play('hit');
@@ -744,7 +826,7 @@
       } else if (hasCassette && !tapeInStereo) {
         setPrompt('Take the cassette to the stereo — PLAY ON STEREO');
       } else if (!smokeDone) {
-        setPrompt('SMOKE WITH TAYLER · then watch the window');
+        setPrompt('ROLL WITH TAYLER · LIGHT · PASS · WATCH');
       } else if (!ufoLanded()) {
         setPrompt('Watch the window — wait for it to land…');
       } else {
@@ -756,8 +838,30 @@
   function updateYard() {
     if (boardSit) {
       boardSit.timer++;
-      setPrompt("Sitting in the driver's seat…");
-      if (boardSit.timer > 36) {
+      if (!boardSit.phase || boardSit.phase === 'sit') {
+        setPrompt("Sitting in the driver's seat…");
+        if (landing) {
+          landing.legExtend = 1;
+          landing.showPilots = true;
+        }
+        if (boardSit.timer > 28) {
+          boardSit.phase = 'takeoff';
+          boardSit.timer = 0;
+          Audio.play('power');
+          showFlash('Legs tucking — liftoff!', 90);
+        }
+        return;
+      }
+      // Takeoff: landing legs retract into hull, then enter fly (legs stay tucked)
+      setPrompt('Landing legs tucking in…');
+      if (landing) {
+        const tuck = Math.min(1, boardSit.timer / 40);
+        landing.legExtend = 1 - tuck;
+        landing.showPilots = true;
+        landing.y = landing.targetY - tuck * 36;
+        if (tuck > 0.35) landing.phase = 'takeoff';
+      }
+      if (boardSit.timer > 44) {
         enterFly();
         return;
       }
@@ -779,7 +883,11 @@
         if (wantsInteract()) {
           Audio.play('power');
           Audio.play('ui');
-          boardSit = { timer: 0 };
+          boardSit = { timer: 0, phase: 'sit' };
+          if (landing) {
+            landing.legExtend = 1;
+            landing.showPilots = true;
+          }
           showFlash("Driver's seat — flight controls unlocked!", 100);
           return;
         }
@@ -994,41 +1102,72 @@
         smokeProgress: smokeProgress,
       });
       if (tayler) {
-        const taylerSmoking = true;
+        const afterPass = smokeDone || jointStage === 'watch' || jointStage === 'pass';
+        const taylerHoldsJoint = !smoking || jointStage === 'light' || afterPass || !jointStage;
         W.drawTayler(ctx, tayler.x - camX, tayler.y, 1, false, t, {
           seated: true,
-          smoking: taylerSmoking,
-          heavySmoke: smoking || smokeDone,
+          smoking: taylerHoldsJoint && (jointStage === 'light' || jointStage === 'watch' || smokeDone || (!smoking && tapeInStereo)),
+          heavySmoke: smokeDone || jointStage === 'watch',
         });
       }
       const zakkIdle = Math.abs(avatar.vx) < 0.5;
+      const zakkHasJoint = smokeDone || jointStage === 'watch' || (jointStage === 'pass' && jointTimer > 28);
       W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {
-        smoking: smoking || (zakkIdle && tapeInStereo),
-        heavySmoke: smoking,
+        smoking: zakkHasJoint || (!smoking && zakkIdle && tapeInStereo && smokeDone),
+        heavySmoke: zakkHasJoint && (jointStage === 'watch' || smokeDone),
       });
+      if (smoking && jointStage && tayler) {
+        const idx = jointStageIndex(jointStage);
+        const stage = JOINT_STAGES[idx];
+        const stageProg = Math.min(1, jointTimer / Math.max(1, stage.dur));
+        W.drawJointSesh(
+          ctx,
+          tayler.x - camX,
+          tayler.y,
+          avatar.x - camX,
+          avatar.y,
+          jointStage,
+          stageProg,
+          t
+        );
+      }
       if (nearTaylerSesh()) {
         const bob = Math.sin(t * 0.01) * 3;
         ctx.fillStyle = '#7dff3a';
         ctx.font = 'bold 15px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('▲ SMOKE WITH TAYLER', tayler.x - camX, GROUND - 118 + bob);
+        ctx.fillText('▲ ROLL WITH TAYLER', tayler.x - camX, GROUND - 118 + bob);
         ctx.textAlign = 'left';
       }
-      if (smoking) {
-        ctx.fillStyle = 'rgba(10,30,16,0.72)';
-        ctx.fillRect(CW / 2 - 140, 48, 280, 28);
+      if (smoking && jointStage) {
+        const idx = jointStageIndex(jointStage);
+        const stage = JOINT_STAGES[idx];
+        ctx.fillStyle = 'rgba(10,30,16,0.78)';
+        ctx.fillRect(CW / 2 - 150, 44, 300, 36);
         ctx.strokeStyle = '#c8e8a0';
-        ctx.strokeRect(CW / 2 - 140, 48, 280, 28);
+        ctx.strokeRect(CW / 2 - 150, 44, 300, 36);
         ctx.fillStyle = '#e8ffe0';
-        ctx.font = 'bold 13px Segoe UI, sans-serif';
+        ctx.font = 'bold 14px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Shared sesh — mothership descending…', CW / 2, 67);
+        ctx.fillText(stage.prompt + ' — ' + stage.label, CW / 2, 67);
         ctx.textAlign = 'left';
-        // progress bar
+        const chips = ['ROLL', 'LIGHT', 'PASS', 'WATCH'];
+        const chipMap = { paper: 0, roll: 0, light: 1, pass: 2, watch: 3 };
+        const active = chipMap[jointStage] != null ? chipMap[jointStage] : 0;
+        for (let i = 0; i < chips.length; i++) {
+          const cx = CW / 2 - 120 + i * 62;
+          ctx.fillStyle = i === active ? '#9dff6a' : 'rgba(80,100,70,0.7)';
+          ctx.fillRect(cx, 86, 56, 14);
+          ctx.fillStyle = i === active ? '#102010' : '#c8e0b8';
+          ctx.font = 'bold 9px Segoe UI, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(chips[i], cx + 28, 96);
+        }
+        ctx.textAlign = 'left';
         ctx.fillStyle = 'rgba(0,0,0,0.45)';
-        ctx.fillRect(CW / 2 - 80, 82, 160, 8);
+        ctx.fillRect(CW / 2 - 80, 106, 160, 7);
         ctx.fillStyle = '#9dff6a';
-        ctx.fillRect(CW / 2 - 80, 82, 160 * smokeProgress, 8);
+        ctx.fillRect(CW / 2 - 80, 106, 160 * smokeProgress, 7);
       }
       if (nearDoor()) {
         ctx.fillStyle = ufoLanded() ? '#7dff3a' : '#ff8866';
@@ -1037,7 +1176,7 @@
         let doorLabel = '▲ ENTER';
         if (!ufoLanded()) {
           if (!tapeInStereo) doorLabel = '▲ LOCKED';
-          else if (!smokeDone) doorLabel = '▲ SMOKE WITH TAYLER';
+          else if (!smokeDone) doorLabel = '▲ ROLL WITH TAYLER';
           else doorLabel = '▲ WAIT FOR LANDING';
         }
         ctx.fillText(doorLabel, W.SHED_DOOR_X - camX, GROUND - 170);
@@ -1063,7 +1202,19 @@
         ctx.fillStyle = '#7dff3a';
         ctx.font = 'bold 18px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText("Taking the driver's seat…", CW / 2, 90);
+        if (boardSit.phase === 'takeoff') {
+          ctx.fillText('Landing legs tucking in…', CW / 2, 90);
+          const ext = landing.legExtend != null ? landing.legExtend : 0;
+          ctx.fillStyle = 'rgba(10,30,16,0.75)';
+          ctx.fillRect(CW / 2 - 70, 102, 140, 12);
+          ctx.fillStyle = '#88c8ff';
+          ctx.fillRect(CW / 2 - 68, 104, 136 * ext, 8);
+          ctx.fillStyle = '#c8e0ff';
+          ctx.font = 'bold 10px Segoe UI, sans-serif';
+          ctx.fillText(ext > 0.5 ? 'GEAR DOWN' : 'GEAR UP', CW / 2, 126);
+        } else {
+          ctx.fillText("Taking the driver's seat…", CW / 2, 90);
+        }
         ctx.textAlign = 'left';
       }
     } else if (mode === 'fly') {

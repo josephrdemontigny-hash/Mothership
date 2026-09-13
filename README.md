@@ -3,7 +3,7 @@
 Arcade comedy game inspired by Retrofit’s song **“Mothership”**.  
 **Retrofit presents: Mothership the game.**
 
-You start in **mom’s plywood shed** (El Camino project car, dense garden clutter, chilling with Tayler), **grab a cassette**, **play it on the stereo** (theme starts), **smoke a joint with Tayler** while the clay UFO lands through the big shed window, step outside and **sit in the driver’s seat**, then **fly** over Chilliwack beaming locals.
+You start in **mom’s plywood shed** (El Camino project car, dense garden clutter, chilling with Tayler), **grab a cassette**, **play it on the stereo** (theme starts), **roll a joint with Tayler** (staged ROLL → LIGHT → PASS → WATCH), **then** the clay UFO lands through the big shed window, step outside and **sit in the driver’s seat** (landing legs tuck on takeoff), then **fly** over Chilliwack beaming locals.
 
 **Tone:** absurd cheesy comedy.  
 **Pilots:** **Zakk** (all-black western, flat cap, aviators, mustache) & **Tayler** (backwards maroon cap, aviators, plaid, stubble).
@@ -25,15 +25,16 @@ Works in modern Chrome / Safari; phone landscape supported (pad + USE / BEAM). T
 ## Game flow
 
 1. **Title** → Start  
-2. **SHED** — hang with **Tayler**; **grab the cassette**, bring it to the **stereo** and **PLAY** (theme starts — music does **not** auto-start the landing); **SMOKE WITH TAYLER** (shared sesh); while you smoke, the **UFO lands** in the shed window; leave through EXIT (locked until `windowUfo` landed)  
-3. **YARD** — cooler mothership is landed; walk up and **sit in the driver’s seat** (no cockpit cassette step, no boarding cutscene)  
-4. **FLY** — free L/R/U/D over Chilliwack; **no auto-scroll** — the neighborhood only advances when you fly that way; beam while flying  
+2. **SHED** — hang with **Tayler**; **grab the cassette**, bring it to the **stereo** and **PLAY** (theme starts — music does **not** auto-start the landing); **ROLL WITH TAYLER** (paper → roll → light → pass); **only after PASS** does **WATCH** start the **UFO landing** in the shed window; leave through EXIT (locked until `windowUfo` landed)  
+3. **YARD** — cooler mothership is landed (legs extended); walk up and **sit in the driver’s seat** — on takeoff, **landing legs tuck into the hull** (no cockpit cassette step)  
+4. **FLY** — free L/R/U/D over Chilliwack (legs retracted); **no auto-scroll** — the neighborhood only advances when you fly that way; beam while flying  
 5. **Results** — Enter from fly, or hull reaches 0 (theme keeps playing until title / new game)
 
-Mode path: `title → shed (grab→stereo→smoke→land) → yard (board/sit) → fly → results`  
+Mode path: `title → shed (grab→stereo→joint ROLL/LIGHT/PASS→WATCH land) → yard (board/sit→legs tuck) → fly → results`  
 HUD modes: **SHED / YARD / FLY**. Inventory shows **📼 Cassette** while holding / **📼 Playing** after stereo insert.
 
-Suggested shed gates: `tapeInStereo`, `smoking` / `smokeProgress`, `windowUfo`, door locked until landed.
+Suggested shed gates: `tapeInStereo`, `jointStage` / `smokeProgress`, `windowUfo` (watch-only), door locked until landed.  
+Shed/yard walk is ~1.8× snappier (still controllable). UFO `legExtend`: 1 on ground / window land, animates to 0 on yard→fly takeoff, stays 0 in fly.
 
 ## Controls
 
@@ -44,22 +45,22 @@ Suggested shed gates: `tapeInStereo`, `smoking` / `smokeProgress`, `windowUfo`, 
 |--------|---------|--------|
 | Walk (shed/yard) | ← → or A D | On-screen ◀ ▶ |
 | Jump (shed/yard) | Space | ▲ (when not at a door/prop) |
-| Grab / play stereo / smoke / enter / sit | ↑ / W / E / Enter / Space | USE |
+| Grab / play stereo / roll with Tayler / enter / sit | ↑ / W / E / Enter / Space | USE |
 | **Fly** L/R/U/D | Arrow keys or WASD | Pad |
 | **Beam** (while flying) | Space / B / E (hold ok) | BEAM or USE |
 | End mission | Enter (fly) only | — (USE beams in fly) |
 | Mute | M or 🔊 | 🔊 |
 
-**Stereo gate:** grab tape → insert/play on shed stereo (same user gesture starts music for iOS/Safari) → **smoke with Tayler** (UFO descends during the sesh) → exit → sit in driver’s seat to fly (mute still respected).
+**Stereo gate:** grab tape → insert/play on shed stereo (same user gesture starts music for iOS/Safari) → **roll with Tayler** (ROLL / LIGHT / PASS / WATCH — UFO descends only on WATCH) → exit → sit in driver’s seat → legs tuck → fly (mute still respected).
 
 ## Shed UX
 
 - Plywood studs / rafters vibe (garden-shed density): shelves with jars & seed trays, soil bags, hose, trash bin, orange sled in the rafters, lawnmower, garden wagon, pegboard, pots, cords, junk piles, posters.
 - Major prop: life-sized dusty copper/bronze **El Camino** (hood ~chest height, chrome grille/bumper, black roof) — barn-find project car. Walk path stays in front of it.
 - Cassette (▲ GRAB) sits in the **Camino-end** clutter; stereo (▲ PLAY ON STEREO) is a **long walk** toward the exit — not next to each other.
-- After stereo: clear prompt **▲ SMOKE WITH TAYLER** near the lounge / sesh spot; UFO descends in the window during the smoke beat.
-- Darker, dusty shed (soft haze / motes, readable). Large **framed** backyard window (wood frame + mullions) shows backyard + Cheam (unlabeled) + UFO fly-in → land, clipped inside the glass.
-- Inventory shows holding cassette until inserted; door locked until landed (“SMOKE WITH TAYLER” / “wait for it to land…”).
+- After stereo: clear prompt **▲ ROLL WITH TAYLER** near the lounge; staged props (paper, weed pinch, joint, lighter flame, pass handoff, smoke); UFO descends in the window **only on WATCH** (after the pass).
+- Darker, dusty shed (soft haze / motes, readable). Large **framed** backyard window (wood frame + mullions) shows backyard + Cheam (unlabeled) + UFO fly-in → land (legs deploy), clipped inside the glass.
+- Inventory shows holding cassette until inserted; door locked until landed (“ROLL WITH TAYLER” / “wait for it to land…”).
 - Clear walk path: El Camino (left) → cassette / stereo (mid) → lounge / Tayler → EXIT (right).
 
 ## Beam rules
@@ -82,7 +83,7 @@ Flight scrolls **RIGHT = south** when **you** fly right (camera/world is player-
 
 ## Music
 
-Inserting the cassette into the **shed stereo** starts `assets/mothership-theme.mp3` (relative path for GitHub Pages) on loop for the **rest of that run** (shed + yard + fly + results). Music starting does **not** by itself start the UFO landing — that happens during the Tayler smoke beat.
+Inserting the cassette into the **shed stereo** starts `assets/mothership-theme.mp3` (relative path for GitHub Pages) on loop for the **rest of that run** (shed + yard + fly + results). Music starting does **not** by itself start the UFO landing — that happens on the **WATCH** stage after the joint pass.
 
 **iOS/Safari:** `playTheme()` calls `el.play()` **synchronously** in the USE/E/Enter/touch handler (same user-gesture stack). `unlock()` only resumes AudioContext — it never play/pause-primes the theme element (that burned the gesture). Theme `<audio id="theme-audio" playsinline loop preload="auto">` in `index.html`. Mute still pauses theme + SFX; theme continues the rest of the run; stops only on **title** or **new game**.
 
