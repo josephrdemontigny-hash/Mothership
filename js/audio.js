@@ -1,6 +1,6 @@
 /**
  * Tiny Web Audio beep engine + theme music for Mothership.
- * Mute persists in localStorage. Theme starts on cockpit cassette insert
+ * Mute persists in localStorage. Theme starts on shed stereo cassette insert
  * (must call playTheme inside the same user gesture for iOS/Safari);
  * keeps playing through fly + results; stops on title / new game only.
  */
@@ -195,7 +195,7 @@
       ensureCtx();
     },
     /**
-     * Start looping theme. Call inside the same user-gesture tick as insert
+     * Start looping theme. Call inside the same user-gesture tick as stereo insert
      * (iOS/Safari blocks delayed play()). Retries if play() rejects.
      */
     playTheme() {

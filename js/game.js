@@ -1,7 +1,7 @@
 /**
  * Mothership — Chilliwack skies
- * Flow: title → shed → yard → cockpit (insert tape) → seat → fly → results
- * (no boarding cutscene). Pilots: Zakk (char-ref-2) & Tayler (char-ref-1)
+ * Flow: title → shed (grab→stereo→watch land) → yard (board/sit) → fly → results
+ * (no cockpit cassette / boarding cutscene). Pilots: Zakk & Tayler
  */
 (function () {
   const W = MothershipWorld;
@@ -46,7 +46,7 @@
   let prevInteractHeld = false;
   let prevBeamHeld = false;
 
-  // title | shed | yard | cockpit | fly | results
+  // title | shed | yard | fly | results
   let mode = 'title';
   let t = 0;
   let lastTs = 0;
@@ -62,12 +62,14 @@
   let camX = 0;
   let tayler = null;
   let landing = null;
-  let cassette = null;
   let fly = null;
   let hasCassette = false;
-  let tapeInDeck = false;
-  /** 0..1 UFO fly-in seen through shed window; continues into yard settle */
+  /** Cassette inserted in shed stereo — theme playing */
+  let tapeInStereo = false;
+  /** 0..1 UFO fly-in in shed window; starts when stereo plays */
   let windowUfo = 0;
+  /** Brief sit-in-driver delay after boarding in yard */
+  let boardSit = null;
 
   function getHigh() {
     return parseInt(localStorage.getItem(HS_KEY) || '0', 10) || 0;
@@ -91,7 +93,6 @@
     const labels = {
       shed: 'SHED',
       yard: 'YARD',
-      cockpit: 'COCKPIT',
       fly: 'FLY',
     };
     el.modeLabel.textContent = labels[mode] || '';
@@ -109,13 +110,16 @@
 
   function syncInvHud() {
     if (!el.invCassette) return;
-    const show = hasCassette && mode !== 'title' && mode !== 'results';
+    // Holding cassette until inserted in stereo; then show playing briefly / hide after fly
+    const holding = hasCassette && !tapeInStereo;
+    const playing = tapeInStereo && (mode === 'shed' || mode === 'yard');
+    const show = (holding || playing) && mode !== 'title' && mode !== 'results';
     el.invCassette.classList.toggle('hidden', !show);
-    el.invCassette.classList.toggle('used', !!tapeInDeck);
-    el.invCassette.textContent = tapeInDeck ? '📼 In deck' : '📼 Cassette';
+    el.invCassette.classList.toggle('used', !!tapeInStereo);
+    el.invCassette.textContent = tapeInStereo ? '📼 Playing' : '📼 Cassette';
   }
 
-  /** Beam touch control + fly-only HUD bits — hidden until fly after driver’s seat. */
+  /** Beam touch control + fly-only HUD bits — hidden until fly. */
   function syncBeamUi() {
     const flying = mode === 'fly';
     if (el.btnBeam) el.btnBeam.classList.toggle('hidden', !flying);
@@ -160,10 +164,10 @@
     floaters = [];
     flashMsg = null;
     fly = null;
-    cassette = null;
     landing = null;
+    boardSit = null;
     hasCassette = false;
-    tapeInDeck = false;
+    tapeInStereo = false;
     windowUfo = 0;
     syncInvHud();
     enterShed();
@@ -175,12 +179,13 @@
     jumpQueued = false;
     prevInteractHeld = true;
     camX = 0;
-    avatar = makeAvatar(200, GROUND);
-    tayler = { x: 420, y: GROUND };
+    // Start mid-left — walk past El Camino toward stereo / cassette / exit
+    avatar = makeAvatar(320, GROUND);
+    tayler = { x: 690, y: GROUND };
     showScreen('play');
     syncHud();
-    setPrompt('Grab the cassette, then leave through EXIT');
-    showFlash('Find & grab the cassette — UFO landing out back!', 150);
+    setPrompt('Grab the cassette · play it on the stereo');
+    showFlash('Grab the cassette and play it on the stereo!', 150);
   }
 
   function enterYard() {
@@ -188,68 +193,28 @@
     interactQueued = false;
     jumpQueued = false;
     prevInteractHeld = true;
+    boardSit = null;
     tayler = { x: 240, y: GROUND };
     Audio.play('ui');
     camX = 0;
     avatar = makeAvatar(280, GROUND);
 
-    // Outside: UFO already landed or finishing a short settle (no long wait)
+    // Door only opens after land — mothership already waiting in backyard
     const targetY = GROUND - 72;
-    if (windowUfo >= 0.92) {
-      landing = {
-        phase: 'landed',
-        x: 720,
-        y: targetY,
-        targetY: targetY,
-        scale: 1.85,
-        lights: true,
-        timer: 0,
-      };
-      Audio.play('landing');
-      showFlash('Mothership waiting. Walk up and ENTER.', 120);
-      setPrompt('Walk to the UFO and ENTER');
-    } else {
-      const remain = 1 - windowUfo;
-      landing = {
-        phase: 'descend',
-        x: 720,
-        y: targetY - Math.max(18, remain * 70),
-        targetY: targetY,
-        scale: 1.85,
-        lights: true,
-        timer: 0,
-      };
-      setPrompt("UFO finishing landing — then walk up and ENTER");
-      showFlash('Short settle — then hop aboard.', 110);
-    }
-    showScreen('play');
-    syncHud();
-  }
-
-  function enterCockpit() {
-    mode = 'cockpit';
-    interactQueued = false;
-    prevInteractHeld = true;
-    landing = null;
-    cassette = {
-      inserted: false,
-      insertProgress: 0,
-      inserting: false,
-      seated: false,
-      seatTimer: 0,
-      hasTape: !!hasCassette,
-      musicStarted: false,
+    landing = {
+      phase: 'landed',
+      x: 720,
+      y: targetY,
+      targetY: targetY,
+      scale: 1.85,
+      lights: true,
+      timer: 0,
     };
-    Audio.play('ui');
+    Audio.play('landing');
+    showFlash("Mothership waiting. Walk up and sit in the driver's seat.", 130);
+    setPrompt("Walk to the UFO — ENTER driver's seat");
     showScreen('play');
     syncHud();
-    if (hasCassette) {
-      setPrompt('E / Space / USE — insert cassette into deck');
-      showFlash('Cockpit online. Slide the tape into the deck.', 120);
-    } else {
-      setPrompt('No cassette — somehow empty-handed');
-      showFlash('…you forgot the cassette?!', 120);
-    }
   }
 
   function enterFly() {
@@ -257,7 +222,8 @@
     interactQueued = false;
     beamQueued = false;
     prevBeamHeld = false;
-    cassette = null;
+    boardSit = null;
+    landing = null;
 
     fly = {
       scrollX: 0,
@@ -389,10 +355,6 @@
 
     if (k === 'e' || k === 'enter') interactQueued = true;
 
-    if (mode === 'cockpit' && (k === 'e' || k === ' ' || k === 'enter')) {
-      interactQueued = true;
-    }
-
     if ((e.code === 'Space' || k === ' ')) {
       if (mode === 'fly') beamQueued = true;
       else if (mode === 'shed' || mode === 'yard') jumpQueued = true;
@@ -410,8 +372,8 @@
   });
 
   canvas.addEventListener('click', () => {
-    if (mode === 'cockpit' && cassette) interactQueued = true;
-    else if (mode === 'title') startGame();
+    if (mode === 'title') startGame();
+    else if (mode === 'shed' || mode === 'yard') interactQueued = true;
   });
 
   el.btnStart.addEventListener('click', startGame);
@@ -421,8 +383,8 @@
     Audio.stopTheme();
     mode = 'title';
     hasCassette = false;
-    tapeInDeck = false;
-    cassette = null;
+    tapeInStereo = false;
+    boardSit = null;
     syncInvHud();
     showScreen('title');
     el.titleHigh.textContent = 'High Score: ' + getHigh();
@@ -450,13 +412,11 @@
   el.btnBeam.addEventListener('touchstart', (e) => {
     e.preventDefault();
     if (mode === 'fly') beamQueued = true;
-    else if (mode === 'cockpit') interactQueued = true;
     else if (mode === 'shed' || mode === 'yard') interactQueued = true;
   }, { passive: false });
   el.btnBeam.addEventListener('mousedown', (e) => {
     e.preventDefault();
     if (mode === 'fly') beamQueued = true;
-    else if (mode === 'cockpit') interactQueued = true;
     else if (mode === 'shed' || mode === 'yard') interactQueued = true;
   });
 
@@ -509,8 +469,13 @@
   }
 
   function nearCassetteProp() {
-    if (mode !== 'shed' || !avatar || hasCassette) return false;
+    if (mode !== 'shed' || !avatar || hasCassette || tapeInStereo) return false;
     return Math.abs(avatar.x - W.SHED_CASSETTE_X) < 48;
+  }
+
+  function nearStereo() {
+    if (mode !== 'shed' || !avatar || !hasCassette || tapeInStereo) return false;
+    return Math.abs(avatar.x - W.SHED_STEREO_X) < 55;
   }
 
   function nearDoor() {
@@ -518,11 +483,15 @@
     return Math.abs(avatar.x - W.SHED_DOOR_X) < 50;
   }
 
+  function ufoLanded() {
+    return windowUfo >= 0.98;
+  }
+
   function nearInteract() {
     if (mode === 'shed') {
-      return nearCassetteProp() || nearDoor();
+      return nearCassetteProp() || nearStereo() || nearDoor();
     }
-    if (mode === 'yard' && landing && landing.phase === 'landed') {
+    if (mode === 'yard' && landing && landing.phase === 'landed' && !boardSit) {
       return Math.abs(avatar.x - landing.x) < 80;
     }
     return false;
@@ -530,8 +499,16 @@
 
   // ——— Updates ———
   function updateShed() {
-    // UFO progresses through shed window while hanging out
-    windowUfo = Math.min(1, windowUfo + 0.00135);
+    // UFO only flies in / lands after stereo insert (theme already playing)
+    if (tapeInStereo && !ufoLanded()) {
+      windowUfo = Math.min(1, windowUfo + 0.0042);
+      if (ufoLanded()) {
+        windowUfo = 1;
+        Audio.play('landing');
+        Audio.play('power');
+        showFlash('Mothership landed! Head for EXIT →', 130);
+      }
+    }
     updateSideScroller(W.SHED_WORLD_W);
 
     if (tayler && Math.abs(avatar.x - tayler.x) < 60 && Math.random() < 0.012) {
@@ -539,24 +516,50 @@
     }
 
     if (nearCassetteProp()) {
-      setPrompt('↑ / E / USE — Grab cassette tape');
+      setPrompt('↑ / E / USE — GRAB cassette');
       if (wantsInteract()) {
         hasCassette = true;
         gestureUnlock();
         Audio.warm();
         Audio.play('ui');
         Audio.play('cassette');
-        showFlash('Cassette acquired!', 130);
+        showFlash('Cassette acquired — play it on the stereo!', 130);
         syncInvHud();
         W.burst(particles, W.SHED_CASSETTE_X - camX, GROUND - 42, '#7dff3a', 10);
         W.addFloater(floaters, W.SHED_CASSETTE_X - camX, GROUND - 60, '📼 GOT IT', '#7dff3a');
       }
+    } else if (nearStereo()) {
+      setPrompt('↑ / E / USE — PLAY ON STEREO');
+      if (wantsInteract()) {
+        // Same-tick gesture: unlock + playTheme so iOS/Safari hears music
+        hasCassette = false;
+        tapeInStereo = true;
+        Audio.play('cassette');
+        gestureUnlock();
+        Audio.playTheme();
+        // UFO appears / begins landing as the song starts
+        windowUfo = Math.max(windowUfo, 0.02);
+        showFlash('Click. Clunk. Theme on — look out the window!', 120);
+        syncInvHud();
+        W.burst(particles, W.SHED_STEREO_X - camX + 30, GROUND - 50, '#7dff3a', 12);
+        W.addFloater(floaters, W.SHED_STEREO_X - camX + 30, GROUND - 70, '♪ PLAYING', '#7dff3a');
+      }
     } else if (nearDoor()) {
-      if (!hasCassette) {
-        setPrompt('Need the cassette first! Grab it near the amp');
+      if (!ufoLanded()) {
+        const msg = !tapeInStereo
+          ? (hasCassette
+            ? 'Play the cassette on the stereo first!'
+            : 'Grab the cassette · play it on the stereo')
+          : 'Wait for it to land…';
+        setPrompt(msg);
         prevInteractHeld = interactHeld();
         if (wantsInteract()) {
-          showFlash('Door locked vibe — grab the cassette first!', 100);
+          showFlash(
+            !tapeInStereo
+              ? (hasCassette ? 'Stereo first — insert the tape!' : 'Grab the cassette first!')
+              : 'Wait for it to land…',
+            100
+          );
           Audio.play('hit');
         }
       } else {
@@ -568,123 +571,51 @@
       }
     } else {
       prevInteractHeld = interactHeld();
-      if (!hasCassette) {
-        setPrompt('← → walk · find cassette near amp · watch the window · EXIT →');
+      if (!hasCassette && !tapeInStereo) {
+        setPrompt('← → walk · GRAB cassette · PLAY ON STEREO · watch the window');
+      } else if (hasCassette && !tapeInStereo) {
+        setPrompt('Take the cassette to the stereo — PLAY ON STEREO');
+      } else if (!ufoLanded()) {
+        setPrompt('Watch the window — wait for it to land…');
       } else {
-        setPrompt('← → walk · Space jump · hang with Tayler · EXIT →');
+        setPrompt('← → walk · UFO landed · EXIT →');
       }
     }
   }
 
   function updateYard() {
-    updateSideScroller(1200);
-    landing.timer++;
-    windowUfo = Math.min(1, windowUfo + 0.01);
+    if (boardSit) {
+      boardSit.timer++;
+      setPrompt("Sitting in the driver's seat…");
+      if (boardSit.timer > 36) {
+        enterFly();
+        return;
+      }
+      return;
+    }
 
-    if (tayler && landing.phase === 'landed') {
+    updateSideScroller(1200);
+    if (landing) landing.timer++;
+
+    if (tayler && landing && landing.phase === 'landed') {
       const tx = landing.x - 50;
       if (tayler.x < tx - 4) tayler.x += 1.2;
       else if (tayler.x > tx + 4) tayler.x -= 1.2;
     }
 
-    if (landing.phase === 'descend') {
-      // Fast settle — no long wait
-      landing.y += 2.4;
-      landing.lights = true;
-      if (landing.timer % 6 === 0) {
-        W.burst(particles, landing.x - camX, GROUND - 10, '#c8d8e0', 3);
-      }
-      if (landing.y >= landing.targetY) {
-        landing.y = landing.targetY;
-        landing.phase = 'landed';
-        windowUfo = 1;
-        Audio.play('landing');
-        Audio.play('power');
-        showFlash('Mothership ready. Walk up and ENTER.', 130);
-      }
-    }
-
-    if (landing.phase === 'landed') {
+    if (landing && landing.phase === 'landed') {
       if (nearInteract()) {
-        setPrompt('↑ / E / USE — Enter UFO');
+        setPrompt("↑ / E / USE — sit in the driver's seat");
         if (wantsInteract()) {
           Audio.play('power');
-          enterCockpit();
+          Audio.play('ui');
+          boardSit = { timer: 0 };
+          showFlash("Driver's seat — flight controls unlocked!", 100);
           return;
         }
       } else {
         prevInteractHeld = interactHeld();
-        setPrompt('Walk to the UFO and ENTER');
-      }
-    }
-  }
-
-  function updateCockpit() {
-    cassette.hasTape = !!hasCassette;
-
-    if (!hasCassette) {
-      setPrompt('No cassette held — restart and grab it in the shed');
-      prevInteractHeld = interactHeld() || beamHeld();
-      return;
-    }
-
-    // Insert: music MUST start on this same gesture tick (iOS/Safari)
-    if (!cassette.inserted) {
-      setPrompt('E / Space / USE — insert cassette into deck');
-      if (wantsInteract()) {
-        cassette.inserting = true;
-        cassette.inserted = true;
-        cassette.insertProgress = 0;
-        Audio.play('cassette');
-        // Same tick as user press — unlock + playTheme for gesture-tied HTMLAudioElement.play()
-        gestureUnlock();
-        Audio.playTheme();
-        cassette.musicStarted = true;
-        tapeInDeck = true;
-        showFlash('Click. Clunk. Theme engaged.', 90);
-        syncInvHud();
-      } else {
-        prevInteractHeld = interactHeld() || beamHeld();
-      }
-    }
-
-    if (cassette.inserting) {
-      cassette.insertProgress = Math.min(1, cassette.insertProgress + 0.05);
-      if (cassette.insertProgress >= 1) {
-        cassette.inserting = false;
-        // Theme already started on gesture; reinforce play in case of flaky resume
-        if (!cassette.musicStarted) {
-          gestureUnlock();
-          Audio.playTheme();
-          cassette.musicStarted = true;
-        } else {
-          Audio.playTheme();
-        }
-        Audio.play('power');
-        showFlash('Tape locked. Sit in the driver’s seat to fly.', 120);
-        syncInvHud();
-      }
-    }
-
-    // After insert animation: sit in driver’s seat → unlock flight
-    if (cassette.inserted && cassette.insertProgress >= 1 && !cassette.seated) {
-      setPrompt('E / Space / USE — sit in the driver’s seat');
-      if (wantsInteract()) {
-        cassette.seated = true;
-        cassette.seatTimer = 1;
-        Audio.play('ui');
-        Audio.play('power');
-        showFlash('Driver’s seat — flight controls unlocked!', 100);
-      } else {
-        prevInteractHeld = interactHeld() || beamHeld();
-      }
-    }
-
-    if (cassette.seated) {
-      cassette.seatTimer++;
-      setPrompt('Launching…');
-      if (cassette.seatTimer > 40) {
-        enterFly();
+        setPrompt("Walk to the UFO — ENTER driver's seat");
       }
     }
   }
@@ -828,7 +759,6 @@
   function update() {
     if (mode === 'shed') updateShed();
     else if (mode === 'yard') updateYard();
-    else if (mode === 'cockpit') updateCockpit();
     else if (mode === 'fly') updateFly();
 
     W.updateFx(particles, floaters);
@@ -867,8 +797,10 @@
 
     if (mode === 'shed') {
       W.drawShed(ctx, CW, CH, camX, t, {
-        cassetteTaken: hasCassette,
+        cassetteTaken: hasCassette || tapeInStereo,
+        tapeInStereo: tapeInStereo,
         windowUfo: windowUfo,
+        doorLocked: !ufoLanded(),
       });
       if (tayler) {
         W.drawTayler(ctx, tayler.x - camX, tayler.y, 1, false, t, { seated: true, smoking: true });
@@ -876,28 +808,39 @@
       const smoking = Math.abs(avatar.vx) < 0.5;
       W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, { smoking: smoking });
       if (nearDoor()) {
-        ctx.fillStyle = hasCassette ? '#7dff3a' : '#ff8866';
+        ctx.fillStyle = ufoLanded() ? '#7dff3a' : '#ff8866';
         ctx.font = 'bold 16px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(hasCassette ? '▲ ENTER' : '▲ NEED CASSETTE', W.SHED_DOOR_X - camX, GROUND - 170);
+        let doorLabel = '▲ ENTER';
+        if (!ufoLanded()) {
+          doorLabel = tapeInStereo ? '▲ WAIT FOR LANDING' : '▲ LOCKED';
+        }
+        ctx.fillText(doorLabel, W.SHED_DOOR_X - camX, GROUND - 170);
         ctx.textAlign = 'left';
       }
     } else if (mode === 'yard') {
       W.drawYard(ctx, CW, CH, camX, t, landing);
       if (tayler) {
-        const tMoving = landing && landing.phase === 'landed';
+        const tMoving = landing && landing.phase === 'landed' && !boardSit;
         W.drawTayler(ctx, tayler.x - camX, tayler.y, 1, tMoving, t, {});
       }
-      W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {});
+      if (!boardSit) {
+        W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {});
+      }
       if (landing && landing.phase === 'landed' && nearInteract()) {
         ctx.fillStyle = '#7dff3a';
         ctx.font = 'bold 16px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('▲ ENTER', landing.x - camX, landing.y - 70);
+        ctx.fillText('▲ DRIVER SEAT', landing.x - camX, landing.y - 70);
         ctx.textAlign = 'left';
       }
-    } else if (mode === 'cockpit') {
-      W.drawCassetteScene(ctx, CW, CH, cassette, t);
+      if (boardSit && landing) {
+        ctx.fillStyle = '#7dff3a';
+        ctx.font = 'bold 18px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText("Taking the driver's seat…", CW / 2, 90);
+        ctx.textAlign = 'left';
+      }
     } else if (mode === 'fly') {
       W.drawFlyScene(ctx, CW, CH, fly, t);
     }
