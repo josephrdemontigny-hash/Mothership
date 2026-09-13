@@ -1004,13 +1004,14 @@
 
 
   /** Fixed Chilliwack landmarks — world X along N→S flight (districts ~900 wide). */
+  /** Spread ~700–800 apart across N→S Chilliwack so each reads as its own beat. */
   const FLY_LANDMARKS = [
-    { x: 1080, kind: 'clockTower', label: 'CLOCK TOWER' },
-    { x: 1280, kind: 'museum', label: 'MUSEUM' },
-    { x: 1460, kind: 'royalHotel', label: 'ROYAL HOTEL' },
-    { x: 1640, kind: 'theatre', label: 'PARAMOUNT' },
-    { x: 1780, kind: 'fireHall', label: 'FIRE HALL' },
-    { x: 2180, kind: 'vedderBridge', label: 'VEDDER BRIDGE' },
+    { x: 1100, kind: 'clockTower', label: 'CLOCK TOWER' },
+    { x: 1900, kind: 'museum', label: 'MUSEUM' },
+    { x: 2700, kind: 'royalHotel', label: 'ROYAL HOTEL' },
+    { x: 3500, kind: 'theatre', label: 'PARAMOUNT' },
+    { x: 4200, kind: 'fireHall', label: 'FIRE HALL' },
+    { x: 5000, kind: 'vedderBridge', label: 'VEDDER BRIDGE' },
   ];
 
   const STREETLIGHT_SPACING = 130;
