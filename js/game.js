@@ -162,26 +162,41 @@
 
   // ——— Mode transitions ———
 
-  // ——— Global player count (once per browser) ———
+  // ——— Global play count (increments every START) ———
+  const PLAY_COUNT_TALLY = 'https://tally.yuki.sh/hits/retrofit/mothership-plays.json';
   const PLAY_COUNT_KEY = 'retrofit_mothership_plays_v1';
-  const PLAY_COUNTED_LS = 'mothership_player_counted_v1';
   const PLAY_COUNT_API = 'https://countapi.mileshilliard.com/api/v1';
+  let lastPlayCount = null;
 
-  function formatPlayers(n) {
+  function formatPlays(n) {
     const num = Number(n);
-    if (!Number.isFinite(num) || num < 0) return 'Players: …';
-    if (num === 1) return '1 player';
-    return num.toLocaleString('en-CA') + ' players';
+    if (!Number.isFinite(num) || num < 0) return 'Plays: …';
+    if (num === 1) return '1 play';
+    return num.toLocaleString('en-CA') + ' plays';
   }
 
   function setPlayCountLabel(n) {
     if (!el.playCount) return;
-    el.playCount.textContent = formatPlayers(n);
+    if (Number.isFinite(Number(n))) lastPlayCount = Number(n);
+    el.playCount.textContent = formatPlays(n);
   }
 
   async function fetchPlayCount() {
+    // Prefer Tally read (no increment)
     try {
-      const res = await fetch(PLAY_COUNT_API + '/get/' + PLAY_COUNT_KEY, { cache: 'no-store' });
+      const res = await fetch(PLAY_COUNT_TALLY + '?mode=read', { cache: 'no-store', mode: 'cors' });
+      if (res.ok) {
+        const data = await res.json();
+        const v = Number(data.visit);
+        if (Number.isFinite(v)) {
+          setPlayCountLabel(v);
+          return v;
+        }
+      }
+    } catch (_) { /* try fallback */ }
+
+    try {
+      const res = await fetch(PLAY_COUNT_API + '/get/' + PLAY_COUNT_KEY, { cache: 'no-store', mode: 'cors' });
       if (!res.ok) throw new Error('get failed');
       const data = await res.json();
       const v = Number(data.value);
@@ -190,28 +205,46 @@
         return v;
       }
     } catch (_) { /* ignore */ }
-    if (el.playCount && /…|Players:/.test(el.playCount.textContent)) {
-      el.playCount.textContent = 'Players: —';
+
+    if (el.playCount && (el.playCount.textContent.includes('…') || el.playCount.textContent.includes('—'))) {
+      el.playCount.textContent = lastPlayCount != null ? formatPlays(lastPlayCount) : 'Plays: —';
     }
-    return null;
+    return lastPlayCount;
   }
 
-  async function registerPlayerIfNeeded() {
+  async function recordPlay() {
+    // Optimistic bump so the UI moves even if the network is slow
+    if (lastPlayCount != null) setPlayCountLabel(lastPlayCount + 1);
+    else if (el.playCount) el.playCount.textContent = 'Plays: …';
+
+    // Primary: Tally hit (GET without mode=read increments)
     try {
-      if (localStorage.getItem(PLAY_COUNTED_LS) === '1') {
-        await fetchPlayCount();
-        return;
+      const res = await fetch(PLAY_COUNT_TALLY, { cache: 'no-store', mode: 'cors' });
+      if (res.ok) {
+        const data = await res.json();
+        const v = Number(data.visit);
+        if (Number.isFinite(v)) {
+          setPlayCountLabel(v);
+          return v;
+        }
       }
-      const res = await fetch(PLAY_COUNT_API + '/hit/' + PLAY_COUNT_KEY, { cache: 'no-store' });
-      if (!res.ok) throw new Error('hit failed');
-      const data = await res.json();
-      localStorage.setItem(PLAY_COUNTED_LS, '1');
-      const v = Number(data.value);
-      if (Number.isFinite(v)) setPlayCountLabel(v);
-      else await fetchPlayCount();
-    } catch (_) {
-      await fetchPlayCount();
-    }
+    } catch (_) { /* fallback */ }
+
+    // Fallback: Miles CountAPI hit
+    try {
+      const res = await fetch(PLAY_COUNT_API + '/hit/' + PLAY_COUNT_KEY, { cache: 'no-store', mode: 'cors' });
+      if (res.ok) {
+        const data = await res.json();
+        const v = Number(data.value);
+        if (Number.isFinite(v)) {
+          setPlayCountLabel(v);
+          return v;
+        }
+      }
+    } catch (_) { /* ignore */ }
+
+    await fetchPlayCount();
+    return lastPlayCount;
   }
 
   function startGame() {
@@ -219,7 +252,7 @@
     Audio.warm();
     Audio.stopTheme();
     Audio.play('ui');
-    registerPlayerIfNeeded();
+    recordPlay();
     score = 0;
     beamed = 0;
     particles = [];
