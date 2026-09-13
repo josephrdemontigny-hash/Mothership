@@ -25,6 +25,7 @@
     title: document.getElementById('screen-title'),
     results: document.getElementById('screen-results'),
     titleHigh: document.getElementById('title-high'),
+    playCount: document.getElementById('play-count'),
     resBeamed: document.getElementById('res-beamed'),
     resScore: document.getElementById('res-score'),
     resHigh: document.getElementById('res-high'),
@@ -160,11 +161,65 @@
   }
 
   // ——— Mode transitions ———
+
+  // ——— Global player count (once per browser) ———
+  const PLAY_COUNT_KEY = 'retrofit_mothership_plays_v1';
+  const PLAY_COUNTED_LS = 'mothership_player_counted_v1';
+  const PLAY_COUNT_API = 'https://countapi.mileshilliard.com/api/v1';
+
+  function formatPlayers(n) {
+    const num = Number(n);
+    if (!Number.isFinite(num) || num < 0) return 'Players: …';
+    if (num === 1) return '1 player';
+    return num.toLocaleString('en-CA') + ' players';
+  }
+
+  function setPlayCountLabel(n) {
+    if (!el.playCount) return;
+    el.playCount.textContent = formatPlayers(n);
+  }
+
+  async function fetchPlayCount() {
+    try {
+      const res = await fetch(PLAY_COUNT_API + '/get/' + PLAY_COUNT_KEY, { cache: 'no-store' });
+      if (!res.ok) throw new Error('get failed');
+      const data = await res.json();
+      const v = Number(data.value);
+      if (Number.isFinite(v)) {
+        setPlayCountLabel(v);
+        return v;
+      }
+    } catch (_) { /* ignore */ }
+    if (el.playCount && /…|Players:/.test(el.playCount.textContent)) {
+      el.playCount.textContent = 'Players: —';
+    }
+    return null;
+  }
+
+  async function registerPlayerIfNeeded() {
+    try {
+      if (localStorage.getItem(PLAY_COUNTED_LS) === '1') {
+        await fetchPlayCount();
+        return;
+      }
+      const res = await fetch(PLAY_COUNT_API + '/hit/' + PLAY_COUNT_KEY, { cache: 'no-store' });
+      if (!res.ok) throw new Error('hit failed');
+      const data = await res.json();
+      localStorage.setItem(PLAY_COUNTED_LS, '1');
+      const v = Number(data.value);
+      if (Number.isFinite(v)) setPlayCountLabel(v);
+      else await fetchPlayCount();
+    } catch (_) {
+      await fetchPlayCount();
+    }
+  }
+
   function startGame() {
     gestureUnlock();
     Audio.warm();
     Audio.stopTheme();
     Audio.play('ui');
+    registerPlayerIfNeeded();
     score = 0;
     beamed = 0;
     particles = [];
