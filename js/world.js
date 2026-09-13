@@ -3501,7 +3501,8 @@
     const ufoScreenX = fly.ufoX;
     const ufoScreenY = fly.ufoY;
     const flyLegs = fly.legExtend != null ? fly.legExtend : 0;
-    drawClayUFO(ctx, ufoScreenX, ufoScreenY, 1.52, t, true, {
+    const ufoScale = fly.ufoScale != null ? fly.ufoScale : 0.92;
+    drawClayUFO(ctx, ufoScreenX, ufoScreenY, ufoScale, t, true, {
       showPilots: true,
       legExtend: flyLegs,
     });
@@ -3515,7 +3516,7 @@
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.beginPath();
-    ctx.moveTo(ufoScreenX, ufoScreenY + 30);
+    ctx.moveTo(ufoScreenX, ufoScreenY + 18 * ufoScale);
     ctx.lineTo(ufoScreenX, groundY - 8);
     ctx.strokeStyle = 'rgba(125,255,58,0.2)';
     ctx.stroke();
@@ -3523,13 +3524,14 @@
     // active beam
     if (fly.beaming) {
       const bw = fly.beamWide ? 96 : 64;
-      const grad = ctx.createLinearGradient(ufoScreenX, ufoScreenY + 20, ufoScreenX, groundY);
+      const beamTop = ufoScreenY + 16 * ufoScale;
+      const grad = ctx.createLinearGradient(ufoScreenX, beamTop, ufoScreenX, groundY);
       grad.addColorStop(0, 'rgba(125,255,58,0.6)');
       grad.addColorStop(1, 'rgba(125,255,58,0.08)');
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.moveTo(ufoScreenX - 18, ufoScreenY + 28);
-      ctx.lineTo(ufoScreenX + 18, ufoScreenY + 28);
+      ctx.moveTo(ufoScreenX - 12 * ufoScale, beamTop);
+      ctx.lineTo(ufoScreenX + 12 * ufoScale, beamTop);
       ctx.lineTo(ufoScreenX + bw / 2, groundY);
       ctx.lineTo(ufoScreenX - bw / 2, groundY);
       ctx.closePath();

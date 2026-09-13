@@ -916,6 +916,8 @@
       controlsUnlocked: true,
       /** Landing legs tucked for flight */
       legExtend: 0,
+      /** Fly craft draw scale — smaller + snappier feel */
+      ufoScale: 0.92,
     };
     for (let i = 0; i < 30; i++) spawnProp(60 + i * 68);
     for (let i = 0; i < 5; i++) spawnFlyTarget(300 + i * 200);
@@ -1698,31 +1700,36 @@
     const ix = inputX();
     const iy = inputY();
 
-    fly.vx += ix * 0.45;
-    fly.vy += iy * 0.35;
-    fly.vx *= 0.88;
-    fly.vy *= 0.88;
-    fly.vx = Math.max(-5.5, Math.min(5.5, fly.vx));
-    fly.vy = Math.max(-4, Math.min(4, fly.vy));
+    // Independent axes so left/right works while holding up/down (diagonals free)
+    const accel = 0.72;
+    const friction = 0.86;
+    const maxSpd = 8.2;
+    fly.vx += ix * accel;
+    fly.vy += iy * accel;
+    fly.vx *= friction;
+    fly.vy *= friction;
+    fly.vx = Math.max(-maxSpd, Math.min(maxSpd, fly.vx));
+    fly.vy = Math.max(-maxSpd, Math.min(maxSpd, fly.vy));
 
     fly.ufoX += fly.vx;
     fly.ufoY += fly.vy;
     // Soft edge push: near screen edge, convert leftover intent into scroll
-    const edgeL = 90;
-    const edgeR = CW - 90;
+    const edgeL = 70;
+    const edgeR = CW - 70;
     let scrollDelta = 0;
     if (fly.ufoX < edgeL && fly.vx < 0) {
-      scrollDelta += fly.vx * 1.35;
+      scrollDelta += fly.vx * 1.55;
       fly.ufoX = edgeL;
     } else if (fly.ufoX > edgeR && fly.vx > 0) {
-      scrollDelta += fly.vx * 1.35;
+      scrollDelta += fly.vx * 1.55;
       fly.ufoX = edgeR;
     } else {
       // Player-driven world scroll from horizontal flight (no auto-advance)
-      scrollDelta = fly.vx * 1.05;
+      scrollDelta = fly.vx * 1.25;
     }
-    fly.ufoX = Math.max(50, Math.min(CW - 50, fly.ufoX));
-    fly.ufoY = Math.max(50, Math.min(CH * 0.62, fly.ufoY));
+    fly.ufoX = Math.max(40, Math.min(CW - 40, fly.ufoX));
+    // Wider vertical band — free climb/dive while strafing
+    fly.ufoY = Math.max(40, Math.min(CH * 0.72, fly.ufoY));
 
     fly.scrollX = Math.max(0, fly.scrollX + scrollDelta);
 
