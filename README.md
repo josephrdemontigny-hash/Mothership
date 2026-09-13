@@ -42,8 +42,8 @@ HUD modes: **SHED / YARD / FLY**. Inventory shows **📼 Cassette** while holdin
 | Jump (shed/yard) | Space | ▲ (when not at a door/prop) |
 | Grab / play stereo / enter / sit | ↑ / W / E / Enter / Space | USE |
 | **Fly** L/R/U/D | Arrow keys or WASD | Pad |
-| **Beam** (while flying) | Space / B (hold ok) | BEAM |
-| End mission | Enter (fly) | USE in fly |
+| **Beam** (while flying) | Space / B / E (hold ok) | BEAM or USE |
+| End mission | Enter (fly) only | — (USE beams in fly) |
 | Mute | M or 🔊 | 🔊 |
 
 **Stereo gate:** grab tape → insert/play on shed stereo (same user gesture starts music for iOS/Safari) → wait for UFO to land → exit → sit in driver’s seat to fly (mute still respected).
@@ -51,9 +51,9 @@ HUD modes: **SHED / YARD / FLY**. Inventory shows **📼 Cassette** while holdin
 ## Shed UX
 
 - Plywood studs / rafters vibe (garden-shed density): shelves with jars & seed trays, soil bags, hose, trash bin, orange sled in the rafters, lawnmower, garden wagon, pegboard, pots, cords, junk piles, posters.
-- Major prop: dusty copper/bronze **El Camino** (black roof, chrome, rally wheels) — barn-find project car; shed widened so you can walk past it.
-- Large widescreen backyard window (dominant back-wall spectacle) shows UFO fly-in → land.
-- Visible **cassette** prop (▲ GRAB) and **stereo / boombox** (▲ PLAY ON STEREO).
+- Major prop: life-sized dusty copper/bronze **El Camino** (hood ~chest height, length dominates the left/mid shed) — barn-find project car. Walk path stays in front of it.
+- Cassette (▲ GRAB) sits in the **Camino-end** clutter; stereo (▲ PLAY ON STEREO) is a **long walk** toward the exit — not next to each other.
+- Darker, dusty shed (soft haze / motes, readable). Large backyard window shows UFO fly-in → land.
 - Inventory shows holding cassette until inserted; door prompt “wait for it to land…” while approaching/descending.
 - Clear walk path: El Camino (left) → cassette / stereo (mid) → lounge → EXIT (right).
 
@@ -73,17 +73,17 @@ Flight scrolls **RIGHT = south** (camera faces roughly south):
 4. South Chilliwack  
 5. Cultus Lake Direction  
 
-**Mt. Cheam (Lhílheqey)** is always visible toward the **EAST** = **LEFT side of the skyline** (slow parallax, never leaves the frame). Cheam Range companions sit beside it. **West is behind the viewer** (right of screen) — no Cheam there. Distinctive pyramidal snow-capped Cascade silhouette, labelled occasionally.
+**Mt. Cheam (Lhílheqey)** is always visible toward the **EAST** = **LEFT side of the skyline** (slow parallax, never leaves the frame). Lady / Knight / Welch sit as secondary silhouettes. **No nameplate** — iconic pyramid + snow cap only. **West is behind the viewer** (right of screen).
 
 ## Music
 
 Inserting the cassette into the **shed stereo** starts `assets/mothership-theme.mp3` (relative path for GitHub Pages) on loop for the **rest of that run** (shed landing watch + yard + fly + results).  
 
-**iOS/Safari:** `audio.play()` is invoked on the **same tick** as the stereo USE key/tap (`unlock()` + `playTheme()`), not after an animation. Theme element is warmed on Start and on shed cassette grab. Mute pauses theme + SFX; unmute resumes if theme is still wanted. Theme stops only on **return to title** or **new game** start.
+**iOS/Safari:** `playTheme()` calls `el.play()` **synchronously** in the USE/E/Enter/touch handler (same user-gesture stack). `unlock()` only resumes AudioContext — it never play/pause-primes the theme element (that burned the gesture). Theme `<audio id="theme-audio" playsinline loop preload="auto">` in `index.html`. Mute still pauses theme + SFX; theme continues the rest of the run; stops only on **title** or **new game**.
 
 ## Art notes
 
-- Mothership: layered clay/chrome saucer with fins, energy rings, thruster pods, and animated running lights — shared across shed-window preview, yard landing, and flight.
+- Mothership: clean metallic sci-fi saucer (brushed chrome, glass dome, polished rim lights) — clearly larger than Zakk & Tayler when landed. Shared across window / yard / fly.
 
 - Zakk & Tayler sprites use a taller default scale (~1.48×) so they dominate shed/yard room height; shed furniture is slightly scaled down.  
 - Character refs: flat cap + aviators + mustache (Zakk); backwards maroon cap + aviators + plaid (Tayler).

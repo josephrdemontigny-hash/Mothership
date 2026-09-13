@@ -3,6 +3,11 @@
  * Mute persists in localStorage. Theme starts on shed stereo cassette insert
  * (must call playTheme inside the same user gesture for iOS/Safari);
  * keeps playing through fly + results; stops on title / new game only.
+ *
+ * Critical iOS rules:
+ *  - unlock() only resumes AudioContext (tiny silent beep OK).
+ *  - NEVER play()/pause() the theme element to "prime" — that burns the gesture.
+ *  - playTheme() calls el.play() synchronously in the calling stack.
  */
 (function (global) {
   const STORAGE_KEY = 'mothership_muted';
@@ -27,13 +32,29 @@
     return ctx;
   }
 
+  function bindThemeElement(el) {
+    if (!el) return null;
+    el.loop = true;
+    el.preload = 'auto';
+    el.volume = 0.55;
+    el.playsInline = true;
+    try { el.setAttribute('playsinline', ''); } catch (_) { /* ignore */ }
+    try { el.setAttribute('webkit-playsinline', ''); } catch (_) { /* ignore */ }
+    return el;
+  }
+
   function ensureMusic() {
     if (!musicEl) {
-      musicEl = new Audio(THEME_SRC);
-      musicEl.loop = true;
-      musicEl.preload = 'auto';
-      musicEl.volume = 0.55;
-      // Kick off network fetch early (does not require a gesture)
+      const existing = document.getElementById('theme-audio');
+      if (existing) {
+        musicEl = existing;
+        if (!musicEl.getAttribute('src') && !musicEl.src) {
+          musicEl.src = THEME_SRC;
+        }
+      } else {
+        musicEl = new Audio(THEME_SRC);
+      }
+      bindThemeElement(musicEl);
       try { musicEl.load(); } catch (_) { /* ignore */ }
     }
     return musicEl;
@@ -50,6 +71,7 @@
     if (!el) return;
     let p;
     try {
+      // Must stay synchronous in the caller's stack (iOS user-gesture).
       p = el.play();
     } catch (_) {
       schedulePlayRetry();
@@ -59,14 +81,13 @@
       p.then(function () {
         clearPlayRetry();
       }).catch(function () {
-        // Autoplay / gesture may have expired — retry briefly while wanted
         schedulePlayRetry();
       });
     }
   }
 
   function schedulePlayRetry() {
-    if (!musicWanted || muted || !musicUnlocked) return;
+    if (!musicWanted || muted) return;
     if (playRetryTimer != null) return;
     playRetryTimer = setTimeout(function () {
       playRetryTimer = null;
@@ -82,12 +103,23 @@
       try { el.pause(); } catch (_) { /* ignore */ }
       return;
     }
-    if (!musicUnlocked) {
-      // Still try — some browsers allow it after prior unlock; retry if rejected
-      tryPlayElement(el);
-      return;
-    }
     tryPlayElement(el);
+  }
+
+  function silentWarmBeep(c) {
+    if (!c) return;
+    try {
+      const t0 = c.currentTime;
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(40, t0);
+      g.gain.setValueAtTime(0.00008, t0);
+      o.connect(g);
+      g.connect(c.destination);
+      o.start(t0);
+      o.stop(t0 + 0.012);
+    } catch (_) { /* ignore */ }
   }
 
   function tone(freq, dur, type, gain) {
@@ -165,45 +197,37 @@
       this.setMuted(!muted);
       return muted;
     },
-    /** Mark gesture unlock + warm AudioContext / HTMLAudioElement. Safe to call often. */
+    /**
+     * Resume AudioContext only (silent beep OK).
+     * Never play/pause the theme element — that burns the iOS gesture
+     * before playTheme() can use it.
+     */
     unlock() {
       musicUnlocked = true;
-      ensureCtx();
-      ensureMusic();
-      const el = musicEl;
-      if (el) {
-        const wasWanted = musicWanted && !muted;
-        // Prime play() inside the gesture; pause again if theme not wanted yet
-        const p = el.play();
-        if (p && typeof p.then === 'function') {
-          p.then(function () {
-            if (!wasWanted) {
-              try { el.pause(); } catch (_) { /* ignore */ }
-            } else {
-              syncMusicPlayback();
-            }
-          }).catch(function () {
-            // Gesture may still unlock on a later successful playTheme
-            if (wasWanted) syncMusicPlayback();
-          });
-        }
-      }
+      const c = ensureCtx();
+      silentWarmBeep(c);
     },
-    /** Create + preload theme element early (Start / grab). Does not require unlock. */
+    /** Create + preload theme element early (Start / grab). Does not play. */
     warm() {
       ensureMusic();
       ensureCtx();
     },
     /**
-     * Start looping theme. Call inside the same user-gesture tick as stereo insert
-     * (iOS/Safari blocks delayed play()). Retries if play() rejects.
+     * Start looping theme. Call inside the same user-gesture stack as stereo
+     * insert (iOS/Safari blocks delayed play()). el.play() is synchronous here.
      */
     playTheme() {
       musicWanted = true;
       musicUnlocked = true;
       ensureCtx();
-      ensureMusic();
-      syncMusicPlayback();
+      const el = ensureMusic();
+      if (!el) return;
+      if (muted) {
+        clearPlayRetry();
+        try { el.pause(); } catch (_) { /* ignore */ }
+        return;
+      }
+      tryPlayElement(el);
     },
     stopTheme() {
       musicWanted = false;

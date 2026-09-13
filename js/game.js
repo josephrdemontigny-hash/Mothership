@@ -179,9 +179,9 @@
     jumpQueued = false;
     prevInteractHeld = true;
     camX = 0;
-    // Start mid-left — walk past El Camino toward stereo / cassette / exit
-    avatar = makeAvatar(320, GROUND);
-    tayler = { x: 690, y: GROUND };
+    // Start at Camino nose — walk past life-sized car → cassette → stereo → exit
+    avatar = makeAvatar(200, GROUND);
+    tayler = { x: 940, y: GROUND };
     showScreen('play');
     syncHud();
     setPrompt('Grab the cassette · play it on the stereo');
@@ -200,13 +200,13 @@
     avatar = makeAvatar(280, GROUND);
 
     // Door only opens after land — mothership already waiting in backyard
-    const targetY = GROUND - 72;
+    const targetY = GROUND - 86;
     landing = {
       phase: 'landed',
       x: 720,
       y: targetY,
       targetY: targetY,
-      scale: 1.85,
+      scale: 2.28,
       lights: true,
       timer: 0,
     };
@@ -249,11 +249,11 @@
       shakeY: 0,
       controlsUnlocked: true,
     };
-    for (let i = 0; i < 12; i++) spawnProp(200 + i * 160);
+    for (let i = 0; i < 30; i++) spawnProp(60 + i * 68);
     for (let i = 0; i < 5; i++) spawnFlyTarget(300 + i * 200);
     showScreen('play');
     syncHud();
-    setPrompt('←→↑↓ fly · Space / BEAM abduct · Enter end');
+    setPrompt('←→↑↓ fly · Space / USE beam · Enter end');
     showFlash('Free flight over Chilliwack. Beam humans — not pets!', 140);
   }
 
@@ -274,13 +274,23 @@
     setPrompt('');
   }
 
+  function districtPropKinds() {
+    const id = W.DISTRICTS[fly.districtIndex % W.DISTRICTS.length].id;
+    if (id === 'downtown') return ['shop', 'plaza', 'apt', 'streetlight', 'car', 'shop', 'tree', 'apt', 'car'];
+    if (id === 'farm') return ['barn', 'corn', 'tree', 'house', 'corn', 'tree', 'car'];
+    if (id === 'cultus') return ['tree', 'house', 'tree', 'car', 'streetlight', 'tree', 'house'];
+    if (id === 'south') return ['house', 'apt', 'tree', 'car', 'streetlight', 'house', 'shop'];
+    return ['house', 'tree', 'streetlight', 'car', 'house', 'tree', 'streetlight', 'car'];
+  }
+
   function spawnProp(atX) {
     if (!fly) return;
-    const kinds = ['house', 'shop', 'barn', 'corn', 'tree', 'apt', 'house', 'corn'];
-    fly.props.push({
-      x: atX != null ? atX : fly.scrollX + CW + W.rand(40, 180),
-      kind: W.pick(kinds),
-    });
+    const kinds = districtPropKinds();
+    const x0 = atX != null ? atX : fly.scrollX + CW + W.rand(16, 90);
+    fly.props.push({ x: x0, kind: W.pick(kinds) });
+    if (Math.random() < 0.62) {
+      fly.props.push({ x: x0 + W.rand(28, 64), kind: W.pick(kinds) });
+    }
   }
 
   function spawnFlyTarget(atX) {
@@ -353,7 +363,16 @@
     if ((k === 'enter' || k === ' ') && mode === 'title') startGame();
     if ((k === 'enter' || k === ' ') && mode === 'results') startGame();
 
-    if (k === 'e' || k === 'enter') interactQueued = true;
+    if (k === 'e' || k === 'enter' || k === 'arrowup' || k === 'w') {
+      tryPlayStereoFromGesture();
+    }
+    if (k === 'e' || k === 'enter') {
+      if (mode === 'fly') {
+        if (k === 'e') beamQueued = true;
+      } else {
+        interactQueued = true;
+      }
+    }
 
     if ((e.code === 'Space' || k === ' ')) {
       if (mode === 'fly') beamQueued = true;
@@ -373,7 +392,9 @@
 
   canvas.addEventListener('click', () => {
     if (mode === 'title') startGame();
-    else if (mode === 'shed' || mode === 'yard') interactQueued = true;
+    else if (mode === 'shed' || mode === 'yard') {
+      if (!tryPlayStereoFromGesture()) interactQueued = true;
+    }
   });
 
   el.btnStart.addEventListener('click', startGame);
@@ -420,16 +441,16 @@
     else if (mode === 'shed' || mode === 'yard') interactQueued = true;
   });
 
-  el.btnInteract.addEventListener('touchstart', (e) => {
+  function onInteractPointer(e) {
     e.preventDefault();
-    if (mode === 'fly') endMission();
-    else interactQueued = true;
-  }, { passive: false });
-  el.btnInteract.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    if (mode === 'fly') endMission();
-    else interactQueued = true;
-  });
+    if (mode === 'fly') {
+      beamQueued = true;
+      return;
+    }
+    if (!tryPlayStereoFromGesture()) interactQueued = true;
+  }
+  el.btnInteract.addEventListener('touchstart', onInteractPointer, { passive: false });
+  el.btnInteract.addEventListener('mousedown', onInteractPointer);
 
   // ——— Physics ———
   function updateSideScroller(worldW) {
@@ -478,6 +499,26 @@
     return Math.abs(avatar.x - W.SHED_STEREO_X) < 55;
   }
 
+  /**
+   * Must run inside the user-gesture stack (keydown / touchstart / mousedown).
+   * playTheme() calls el.play() synchronously — do not defer to rAF / wantsInteract.
+   */
+  function tryPlayStereoFromGesture() {
+    if (mode !== 'shed' || !avatar || !hasCassette || tapeInStereo) return false;
+    if (Math.abs(avatar.x - W.SHED_STEREO_X) >= 55) return false;
+    hasCassette = false;
+    tapeInStereo = true;
+    windowUfo = Math.max(windowUfo, 0.02);
+    Audio.unlock();
+    Audio.playTheme();
+    Audio.play('cassette');
+    showFlash('Click. Clunk. Theme on — look out the window!', 120);
+    syncInvHud();
+    W.burst(particles, W.SHED_STEREO_X - camX + 30, GROUND - 50, '#7dff3a', 12);
+    W.addFloater(floaters, W.SHED_STEREO_X - camX + 30, GROUND - 70, '♪ PLAYING', '#7dff3a');
+    return true;
+  }
+
   function nearDoor() {
     if (mode !== 'shed' || !avatar) return false;
     return Math.abs(avatar.x - W.SHED_DOOR_X) < 50;
@@ -492,7 +533,7 @@
       return nearCassetteProp() || nearStereo() || nearDoor();
     }
     if (mode === 'yard' && landing && landing.phase === 'landed' && !boardSit) {
-      return Math.abs(avatar.x - landing.x) < 80;
+      return Math.abs(avatar.x - landing.x) < 110;
     }
     return false;
   }
@@ -531,18 +572,8 @@
     } else if (nearStereo()) {
       setPrompt('↑ / E / USE — PLAY ON STEREO');
       if (wantsInteract()) {
-        // Same-tick gesture: unlock + playTheme so iOS/Safari hears music
-        hasCassette = false;
-        tapeInStereo = true;
-        Audio.play('cassette');
-        gestureUnlock();
-        Audio.playTheme();
-        // UFO appears / begins landing as the song starts
-        windowUfo = Math.max(windowUfo, 0.02);
-        showFlash('Click. Clunk. Theme on — look out the window!', 120);
-        syncInvHud();
-        W.burst(particles, W.SHED_STEREO_X - camX + 30, GROUND - 50, '#7dff3a', 12);
-        W.addFloater(floaters, W.SHED_STEREO_X - camX + 30, GROUND - 70, '♪ PLAYING', '#7dff3a');
+        // Fallback if gesture helper missed (e.g. held ↑ after walking into range)
+        if (!tapeInStereo) tryPlayStereoFromGesture();
       }
     } else if (nearDoor()) {
       if (!ufoLanded()) {
@@ -663,7 +694,7 @@
     fly.propTimer--;
     if (fly.propTimer <= 0) {
       spawnProp();
-      fly.propTimer = W.rand(40, 90);
+      fly.propTimer = W.rand(16, 36);
     }
     fly.props = fly.props.filter((p) => p.x > fly.scrollX - 100);
 
@@ -706,7 +737,7 @@
       syncHud();
     }
 
-    setPrompt('←→↑↓ fly · hold Space beam · green=people · red=DON\'T · Enter end');
+    setPrompt('←→↑↓ fly · Space / USE beam · green=people · red=DON\'T · Enter end');
     syncHud();
   }
 
