@@ -830,13 +830,24 @@ html, body {
 #btn-destruct:active { background: #ff2244; color: #fff; }
 .hud-destruct {
   margin-left: 0.35rem;
-  border: 1px solid #ff4466;
-  background: rgba(60, 8, 16, 0.9);
-  color: #ff7788;
-  border-radius: 8px;
-  padding: 0.15rem 0.4rem;
+  border: 2px solid #ff4466;
+  background: rgba(90, 8, 18, 0.95);
+  color: #ff99aa;
+  border-radius: 10px;
+  padding: 0.35rem 0.65rem;
   cursor: pointer;
-  font-size: 0.95rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  box-shadow: 0 0 12px rgba(255, 40, 60, 0.35);
+  z-index: 12;
 }
 .hud-destruct.hidden { display: none !important; }
-.hud-destruct:hover { background: #ff2244; color: #fff; }
+.hud-destruct:hover,
+.hud-destruct:focus-visible {
+  background: #ff2244;
+  color: #fff;
+  outline: none;
+  box-shadow: 0 0 16px rgba(255, 60, 80, 0.55);
+}
