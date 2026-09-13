@@ -125,3 +125,17 @@ Global play counter increments on cassette insert / start (`recordPlay`).
 ## License
 
 MIT — fan homage; not affiliated with Retrofit. Procedural Canvas art.
+
+---
+
+## Also in this repo: Hole in the Wall (`tesla-shop/`)
+
+Tesla EV repair shop apprentice sim — greasy hole-in-the-wall shop, FOH check-in, lot fetch, three techs, parts delivery.
+
+```bash
+cd tesla-shop
+npx serve .
+# or open tesla-shop/index.html
+```
+
+See [`tesla-shop/README.md`](tesla-shop/README.md).
