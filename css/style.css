@@ -345,6 +345,12 @@ html, body {
 #beamed-label.hidden {
   display: none !important;
 }
+#plastics-label.hidden,
+#chicken-label.hidden {
+  display: none !important;
+}
+#plastics-label strong { color: #9ef0ff; }
+#chicken-label strong { color: #ffcc66; }
 
 @media (min-width: 900px) and (pointer: fine) {
   #touch { display: none !important; }

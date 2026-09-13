@@ -22,6 +22,10 @@
     hud: document.getElementById('hud'),
     score: document.getElementById('score'),
     beamed: document.getElementById('beamed'),
+    plastics: document.getElementById('plastics'),
+    plasticsLabel: document.getElementById('plastics-label'),
+    chicken: document.getElementById('chicken'),
+    chickenLabel: document.getElementById('chicken-label'),
     modeLabel: document.getElementById('mode-label'),
     district: document.getElementById('district'),
     prompt: document.getElementById('prompt-label'),
@@ -547,7 +551,11 @@
       el.district.classList.remove('hidden');
       el.district.textContent =
         W.DISTRICTS[fly.districtIndex % W.DISTRICTS.length].name +
-        ' · HULL ' + fly.lives;
+        ' · HULL ' + fly.lives + '/' + fly.maxLives;
+      const thresh = W.MICROPLASTIC_THRESHOLD;
+      const prog = (fly.microplastics | 0) % thresh;
+      if (el.plastics) el.plastics.textContent = prog + '/' + thresh;
+      if (el.chicken) el.chicken.textContent = String(fly.chicken | 0);
     } else {
       el.district.classList.add('hidden');
     }
@@ -563,12 +571,15 @@
   function syncBeamUi() {
     const flying = mode === 'fly';
     if (el.btnBeam) el.btnBeam.classList.toggle('hidden', !flying);
+    // Keep #btn-destruct / #hud-destruct — visibility only; placement owned elsewhere
     if (el.btnDestruct) el.btnDestruct.classList.toggle('hidden', !flying);
     if (el.hudDestruct) el.hudDestruct.classList.toggle('hidden', !flying);
     if (el.beamed) {
       const wrap = document.getElementById('beamed-label');
       if (wrap) wrap.classList.toggle('hidden', !flying);
     }
+    if (el.plasticsLabel) el.plasticsLabel.classList.toggle('hidden', !flying);
+    if (el.chickenLabel) el.chickenLabel.classList.toggle('hidden', !flying);
   }
 
   function setPrompt(text) {
@@ -883,7 +894,11 @@
       vy: 0,
       districtIndex: 0,
       districtTimer: 0,
-      lives: 3,
+      lives: W.MAX_LIVES_BASE,
+      maxLives: W.MAX_LIVES_BASE,
+      microplastics: 0,
+      chicken: 0,
+      scoreMultTimer: 0,
       targets: [],
       props: [],
       spawnTimer: 40,
@@ -905,8 +920,8 @@
     for (let i = 0; i < 5; i++) spawnFlyTarget(300 + i * 200);
     showScreen('play');
     syncHud();
-    setPrompt('←→↑↓ fly · Space/USE beam · 💥 self destruct · Enter end');
-    showFlash('Free flight over Chilliwack. Beam humans — not pets!', 140);
+    setPrompt('←→↑↓ fly · Space/USE beam · people+loot good · red=DON\'T · Enter end');
+    showFlash('Beam people, microplastics & KFC — not pets!', 140);
   }
 
   function endMission() {
@@ -1004,8 +1019,17 @@
 
   function spawnFlyTarget(atX) {
     if (!fly) return;
-    const human = Math.random() < 0.65;
-    const kind = human ? W.pick(W.PEOPLE_KINDS) : W.pick(W.HAZARD_KINDS);
+    // Mix: ~50% people, ~22% loot, ~28% hazards (loot not too rare)
+    const roll = Math.random();
+    let kind;
+    if (roll < 0.5) {
+      kind = W.pick(W.PEOPLE_KINDS);
+    } else if (roll < 0.72) {
+      // plastics a bit more common than KFC (threshold repairs)
+      kind = Math.random() < 0.6 ? W.LOOT_KINDS[0] : W.LOOT_KINDS[1];
+    } else {
+      kind = W.pick(W.HAZARD_KINDS);
+    }
     fly.targets.push({
       x: atX != null ? atX : fly.scrollX + CW + W.rand(80, 280),
       kind: kind,
@@ -1719,6 +1743,8 @@
       fly.beamWide = false;
     }
 
+    if (fly.scoreMultTimer > 0) fly.scoreMultTimer--;
+
     if (Math.random() < 0.0015 && fly.moonJuice <= 0) {
       fly.moonJuice = 280;
       Audio.play('power');
@@ -1774,7 +1800,7 @@
       syncHud();
     }
 
-    setPrompt('←→↑↓ fly · Space / USE beam · green=people · red=DON\'T · Enter end');
+    setPrompt('←→↑↓ fly · Space/USE beam · green/cyan/gold=good · red=DON\'T · Enter end');
     syncHud();
   }
 
@@ -1788,8 +1814,53 @@
       if (Math.abs(tg.x - beamWorldX) < half + 16) {
         tg.beamed = true;
         hit = true;
-        if (tg.kind.human) {
-          const pts = tg.kind.points + (fly.beamWide ? 40 : 0);
+        if (tg.kind.loot === 'plastics') {
+          fly.microplastics = (fly.microplastics | 0) + 1;
+          let pts = tg.kind.points + (fly.beamWide ? 20 : 0);
+          if (fly.scoreMultTimer > 0) pts = (pts * 2) | 0;
+          score += pts;
+          W.burst(particles, fly.ufoX, CH * 0.7, '#9ef0ff', 12);
+          W.addFloater(floaters, fly.ufoX, CH * 0.55, '+' + pts + ' 🧪', '#9ef0ff');
+          Audio.play('score');
+          const thresh = W.MICROPLASTIC_THRESHOLD;
+          if (fly.microplastics > 0 && fly.microplastics % thresh === 0) {
+            // First upgrade raises max hull; always restore +1 life (capped)
+            if (fly.maxLives < W.MAX_LIVES_UPGRADED) {
+              fly.maxLives = W.MAX_LIVES_UPGRADED;
+              showFlash('MICROPLASTIC UPGRADE — max hull ' + fly.maxLives + '!', 130);
+            } else {
+              showFlash('HULL REPAIR +1', 110);
+            }
+            if (fly.lives < fly.maxLives) {
+              fly.lives++;
+              W.addFloater(floaters, fly.ufoX, fly.ufoY - 10, 'HULL +1', '#7dff3a');
+              Audio.play('power');
+            } else {
+              showFlash('Hull already full — plastics banked for style', 90);
+            }
+            W.burst(particles, fly.ufoX, fly.ufoY, '#7dff3a', 18);
+          } else if (Math.random() < 0.4) {
+            showFlash(W.pick(W.PLASTICS_LINERS), 100);
+          } else {
+            const prog = fly.microplastics % thresh;
+            showFlash('Microplastics ' + prog + '/' + thresh, 60);
+          }
+        } else if (tg.kind.loot === 'chicken') {
+          fly.chicken = (fly.chicken | 0) + 1;
+          let pts = tg.kind.points + (fly.beamWide ? 40 : 0);
+          if (fly.scoreMultTimer > 0) pts = (pts * 2) | 0;
+          score += pts;
+          // Short moon-juice / wider beam + score mult buff
+          fly.moonJuice = Math.max(fly.moonJuice, 160);
+          fly.beamWide = true;
+          fly.scoreMultTimer = Math.max(fly.scoreMultTimer, 220);
+          W.burst(particles, fly.ufoX, CH * 0.7, '#ffb84a', 16);
+          W.addFloater(floaters, fly.ufoX, CH * 0.55, '+' + pts + ' 🍗', '#ffcc66');
+          Audio.play('power');
+          showFlash(W.pick(W.CHICKEN_LINERS), 120);
+        } else if (tg.kind.human) {
+          let pts = tg.kind.points + (fly.beamWide ? 40 : 0);
+          if (fly.scoreMultTimer > 0) pts = (pts * 2) | 0;
           score += pts;
           beamed++;
           W.burst(particles, fly.ufoX, CH * 0.7, '#7dff3a', 14);

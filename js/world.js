@@ -34,6 +34,17 @@
     { id: 'mailbox', label: 'Mailbox', color: '#4466aa', human: false, shape: 'mailbox' },
   ];
 
+  /** Good fly loot — beam for hull repair / score buffs (not hazards) */
+  const LOOT_KINDS = [
+    { id: 'microplastics', label: 'Microplastics', points: 60, color: '#9ef0ff', human: false, loot: 'plastics', shape: 'plastics' },
+    { id: 'kfc', label: 'KFC Chicken', points: 280, color: '#ffb84a', human: false, loot: 'chicken', shape: 'kfc' },
+  ];
+
+  /** Plastics needed per hull repair / upgrade */
+  const MICROPLASTIC_THRESHOLD = 5;
+  const MAX_LIVES_BASE = 3;
+  const MAX_LIVES_UPGRADED = 4;
+
   // Legacy alias
   const TARGET_KINDS = PEOPLE_KINDS;
 
@@ -61,6 +72,21 @@
     'Trash can acquired. Hull hates microplastics AND trash.',
     'Cat beam rejected by galactic ethics committee.',
     'Chicken? Farm chicken ≠ fried chicken fan. Damage!',
+  ];
+
+  const PLASTICS_LINERS = [
+    'Sparkly bottle flakes — recycled into hull plating!',
+    "Microplastics: the mothership's guilty pleasure.",
+    'Tayler: "We\'re… collecting trash on purpose now?"',
+    'Fraser Valley runoff → UFO armor. Science!',
+  ];
+
+  const CHICKEN_LINERS = [
+    'KFC ACQUIRED — moon juice levels rising!',
+    'Bucket secured. Zakk: "Finger lickin\' cosmic."',
+    'Fried chicken lore: confirmed. Score multiplier online!',
+    'Retrofit fuel: original recipe. Wider beam unlocked!',
+    'Subject: drumstick. Destination: operating table (honored).',
   ];
 
   const RESULTS_LINERS = [
@@ -3407,6 +3433,77 @@
     const bob = Math.sin(t * 0.008 + tg.wobble) * 2;
     const y = groundY + bob;
 
+    if (tg.kind.loot) {
+      // cyan/gold ring = good loot
+      const lootColor = tg.kind.loot === 'chicken' ? 'rgba(255,180,60,0.85)' : 'rgba(120,240,255,0.85)';
+      ctx.strokeStyle = lootColor;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(x, y - 2, 15, 5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      const shape = tg.kind.shape;
+      if (shape === 'plastics') {
+        // sparkly bottle flakes / plastic bits
+        const spark = 0.55 + 0.45 * Math.sin(t * 0.02 + tg.wobble);
+        ctx.save();
+        ctx.globalAlpha = 0.55 + spark * 0.35;
+        ctx.fillStyle = '#b8f8ff';
+        ctx.beginPath();
+        ctx.moveTo(x - 8, y - 8);
+        ctx.lineTo(x - 2, y - 22);
+        ctx.lineTo(x + 4, y - 10);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#7ad8f0';
+        ctx.fillRect(x + 2, y - 18, 7, 10);
+        ctx.fillStyle = '#e8ffff';
+        ctx.fillRect(x - 10, y - 14, 5, 5);
+        ctx.fillRect(x + 6, y - 8, 4, 4);
+        ctx.fillRect(x - 1, y - 26, 3, 3);
+        ctx.restore();
+        // sparkles
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = spark;
+        ctx.fillRect(x - 12, y - 20, 2, 2);
+        ctx.fillRect(x + 10, y - 24, 2, 2);
+        ctx.fillRect(x + 1, y - 30, 2, 2);
+        ctx.globalAlpha = 1;
+      } else {
+        // KFC bucket + drumstick vibe
+        ctx.fillStyle = '#c43a2a';
+        ctx.beginPath();
+        ctx.moveTo(x - 12, y - 8);
+        ctx.lineTo(x - 10, y - 26);
+        ctx.lineTo(x + 10, y - 26);
+        ctx.lineTo(x + 12, y - 8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#fff8e8';
+        ctx.fillRect(x - 9, y - 22, 18, 8);
+        ctx.fillStyle = '#c43a2a';
+        ctx.font = 'bold 7px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('KFC', x, y - 15);
+        // drumstick peeking out
+        ctx.strokeStyle = '#e8c090';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x + 4, y - 26);
+        ctx.lineTo(x + 10, y - 36);
+        ctx.stroke();
+        ctx.fillStyle = '#d4a060';
+        ctx.beginPath();
+        ctx.arc(x + 11, y - 38, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = tg.kind.loot === 'chicken' ? '#ffcc66' : '#9ef0ff';
+      ctx.font = 'bold 8px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText((tg.kind.loot === 'chicken' ? '🍗 ' : '🧪 ') + tg.kind.label, x, y - 44);
+      ctx.textAlign = 'left';
+      return;
+    }
+
     if (tg.kind.human) {
       ctx.strokeStyle = 'rgba(125,255,58,0.7)';
       ctx.lineWidth = 2;
@@ -3574,22 +3671,29 @@
 
     ctx.restore();
 
-    // HUD strip: hull
+    // HUD strip: hull + loot progress
     ctx.fillStyle = 'rgba(10,30,16,0.75)';
-    ctx.fillRect(12, h - 36, 160, 24);
+    ctx.fillRect(12, h - 36, 280, 24);
     ctx.fillStyle = '#9bc87a';
     ctx.font = '11px Segoe UI, sans-serif';
     ctx.fillText('HULL', 18, h - 20);
     const lives = fly.lives | 0;
     ctx.fillStyle = lives <= 1 ? '#ff6644' : '#7dff3a';
     ctx.fillText('♥'.repeat(Math.max(0, lives)) + (lives <= 0 ? ' TOAST' : ''), 55, h - 20);
+    const thresh = MICROPLASTIC_THRESHOLD;
+    const plasticsProg = (fly.microplastics | 0) % thresh;
+    ctx.fillStyle = '#9ef0ff';
+    ctx.font = '10px Segoe UI, sans-serif';
+    ctx.fillText('🧪 ' + plasticsProg + '/' + thresh, 118, h - 20);
+    ctx.fillStyle = '#ffcc66';
+    ctx.fillText('🍗 ' + (fly.chicken | 0), 178, h - 20);
 
     ctx.fillStyle = 'rgba(10,30,16,0.75)';
-    ctx.fillRect(w - 200, h - 36, 188, 24);
+    ctx.fillRect(w - 220, h - 36, 208, 24);
     ctx.fillStyle = '#c8e0b8';
     ctx.font = '10px Segoe UI, sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText('←→↑↓ fly · Space beam · Enter end', w - 18, h - 20);
+    ctx.fillText('beam people/loot · red=DON\'T · Enter end', w - 18, h - 20);
     ctx.textAlign = 'left';
 
     if (fly.hitFlash > 0) {
@@ -3623,8 +3727,14 @@
     TARGET_KINDS,
     PEOPLE_KINDS,
     HAZARD_KINDS,
+    LOOT_KINDS,
+    MICROPLASTIC_THRESHOLD,
+    MAX_LIVES_BASE,
+    MAX_LIVES_UPGRADED,
     ONE_LINERS,
     BAD_BEAM_LINERS,
+    PLASTICS_LINERS,
+    CHICKEN_LINERS,
     RESULTS_LINERS,
     SHED_GAGS,
     SHED_WORLD_W,
