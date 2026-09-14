@@ -3732,16 +3732,20 @@
 
   function drawYard(ctx, w, h, camX, t, landing, opts) {
     opts = opts || {};
-    drawSky(ctx, w, h, t);
     const groundY = h * 0.72;
-    drawMountains(ctx, w, groundY, camX);
+    // Same Cheam sunset skyline as fly mode
+    drawFlySkylineBackdrop(ctx, w, h, groundY, camX);
 
-    ctx.fillStyle = '#4a9a3a';
+    // Yard grass in the foreground (skyline already painted to groundY)
+    ctx.fillStyle = '#3d7a38';
     ctx.fillRect(0, groundY, w, h - groundY);
-    ctx.fillStyle = '#3a7a2a';
+    ctx.fillStyle = '#2f6230';
     for (let x = -((camX | 0) % 16); x < w; x += 16) {
       ctx.fillRect(x, groundY, 3, 8);
     }
+    // Soft dusk wash so grass matches sunset lighting
+    ctx.fillStyle = 'rgba(255,120,40,0.08)';
+    ctx.fillRect(0, groundY, w, h - groundY);
 
     // mom's house
     const hx = 40 - camX * 0.4;
