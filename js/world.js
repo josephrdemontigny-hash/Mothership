@@ -672,28 +672,28 @@
     const bodyTop = seated ? -44 : -51;
     const headY = seated ? -59 : -66;
 
-    // Depth: far (−x / behind) vs near (+x bias / front). Exaggerate for readable ¾.
-    const farX = -6 + twist * 0.3;
-    const nearX = 5 + lean;
+    // Depth: soft far (−x) / near (+x) — facing cue without floating limbs
+    const farX = -3.2 + twist * 0.22;
+    const nearX = 3.2 + lean * 0.55;
 
-    // ——— FAR LEG (behind, inset) ———
+    // ——— FAR LEG (hip socket under torso) ———
     if (seated) {
-      fillBoot(ctx, farX - 8, -4, 11, true);
+      fillBoot(ctx, farX - 6, -4, 11, true);
       ctx.fillStyle = '#0e0e12';
-      ctx.fillRect(farX - 10, -12, 11, 10);
+      ctx.fillRect(farX - 8, -12, 11, 10);
     } else {
       const ly = strideB * 9;
-      const lx = farX - 2 + strideB * 3;
-      pantLeg(ctx, lx - 4, -29 + ly * 0.12, 8, 24, true);
+      const lx = farX + 0.5 + strideB * 2.2;
+      pantLeg(ctx, lx - 4, -28 + ly * 0.12, 8, 24, true);
       fillBoot(ctx, lx - 5, -6 + ly * 0.18, 11, true);
     }
 
-    // ——— FAR ARM (behind torso) ———
+    // ——— FAR ARM (shoulder socket overlapping torso) ———
     if (!seated) {
-      const ax = farX - 7;
-      const ay = bodyTop + 5 + stride * 3.5;
+      const ax = farX - 1;
+      const ay = bodyTop + 4 + stride * 3.5;
       ctx.fillStyle = '#0e0e12';
-      ctx.fillRect(ax, ay, 6, 11);
+      ctx.fillRect(ax - 2, ay, 8, 11);
       armSkin(ctx, ax + 0.5, ay + 11, 5, 12, skin, skinSh);
       tattooMarks(ctx, ax + 1, ay + 13);
       ctx.strokeStyle = 'rgba(0,220,255,0.3)';
@@ -772,7 +772,13 @@
     ctx.lineTo(tx + nearX + 6, bodyTop + 22);
     ctx.stroke();
 
-    // ——— NEAR LEG (front, forward) ———
+    // Hip bridge — solid waist so legs read attached to torso
+    if (!seated) {
+      ctx.fillStyle = '#121218';
+      ctx.fillRect(tx + farX * 0.35 - 1, bodyTop + 20, (nearX - farX) + 7, 9);
+    }
+
+    // ——— NEAR LEG (hip socket under torso) ———
     if (seated) {
       ctx.fillStyle = '#1a1a1e';
       ctx.fillRect(-10, -22, 22, 16);
@@ -780,18 +786,18 @@
       fillBoot(ctx, nearX - 1, -4, 12, false);
     } else {
       const ly = stride * 9;
-      const lx = nearX + 1 + stride * 4;
-      pantLeg(ctx, lx - 4, -29 + ly * 0.15, 9, 25, false);
+      const lx = nearX - 0.5 + stride * 2.5;
+      pantLeg(ctx, lx - 4, -28 + ly * 0.15, 9, 25, false);
       fillBoot(ctx, lx - 4, -6 + ly * 0.2, 12, false);
     }
 
-    // ——— NEAR ARM ———
-    const nax = nearX + 6;
+    // ——— NEAR ARM (shoulder socket overlapping torso) ———
+    const nax = nearX + 1;
     const nay = bodyTop + 3 + strideB * 3.2;
     ctx.fillStyle = '#1c1c22';
-    ctx.fillRect(nax - 1, nay, 7, 11);
+    ctx.fillRect(nax - 2, nay, 8, 11);
     ctx.fillStyle = '#08080a';
-    ctx.fillRect(nax - 1, nay + 10, 7, 2);
+    ctx.fillRect(nax - 2, nay + 10, 8, 2);
     armSkin(ctx, nax, nay + 12, 5.5, 13, skin, skinSh);
     tattooMarks(ctx, nax + 1, nay + 14);
     fillHalftone(ctx, nax, nay + 12, 5.5, 13, 'rgba(40,20,30,0.16)', 2.7);
@@ -1072,26 +1078,27 @@
     const denimHi = '#3a4e72';
     const denimLo = '#1a2838';
     const bodyTop = seated ? -44 : -51;
-    const farX = -6 + twist * 0.3;
-    const nearX = 5 + lean;
+    // Soft far/near split — cohesive silhouette, still sells walk facing
+    const farX = -3.2 + twist * 0.22;
+    const nearX = 3.2 + lean * 0.55;
 
-    // FAR leg
+    // FAR leg — hip under torso
     if (seated) {
       ctx.fillStyle = denimLo;
-      ctx.fillRect(farX - 10, -12, 11, 10);
-      brownBoot(ctx, farX - 8, -4, 11, true);
+      ctx.fillRect(farX - 8, -12, 11, 10);
+      brownBoot(ctx, farX - 6, -4, 11, true);
     } else {
       const ly = strideB * 9;
-      const lx = farX - 2 + strideB * 3;
-      jeanLeg(ctx, lx - 4, -29 + ly * 0.12, 8, 24, true);
+      const lx = farX + 0.5 + strideB * 2.2;
+      jeanLeg(ctx, lx - 4, -28 + ly * 0.12, 8, 24, true);
       brownBoot(ctx, lx - 5, -6 + ly * 0.18, 11, true);
     }
 
-    // FAR arm
+    // FAR arm — shoulder socket overlapping torso
     if (!seated) {
-      const ax = farX - 7;
-      const ay = bodyTop + 5 + stride * 3.3;
-      plaidFill(ctx, ax, ay, 6, 11);
+      const ax = farX - 1;
+      const ay = bodyTop + 4 + stride * 3.3;
+      plaidFill(ctx, ax - 2, ay, 8, 11);
       ctx.fillStyle = skin;
       ctx.fillRect(ax + 0.5, ay + 11, 5, 12);
       ctx.strokeStyle = 'rgba(0,220,255,0.28)';
@@ -1150,7 +1157,13 @@
     ctx.lineTo(tx + nearX + 6, bodyTop + 22);
     ctx.stroke();
 
-    // NEAR leg
+    // Hip bridge — solid jeans waist under torso
+    if (!seated) {
+      ctx.fillStyle = denimLo;
+      ctx.fillRect(tx + farX * 0.35 - 1, bodyTop + 20, (nearX - farX) + 7, 9);
+    }
+
+    // NEAR leg — hip under torso
     if (seated) {
       ctx.fillStyle = denim;
       ctx.fillRect(-10, -22, 22, 16);
@@ -1158,20 +1171,20 @@
       brownBoot(ctx, nearX - 1, -4, 12, false);
     } else {
       const ly = stride * 9;
-      const lx = nearX + 1 + stride * 4;
-      jeanLeg(ctx, lx - 4, -29 + ly * 0.15, 9, 25, false);
+      const lx = nearX - 0.5 + stride * 2.5;
+      jeanLeg(ctx, lx - 4, -28 + ly * 0.15, 9, 25, false);
       // ankle stack
       ctx.fillStyle = denimLo;
       ctx.fillRect(lx - 4, -8 + ly * 0.15, 9, 3);
       brownBoot(ctx, lx - 4, -6 + ly * 0.2, 12, false);
     }
 
-    // NEAR arm
-    const nax = nearX + 6;
+    // NEAR arm — shoulder socket overlapping torso
+    const nax = nearX + 1;
     const nay = bodyTop + 3 + strideB * 3.0;
-    plaidFill(ctx, nax - 1, nay, 7, 11);
+    plaidFill(ctx, nax - 2, nay, 8, 11);
     ctx.fillStyle = '#2a4058';
-    ctx.fillRect(nax - 1, nay + 10, 7, 2);
+    ctx.fillRect(nax - 2, nay + 10, 8, 2);
     ctx.fillStyle = skin;
     ctx.fillRect(nax, nay + 12, 5.5, 12);
     fillHalftone(ctx, nax, nay + 12, 5.5, 12, 'rgba(40,20,30,0.12)', 2.7);
@@ -4587,8 +4600,43 @@
     drawLandmarkLabel(ctx, cx, groundY + 14, label || 'PARAMOUNT');
   }
 
+  /** Mom's house + backyard shed — home land cue at start of fly map */
+  function drawHomeShed(ctx, x, groundY, label) {
+    // house
+    ctx.fillStyle = '#8a6050';
+    ctx.fillRect(x - 8, groundY - 72, 58, 72);
+    ctx.fillStyle = '#5a3030';
+    ctx.beginPath();
+    ctx.moveTo(x - 12, groundY - 72);
+    ctx.lineTo(x + 21, groundY - 98);
+    ctx.lineTo(x + 54, groundY - 72);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#ffe88a';
+    ctx.fillRect(x + 4, groundY - 48, 14, 14);
+    ctx.fillStyle = '#3a2010';
+    ctx.fillRect(x + 28, groundY - 32, 14, 32);
+    // shed behind / beside
+    ctx.fillStyle = '#6a5040';
+    ctx.fillRect(x + 52, groundY - 42, 36, 42);
+    ctx.fillStyle = '#4a3020';
+    ctx.beginPath();
+    ctx.moveTo(x + 50, groundY - 42);
+    ctx.lineTo(x + 70, groundY - 58);
+    ctx.lineTo(x + 90, groundY - 42);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#2a1a10';
+    ctx.fillRect(x + 62, groundY - 24, 14, 24);
+    // neon home cue
+    ctx.fillStyle = 'rgba(125,255,58,0.18)';
+    ctx.fillRect(x - 14, groundY - 108, 108, 14);
+    drawLandmarkLabel(ctx, x + 40, groundY + 14, label || "MOM'S / SHED");
+  }
+
   function drawBuilding(ctx, x, groundY, kind, label) {
     if (kind === 'streetlight') { drawStreetlight(ctx, x, groundY); return; }
+    if (kind === 'homeShed') { drawHomeShed(ctx, x, groundY, label); return; }
     if (kind === 'clockTower') { drawClockTower(ctx, x, groundY, label); return; }
     if (kind === 'museum') { drawMuseum(ctx, x, groundY, label); return; }
     if (kind === 'vedderBridge') { drawVedderBridge(ctx, x, groundY, label); return; }

@@ -952,7 +952,8 @@
     else setPrompt('Hang in the shed · EXIT → when ready');
   }
 
-  function enterYard() {
+  function enterYard(opts) {
+    opts = opts || {};
     mode = 'yard';
     interactQueued = false;
     jumpQueued = false;
@@ -963,7 +964,7 @@
     tayler = { x: 240, y: GROUND };
     Audio.play('ui');
     camX = 0;
-    avatar = makeAvatar(280, GROUND);
+    avatar = makeAvatar(opts.fromFlyHome ? 520 : 280, GROUND);
 
     // Door only opens after land — mothership already waiting in backyard
     const targetY = GROUND - 86;
@@ -979,8 +980,13 @@
       showPilots: false,
     };
     Audio.play('landing');
-    showFlash('Mothership waiting. Walk up and board the mothership.', 130);
-    setPrompt('Walk to the UFO — board the mothership');
+    if (opts.fromFlyHome) {
+      showFlash("Home — landed behind mom's house. Score banked: " + score, 150);
+      setPrompt('← SHED · board UFO · score kept — fly again anytime');
+    } else {
+      showFlash('Mothership waiting. Walk up and board the mothership.', 130);
+      setPrompt('Walk to the UFO — board the mothership');
+    }
     showScreen('play');
     syncHud();
   }
@@ -1034,7 +1040,7 @@
       ensureStreetlights();
       showScreen('play');
       syncHud();
-      setPrompt('←→↑↓ fly · Space/USE beam · dive near landmark to LAND · Enter end');
+      setPrompt("←→↑↓ fly · Space/USE beam · dive near landmark / MOM'S SHED to LAND · Enter end");
       if (opts.fromLandmark) {
         fly.ufoY = Math.min(fly.ufoY != null ? fly.ufoY : CH * 0.45, CH * 0.48);
         fly.legExtend = 0.4;
@@ -1172,6 +1178,7 @@
   /** Fixed Chilliwack landmarks — world X along N→S flight (districts ~900 wide). */
   /** Spread ~700–800 apart across N→S Chilliwack so each reads as its own beat. */
   const FLY_LANDMARKS = [
+    { x: 320, kind: 'homeShed', label: "MOM'S / SHED", home: true },
     { x: 1100, kind: 'clockTower', label: 'CLOCK TOWER' },
     { x: 1900, kind: 'museum', label: 'MUSEUM' },
     { x: 2700, kind: 'royalHotel', label: 'ROYAL HOTEL' },
@@ -2105,7 +2112,11 @@
       setPrompt('↓/E LAND — ' + landLm.label);
       const wantLand = wantsInteract() || downEdge;
       if (wantLand) {
-        startLandmarkVisit(landLm);
+        if (landLm.home || landLm.kind === 'homeShed') {
+          landHomeFromFly();
+        } else {
+          startLandmarkVisit(landLm);
+        }
         syncHud();
         return;
       }
@@ -2115,7 +2126,7 @@
         interactQueued = false;
         beamQueued = true;
       }
-      setPrompt('←→↑↓ fly · Space/USE beam · dive near landmark to LAND · Enter end');
+      setPrompt("←→↑↓ fly · Space/USE beam · dive near landmark / MOM'S SHED to LAND · Enter end");
       prevInteractHeld = interactHeld();
     }
     syncInteractBtn();
@@ -2274,6 +2285,10 @@
 
   function startLandmarkVisit(lm) {
     if (!fly || !lm) return;
+    if (lm.home || lm.kind === 'homeShed') {
+      landHomeFromFly();
+      return;
+    }
     flyResume = snapshotFlyForResume();
     // Park resume scroll so UFO sits over this landmark on takeoff
     const ufoScreenX = fly.ufoX;
@@ -2614,6 +2629,30 @@
     returnToShed();
     showFlash('Landed at the shed. Score banked: ' + score, 140);
     setPrompt('← → walk · EXIT → yard · score kept');
+  }
+
+  /** Voluntary home landing from fly — yard behind mom's house, score kept */
+  function landHomeFromFly() {
+    if (mode !== 'fly' || !fly) return;
+    fly = null;
+    flyResume = null;
+    landmarkVisit = null;
+    operate = null;
+    hideOperateChoice();
+    selfDestructing = false;
+    destructTimer = 0;
+    // Preserve score/beamed/loot (globals); clear fly cleanly
+    smokeDone = true;
+    smoking = false;
+    smokeProgress = 1;
+    windowUfo = 1;
+    ufoLanding = false;
+    jointStage = null;
+    jointPhase = null;
+    boardSit = null;
+    drivingCamino = false;
+    enterYard({ fromFlyHome: true });
+    syncInteractBtn();
   }
 
   function chooseFlyAgainFromOperate() {
