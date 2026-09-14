@@ -1,19 +1,15 @@
-# Hole in the Wall — Tesla EV Repair Apprentice
+# Hole in the Wall — Tesla EV Repair Apprentice (3D)
 
-Walk-around browser game. You're the new apprentice at a greasy, pigeon-haunted Tesla repair shop. Check in cars with front-of-house, pull them from the lot, and work with the techs — while everyone calls you rook, greenhorn, knucklehead, etc.
+**3D Animal Crossing–style** walk-around browser game. Soft elevated follow camera, stylized capsule characters, greasy hole-in-the-wall Tesla shop (concrete, grease, pigeons, hoists) — AC *camera & silhouette*, not pastel paradise.
 
-**This is a top-down walk-around** (WASD + interact), not a click-a-location menu adventure.
+You're the new apprentice. Check in cars with front-of-house, pull them from the lot, and work with the techs — while everyone calls you rook, greenhorn, knucklehead, etc.
 
 ## How to run
 
-No build step. Any of these:
+**Zero build.** Three.js loads from a CDN via an import map. Serve over HTTP (required for ES modules):
 
 ```bash
-# Option A — open the file
-open index.html          # macOS
-xdg-open index.html      # Linux
-
-# Option B — local static server (from this folder)
+# from this folder (tesla-shop/)
 npx serve .
 # or
 python3 -m http.server 8080
@@ -21,18 +17,24 @@ python3 -m http.server 8080
 
 Then open the URL shown (e.g. `http://localhost:3000` or `http://localhost:8080`).
 
-Files: `index.html`, `styles.css`, `game.js` — vanilla HTML/CSS/JS + Canvas. Optional `layout-ref.jpeg` is a satellite lot/building reference (lot west, shop east, three bays on the east wall).
+Entry: `index.html` — also works on **GitHub Pages** with no build step (same folder as Pages root or nested path).
+
+Files: `index.html`, `styles.css`, `game.js`, optional `layout-ref.jpeg` (satellite lot/building reference).
 
 ## Controls
 
 | Device | Move | Interact |
 |--------|------|----------|
-| Desktop | **WASD** or **arrow keys** | **E** or **Space** (or Enter) when a prompt appears |
+| Desktop | **WASD** or **arrow keys** (XZ plane) | **E** or **Space** (or Enter) when a prompt appears |
 | Mobile / touch | On-screen D-pad (bottom left) | **USE** button (bottom right) |
 
-Other: **?** help · **Esc** closes help / advances dialogue · click **Continue** in dialogue boxes.
+Other: **?** help · **Esc** closes help / advances dialogue · **Continue** in dialogue boxes.
 
-Proximity prompts appear when you walk near someone or something, e.g. `Talk to Kim`, `Get WET-Y-01`, `Wait for Moe`.
+Proximity prompts: e.g. `Talk to Kim`, `Get WET-Y-01`, `Talk to Moe (parts)`.
+
+## Camera
+
+Elevated soft-angled **third-person follow** (Animal Crossing / diorama vibe) — not FPS. Camera lerps behind-above the player; gentle hemisphere + directional soft shadows.
 
 ## How to play
 
@@ -40,50 +42,49 @@ Proximity prompts appear when you walk near someone or something, e.g. `Talk to 
 2. Walk to the **Front Desk** (west side of the shop building). Talk to:
    - **Kim** — water leak (Model Y) → Rolando; then tire/TPMS (Model X) → Won Song
    - **Ryan** — brake service (Model Y) → Won Song; then drive unit (Model 3) → Won Song
-   - **Jordan Sham** — 12V / phantom drain diag (Model S) → Nima
-3. Walk west into the **Customer Lot**, interact with the assigned car (highlighted + plate). The car auto-drives into the correct bay (cutscene).
+   - **Jordan Sham** — 12V / phantom drain diag (Model S) → Nima *(constantly says Yuuh/yuh and interrupts you mid-sentence)*
+3. Walk west into the **Customer Lot**, interact with the assigned car (glowing ring + plate). Auto-drive cutscene into the correct bay.
 4. Talk to the **right tech**. Wrong tech = roast + redirect.
 5. If parts are needed, the tech radios **Moe**. Wait at the bay — Moe walks over (forklift for the drive unit). Talk to Moe when he arrives, then finish with the tech.
-6. Repeat. Complete all **five** jobs to finish the shift.
+6. Complete all **five** jobs → shift complete.
 
-## Layout (top-down)
+## Layout
 
 ```
 WEST (left)                                              EAST (right)
 ┌──────────────┐  door  ┌──────────────────────────────────────────┐
 │              │        │  FOH desk: Kim · Ryan · Jordan Sham      │
 │  PARKING LOT │  ════  │  Washroom                                │  Bays:
-│  (cars)      │        │  Parts: Moe + forklift                   │  Nima (N / far left)
+│  (cars)      │        │  Parts: Moe + forklift                   │  Nima (N)
 │              │        │                                          │  Won Song (middle)
-└──────────────┘        └──────────────────────────────────────────┘  Rolando (S / far right)
+└──────────────┘        └──────────────────────────────────────────┘  Rolando (S)
 ```
 
-Collide with walls, parked cars, desks, shelves, hoists. Minimap is bottom-right.
+Collision with walls, parked cars, desks, shelves, hoists. Minimap bottom-right.
 
-## Jobs & win conditions
+## Jobs
 
-| Job | FOH | Plate / nickname | Bay / tech | Parts | Win |
-|-----|-----|------------------|------------|-------|-----|
-| Water leak / drain clog | Kim | WET-Y-01 · Puddle Princess (White Model Y) | Rolando | — | Repair complete |
-| Brake service (pads/rotors) | Ryan | SQK-Y-88 · Squeaky Y (Pearl White Model Y) | Won Song | Moe delivers pads/rotors | Repair complete |
-| Tire puncture / TPMS | Kim | FLAT-X9 · Flatliner (Blue Model X) | Won Song | Moe delivers tire + TPMS | Repair complete |
-| Drive unit replacement | Ryan | DU-M3-42 · Clunk Cub (Midnight Model 3) | Won Song | Moe forklift + unit | Repair complete |
-| 12V / phantom drain diag | Jordan Sham | GHST-S7 · Ghost Plaid (Red Model S) | Nima | Moe delivers 12V + clips | Repair complete |
+| Job | FOH | Plate | Bay / tech | Parts |
+|-----|-----|-------|------------|-------|
+| Water leak / drain clog | Kim | WET-Y-01 · Puddle Princess | Rolando | — |
+| Brake service | Ryan | SQK-Y-88 · Squeaky Y | Won Song | Moe (pads/rotors) |
+| Tire / TPMS | Kim | FLAT-X9 · Flatliner | Won Song | Moe (tire + TPMS) |
+| Drive unit | Ryan | DU-M3-42 · Clunk Cub | Won Song | Moe **forklift** |
+| 12V / phantom drain | Jordan Sham | GHST-S7 · Ghost Plaid | Nima | Moe (12V + clips) |
 
-**Specialists:** Rolando = water/weather/drains · Won Song = brakes, tires, drive units, heavy mechanical · Nima = electrical / charge / phantom / codes · Moe = parts delivery to bay.
+## Characters (stylized 3D)
 
-**Shift complete** when all five jobs are done. First loop is ~10 minutes if you know the path.
+Player (red shirt apprentice), Kim (gold), Ryan (green + beard), Jordan (blue), Moe (orange + hard hat), Nima (purple, tall swagger), Won Song (red, **short**), Rolando (teal).
 
 ## Tone
 
-Classic greasy-shop ribbing: rook, greenhorn, parts-runner, grease-stain, knucklehead, wet-behind-the-ears, idiot. Helpful info still comes through. Praise is backhanded. No bigoted slurs.
+Classic greasy-shop ribbing: rook, greenhorn, parts-runner, grease-stain, knucklehead, wet-behind-the-ears, idiot. No bigoted slurs.
 
-## Known limitations / gaps
+## Gaps / limitations
 
-- Single loop; no save/load.
-- No audio.
-- One active job at a time (FOH will roast you if you already have a live ticket).
-- Car fetch is an auto-walk/cutscene into the assigned bay (smoother than escorting).
+- Single loop; no save/load; no audio.
+- One active job at a time.
+- Car fetch is an auto-drive cutscene (not free driving).
 - Repairs resolve through dialogue + stage flags (no physics sim).
-- Moe pathing is a straight-line walk (clips through some props while delivering).
-- Decorative lot cars are solid; job cars become walk-around props once parked in a bay.
+- Moe pathing is straight-line (may clip props while delivering).
+- Requires network once to load Three.js from CDN (or cache).

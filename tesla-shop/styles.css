@@ -1,4 +1,4 @@
-/* Hole in the Wall — walk-around Tesla shop */
+/* Hole in the Wall — 3D AC-style Tesla shop */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -8,8 +8,6 @@
   --accent-dim: #a87420;
   --cream: #f2efe6;
   --mute: #8a9488;
-  --danger: #e06040;
-  --ok: #6ecf6a;
   --font: "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
@@ -29,38 +27,52 @@ html, body {
   width: 100vw;
   height: 100vh;
   height: 100dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(ellipse at 40% 30%, #1c2820 0%, #0e1210 70%);
+  background: #0e1210;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 #game {
   display: block;
-  max-width: 100vw;
-  max-height: 100vh;
-  max-height: 100dvh;
-  width: auto;
-  height: auto;
-  background: #3a4540;
-  border-radius: 4px;
-  box-shadow: 0 0 0 3px var(--accent-dim), 0 12px 40px rgba(0,0,0,0.55);
+  width: 100%;
+  height: 100%;
+  outline: none;
+}
+
+#label-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 4;
+}
+
+.world-label {
+  color: #f2efe6;
+  font-size: 11px;
+  font-weight: 800;
+  text-shadow: 0 1px 3px #000, 0 0 6px rgba(0,0,0,0.8);
+  white-space: nowrap;
+  transform: translate(-50%, -100%);
+  letter-spacing: 0.02em;
+  background: rgba(14,18,16,0.55);
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(232,168,56,0.35);
+}
+
+.world-label.player { border-color: #c43828; color: #ffd0c8; }
+.world-label.highlight {
+  border-color: var(--accent);
+  box-shadow: 0 0 10px rgba(232,168,56,0.45);
 }
 
 .hidden { display: none !important; }
 
-/* HUD */
 #hud {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 5;
-  max-width: 960px;
-  width: 100%;
-  height: 100%;
-  max-height: 540px;
-  margin: auto;
 }
 
 .hud-left, .hud-right, .hud-center {
@@ -69,24 +81,32 @@ html, body {
 }
 
 .hud-left {
-  top: 10px; left: 12px;
+  top: 12px; left: 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-width: 280px;
+  max-width: min(320px, 55vw);
 }
 
 .hud-right {
-  top: 10px; right: 12px;
+  top: 12px; right: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
   pointer-events: auto;
 }
 
 .hud-center {
   left: 50%;
-  bottom: 72px;
+  bottom: 88px;
   transform: translateX(-50%);
-  width: min(420px, 90%);
+  width: min(440px, 90%);
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 .hud-pill {
@@ -114,8 +134,26 @@ html, body {
   box-shadow: 0 0 16px rgba(232, 168, 56, 0.25);
   min-height: 1.2em;
 }
-
 #prompt-label:empty { display: none; }
+
+#flash-msg {
+  background: rgba(0,0,0,0.7);
+  border: 1px solid var(--accent);
+  color: var(--cream);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+#minimap {
+  width: 140px;
+  height: 90px;
+  border-radius: 8px;
+  border: 1px solid var(--accent-dim);
+  background: rgba(14,18,16,0.85);
+  image-rendering: pixelated;
+}
 
 .icon-btn {
   width: 36px; height: 36px;
@@ -126,11 +164,10 @@ html, body {
   font-size: 16px;
   font-weight: 800;
   cursor: pointer;
+  pointer-events: auto;
 }
-
 .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-/* Screens / modals */
 .screen {
   position: absolute;
   inset: 0;
@@ -201,7 +238,6 @@ label {
   color: #1a1208;
   width: 100%;
 }
-
 .btn.primary:hover { filter: brightness(1.06); }
 
 .modal {
@@ -224,7 +260,6 @@ label {
 .modal-card.win { text-align: center; }
 .modal-card.win p { margin: 12px 0 18px; line-height: 1.45; }
 
-/* Dialogue */
 .dialogue {
   position: absolute;
   inset: 0;
@@ -259,7 +294,6 @@ label {
 
 .dialogue #dlg-next { width: 100%; margin-top: 8px; }
 
-/* Touch */
 #touch {
   position: absolute;
   left: 0; right: 0; bottom: 0;
@@ -269,9 +303,6 @@ label {
   align-items: flex-end;
   padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px));
   pointer-events: none;
-  max-width: 960px;
-  width: 100%;
-  margin: 0 auto;
 }
 
 #touch .dpad, #touch .use-btn { pointer-events: auto; }
@@ -282,7 +313,6 @@ label {
   align-items: center;
   gap: 4px;
 }
-
 .dpad-mid { display: flex; gap: 40px; }
 
 .pad, .use-btn {
@@ -316,6 +346,7 @@ label {
 @media (max-width: 700px) {
   .hud-left { max-width: 55%; }
   .hud-pill { font-size: 11px; padding: 5px 8px; }
-  .hud-center { bottom: 140px; }
-  .dialogue-card { margin-bottom: 140px; }
+  .hud-center { bottom: 150px; }
+  .dialogue-card { margin-bottom: 150px; }
+  #minimap { width: 110px; height: 72px; }
 }
