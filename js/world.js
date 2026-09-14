@@ -40,6 +40,20 @@
     { id: 'kfc', label: 'KFC Chicken', points: 280, color: '#ffb84a', human: false, loot: 'chicken', shape: 'kfc' },
   ];
 
+  /** Holy Cow Easter egg — good beam target (NOT a hazard), grants 2× score for ~30s */
+  const COW_KIND = {
+    id: 'cow',
+    label: 'Holy Cow',
+    points: 320,
+    color: '#f0e8d8',
+    human: false,
+    cow: true,
+    shape: 'cow',
+  };
+
+  /** Operating table X on mothership bridge (surgery Easter egg) */
+  const SHIP_TABLE_X = 380;
+
   /** Plastics needed per hull repair / upgrade */
   const MICROPLASTIC_THRESHOLD = 5;
   const MAX_LIVES_BASE = 3;
@@ -2742,11 +2756,71 @@
     ctx.fillStyle = glow;
     ctx.fillRect(helmX - 160, groundY - 160, 320, 200);
 
+    // Operating / exam table (surgery Easter egg)
+    if (opts.operate) {
+      const tx = SHIP_TABLE_X - camX;
+      const ty = groundY;
+      // table base
+      ctx.fillStyle = '#2a3844';
+      ctx.fillRect(tx - 55, ty - 28, 110, 12);
+      ctx.fillStyle = '#1a242c';
+      ctx.fillRect(tx - 50, ty - 16, 8, 16);
+      ctx.fillRect(tx + 42, ty - 16, 8, 16);
+      // glowing slab
+      const slabGlow = 0.35 + 0.15 * Math.sin(t * 0.006);
+      ctx.fillStyle = 'rgba(100,255,180,' + slabGlow + ')';
+      ctx.shadowColor = '#66ffaa';
+      ctx.shadowBlur = 12;
+      ctx.fillRect(tx - 52, ty - 36, 104, 10);
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#3a4a58';
+      ctx.fillRect(tx - 50, ty - 34, 100, 6);
+      // beamed subject on table (simple citizen silhouette)
+      if (!opts.surgeryDone) {
+        ctx.fillStyle = '#ffcc88';
+        ctx.beginPath();
+        ctx.ellipse(tx - 10, ty - 48, 10, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#4a6a88';
+        ctx.fillRect(tx - 28, ty - 42, 50, 10);
+        // weird alien scanner arm
+        ctx.strokeStyle = '#88ffcc';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(tx + 40, ty - 70);
+        ctx.quadraticCurveTo(tx + 10, ty - 90, tx - 10, ty - 55);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(100,255,200,0.5)';
+        ctx.beginPath();
+        ctx.arc(tx - 10, ty - 52, 6 + Math.sin(t * 0.01) * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // KFC / plastics props near table (gag foreshadow)
+      ctx.fillStyle = '#c43a2a';
+      ctx.fillRect(tx + 58, ty - 22, 14, 12);
+      ctx.fillStyle = '#fff8e8';
+      ctx.font = 'bold 6px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('KFC', tx + 65, ty - 13);
+      ctx.fillStyle = '#9ef0ff';
+      ctx.fillRect(tx - 72, ty - 18, 8, 8);
+      ctx.fillStyle = 'rgba(255,220,100,0.7)';
+      ctx.font = 'bold 10px Segoe UI, sans-serif';
+      ctx.fillText(opts.surgeryDone ? 'SUBJECT: PROCESSED' : 'OPERATING TABLE', tx, ty - 78);
+      ctx.textAlign = 'left';
+    }
+
     // Caption
     ctx.fillStyle = 'rgba(200,230,210,0.55)';
     ctx.font = '11px Segoe UI, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Mothership bridge — Chilliwack below · crew watching', w / 2, 22);
+    ctx.fillText(
+      opts.operate
+        ? 'Mothership sickbay — "son of a bitch you recognize" protocol'
+        : 'Mothership bridge — Chilliwack below · crew watching',
+      w / 2,
+      22
+    );
     ctx.textAlign = 'left';
   }
 
@@ -3676,6 +3750,72 @@
       return;
     }
 
+    if (tg.kind.cow) {
+      // Holy Cow — good target (green ring, not hazard red)
+      ctx.strokeStyle = 'rgba(255,220,100,0.85)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(x, y - 2, 22, 6, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      // body
+      ctx.fillStyle = '#f5f0e6';
+      ctx.beginPath();
+      ctx.ellipse(x, y - 18, 20, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // black spots
+      ctx.fillStyle = '#2a2a2a';
+      ctx.beginPath();
+      ctx.ellipse(x - 8, y - 20, 5, 4, -0.3, 0, Math.PI * 2);
+      ctx.ellipse(x + 6, y - 14, 6, 4, 0.2, 0, Math.PI * 2);
+      ctx.ellipse(x + 2, y - 24, 4, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // head
+      ctx.fillStyle = '#f5f0e6';
+      ctx.beginPath();
+      ctx.ellipse(x + 18, y - 26, 9, 8, 0.15, 0, Math.PI * 2);
+      ctx.fill();
+      // snout
+      ctx.fillStyle = '#e8a0b0';
+      ctx.beginPath();
+      ctx.ellipse(x + 26, y - 22, 5, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // ears
+      ctx.fillStyle = '#f0e0d0';
+      ctx.beginPath();
+      ctx.ellipse(x + 14, y - 34, 4, 3, -0.6, 0, Math.PI * 2);
+      ctx.ellipse(x + 22, y - 34, 4, 3, 0.6, 0, Math.PI * 2);
+      ctx.fill();
+      // eye
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath();
+      ctx.arc(x + 20, y - 28, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+      // legs
+      ctx.fillStyle = '#e8e0d4';
+      ctx.fillRect(x - 14, y - 8, 4, 10);
+      ctx.fillRect(x - 4, y - 8, 4, 10);
+      ctx.fillRect(x + 4, y - 8, 4, 10);
+      ctx.fillRect(x + 12, y - 8, 4, 10);
+      // udder hint
+      ctx.fillStyle = '#e8a0b0';
+      ctx.beginPath();
+      ctx.ellipse(x - 2, y - 6, 5, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // tail
+      ctx.strokeStyle = '#2a2a2a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x - 20, y - 18);
+      ctx.quadraticCurveTo(x - 28, y - 28, x - 24, y - 8);
+      ctx.stroke();
+      ctx.fillStyle = '#ffd76a';
+      ctx.font = 'bold 9px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🐄 ' + tg.kind.label, x, y - 44);
+      ctx.textAlign = 'left';
+      return;
+    }
+
     if (tg.kind.human) {
       ctx.strokeStyle = 'rgba(125,255,58,0.7)';
       ctx.lineWidth = 2;
@@ -3964,21 +4104,78 @@
     ctx.strokeStyle = 'rgba(125,255,58,0.2)';
     ctx.stroke();
 
-    // active beam
+    // active beam — pulsing cone, soft glow, rising energy, scan ripples
     if (fly.beaming) {
       const bw = fly.beamWide ? 96 : 64;
       const beamTop = ufoScreenY + 16 * ufoScale;
-      const grad = ctx.createLinearGradient(ufoScreenX, beamTop, ufoScreenX, groundY);
-      grad.addColorStop(0, 'rgba(125,255,58,0.6)');
-      grad.addColorStop(1, 'rgba(125,255,58,0.08)');
-      ctx.fillStyle = grad;
+      const pulse = 0.85 + 0.15 * Math.sin(t * 0.028);
+      const bwPulse = bw * pulse;
+      // Soft ground glow
+      const gGlow = ctx.createRadialGradient(ufoScreenX, groundY, 4, ufoScreenX, groundY, bwPulse * 0.7);
+      gGlow.addColorStop(0, 'rgba(160,255,120,0.35)');
+      gGlow.addColorStop(0.5, 'rgba(80,220,140,0.12)');
+      gGlow.addColorStop(1, 'rgba(80,220,140,0)');
+      ctx.fillStyle = gGlow;
       ctx.beginPath();
-      ctx.moveTo(ufoScreenX - 12 * ufoScale, beamTop);
-      ctx.lineTo(ufoScreenX + 12 * ufoScale, beamTop);
-      ctx.lineTo(ufoScreenX + bw / 2, groundY);
-      ctx.lineTo(ufoScreenX - bw / 2, groundY);
+      ctx.ellipse(ufoScreenX, groundY, bwPulse * 0.65, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Outer soft cone
+      const outer = ctx.createLinearGradient(ufoScreenX, beamTop, ufoScreenX, groundY);
+      outer.addColorStop(0, 'rgba(180,255,160,' + (0.35 * pulse) + ')');
+      outer.addColorStop(0.45, 'rgba(100,255,140,0.18)');
+      outer.addColorStop(1, 'rgba(80,255,120,0.04)');
+      ctx.fillStyle = outer;
+      ctx.beginPath();
+      ctx.moveTo(ufoScreenX - 14 * ufoScale, beamTop);
+      ctx.lineTo(ufoScreenX + 14 * ufoScale, beamTop);
+      ctx.lineTo(ufoScreenX + bwPulse / 2 + 8, groundY);
+      ctx.lineTo(ufoScreenX - bwPulse / 2 - 8, groundY);
       ctx.closePath();
       ctx.fill();
+      // Core cone
+      const grad = ctx.createLinearGradient(ufoScreenX, beamTop, ufoScreenX, groundY);
+      grad.addColorStop(0, 'rgba(200,255,180,' + (0.75 * pulse) + ')');
+      grad.addColorStop(0.35, 'rgba(125,255,58,0.45)');
+      grad.addColorStop(1, 'rgba(125,255,58,0.1)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(ufoScreenX - 8 * ufoScale, beamTop);
+      ctx.lineTo(ufoScreenX + 8 * ufoScale, beamTop);
+      ctx.lineTo(ufoScreenX + bwPulse / 2, groundY);
+      ctx.lineTo(ufoScreenX - bwPulse / 2, groundY);
+      ctx.closePath();
+      ctx.fill();
+      // Bright center shaft
+      ctx.fillStyle = 'rgba(230,255,220,' + (0.22 + 0.1 * pulse) + ')';
+      ctx.beginPath();
+      ctx.moveTo(ufoScreenX - 3 * ufoScale, beamTop);
+      ctx.lineTo(ufoScreenX + 3 * ufoScale, beamTop);
+      ctx.lineTo(ufoScreenX + 6, groundY);
+      ctx.lineTo(ufoScreenX - 6, groundY);
+      ctx.closePath();
+      ctx.fill();
+      // Scan ripples rising along the cone
+      for (let ri = 0; ri < 4; ri++) {
+        const rp = ((t * 0.004 + ri * 0.25) % 1);
+        const ry = beamTop + (groundY - beamTop) * rp;
+        const halfAtY = (8 * ufoScale) + (bwPulse / 2 - 8 * ufoScale) * rp;
+        ctx.strokeStyle = 'rgba(180,255,160,' + (0.35 * (1 - rp)) + ')';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(ufoScreenX, ry, halfAtY * 0.9, 3 + rp * 2, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      // Rising energy particles
+      for (let pi = 0; pi < 10; pi++) {
+        const seed = pi * 17.13 + Math.floor(t / 40);
+        const px = ufoScreenX + Math.sin(seed + t * 0.01 + pi) * (bwPulse * 0.28);
+        const py = groundY - ((t * 0.12 + pi * 37) % (groundY - beamTop));
+        const pa = 0.3 + 0.5 * Math.sin(t * 0.02 + pi);
+        ctx.fillStyle = 'rgba(200,255,160,' + pa + ')';
+        ctx.beginPath();
+        ctx.arc(px, py, 1.5 + (pi % 3) * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     ctx.restore();
@@ -3999,6 +4196,13 @@
     ctx.fillText('🧪 ' + plasticsProg + '/' + thresh, 118, h - 20);
     ctx.fillStyle = '#ffcc66';
     ctx.fillText('🍗 ' + (fly.chicken | 0), 178, h - 20);
+    if (fly.scoreMultTimer > 0) {
+      const secs = Math.ceil(fly.scoreMultTimer / 60);
+      const blink = (Math.floor(t / 200) % 2) === 0;
+      ctx.fillStyle = blink ? '#ffe066' : '#ffaa33';
+      ctx.font = 'bold 11px Segoe UI, sans-serif';
+      ctx.fillText('2× ' + secs + 's', 230, h - 20);
+    }
 
     ctx.fillStyle = 'rgba(10,30,16,0.75)';
     ctx.fillRect(w - 220, h - 36, 208, 24);
@@ -4040,6 +4244,8 @@
     PEOPLE_KINDS,
     HAZARD_KINDS,
     LOOT_KINDS,
+    COW_KIND,
+    SHIP_TABLE_X,
     MICROPLASTIC_THRESHOLD,
     MAX_LIVES_BASE,
     MAX_LIVES_UPGRADED,

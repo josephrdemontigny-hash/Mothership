@@ -139,11 +139,86 @@
     o.stop(t0 + dur + 0.02);
   }
 
+  /** Filtered noise burst (cassette slide / sci-fi hiss). iOS-safe — no theme touch. */
+  function noiseBurst(dur, gain, filterFreq, filterType) {
+    if (muted) return;
+    const c = ensureCtx();
+    if (!c) return;
+    try {
+      const t0 = c.currentTime;
+      const len = Math.max(1, Math.floor(c.sampleRate * dur));
+      const buf = c.createBuffer(1, len, c.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) {
+        const env = 1 - i / len;
+        data[i] = (Math.random() * 2 - 1) * env;
+      }
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      const filter = c.createBiquadFilter();
+      filter.type = filterType || 'bandpass';
+      filter.frequency.setValueAtTime(filterFreq || 1200, t0);
+      filter.Q.setValueAtTime(0.8, t0);
+      const g = c.createGain();
+      g.gain.setValueAtTime(gain == null ? 0.06 : gain, t0);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      src.connect(filter);
+      filter.connect(g);
+      g.connect(c.destination);
+      src.start(t0);
+      src.stop(t0 + dur + 0.02);
+    } catch (_) { /* ignore */ }
+  }
+
   const SFX = {
     beam() {
-      tone(220, 0.08, 'sawtooth', 0.06);
-      setTimeout(() => tone(330, 0.12, 'sawtooth', 0.05), 40);
-      setTimeout(() => tone(440, 0.18, 'triangle', 0.04), 90);
+      // Sci-fi cooler beam: rising sweep + pulse throb + airy hiss
+      if (muted) return;
+      const c = ensureCtx();
+      if (!c) {
+        tone(220, 0.08, 'sawtooth', 0.06);
+        return;
+      }
+      try {
+        const t0 = c.currentTime;
+        // Rising carrier sweep
+        const o1 = c.createOscillator();
+        const g1 = c.createGain();
+        o1.type = 'sawtooth';
+        o1.frequency.setValueAtTime(180, t0);
+        o1.frequency.exponentialRampToValueAtTime(620, t0 + 0.28);
+        g1.gain.setValueAtTime(0.045, t0);
+        g1.gain.exponentialRampToValueAtTime(0.001, t0 + 0.32);
+        o1.connect(g1);
+        g1.connect(c.destination);
+        o1.start(t0);
+        o1.stop(t0 + 0.34);
+        // Soft triangle shimmer
+        const o2 = c.createOscillator();
+        const g2 = c.createGain();
+        o2.type = 'triangle';
+        o2.frequency.setValueAtTime(440, t0);
+        o2.frequency.linearRampToValueAtTime(880, t0 + 0.22);
+        g2.gain.setValueAtTime(0.035, t0);
+        g2.gain.exponentialRampToValueAtTime(0.001, t0 + 0.26);
+        o2.connect(g2);
+        g2.connect(c.destination);
+        o2.start(t0);
+        o2.stop(t0 + 0.28);
+        // Low pulse throb
+        const o3 = c.createOscillator();
+        const g3 = c.createGain();
+        o3.type = 'sine';
+        o3.frequency.setValueAtTime(70, t0);
+        g3.gain.setValueAtTime(0.05, t0);
+        g3.gain.exponentialRampToValueAtTime(0.001, t0 + 0.2);
+        o3.connect(g3);
+        g3.connect(c.destination);
+        o3.start(t0);
+        o3.stop(t0 + 0.22);
+      } catch (_) { /* ignore */ }
+      noiseBurst(0.22, 0.028, 2400, 'bandpass');
+      setTimeout(function () { noiseBurst(0.12, 0.02, 3200, 'highpass'); }, 80);
     },
     score() {
       tone(520, 0.07, 'square', 0.07);
@@ -179,10 +254,43 @@
       setTimeout(() => tone(120, 0.25, 'sawtooth', 0.04), 180);
     },
     cassette() {
-      tone(180, 0.04, 'square', 0.05);
-      setTimeout(() => tone(90, 0.08, 'sawtooth', 0.06), 50);
-      setTimeout(() => tone(140, 0.06, 'triangle', 0.04), 120);
-      setTimeout(() => tone(400, 0.1, 'sine', 0.05), 200);
+      // Cassette sliding into a car stereo: scrape → thunk → soft click
+      // Does not touch theme play timing (iOS-safe).
+      if (muted) return;
+      const c = ensureCtx();
+      if (!c) {
+        tone(180, 0.04, 'square', 0.05);
+        return;
+      }
+      // 1) Mechanical slide / plastic scrape
+      noiseBurst(0.16, 0.07, 900, 'bandpass');
+      noiseBurst(0.14, 0.04, 1800, 'highpass');
+      try {
+        const t0 = c.currentTime;
+        const o = c.createOscillator();
+        const g = c.createGain();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(220, t0);
+        o.frequency.exponentialRampToValueAtTime(70, t0 + 0.14);
+        g.gain.setValueAtTime(0.035, t0);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.16);
+        o.connect(g);
+        g.connect(c.destination);
+        o.start(t0);
+        o.stop(t0 + 0.18);
+      } catch (_) { /* ignore */ }
+      // 2) Thunk — tape seats in the deck
+      setTimeout(function () {
+        tone(75, 0.09, 'sine', 0.1);
+        tone(55, 0.11, 'triangle', 0.07);
+        noiseBurst(0.06, 0.05, 400, 'lowpass');
+      }, 130);
+      // 3) Soft plastic click / latch
+      setTimeout(function () {
+        tone(980, 0.025, 'square', 0.035);
+        tone(620, 0.04, 'triangle', 0.025);
+        noiseBurst(0.035, 0.025, 2800, 'highpass');
+      }, 230);
     },
     smoke() {
       tone(160, 0.05, 'sine', 0.03);

@@ -26,6 +26,11 @@
     plasticsLabel: document.getElementById('plastics-label'),
     chicken: document.getElementById('chicken'),
     chickenLabel: document.getElementById('chicken-label'),
+    multLabel: document.getElementById('mult-label'),
+    multValue: document.getElementById('mult'),
+    operateChoice: document.getElementById('screen-operate-choice'),
+    btnLandShed: document.getElementById('btn-land-shed'),
+    btnFlyAgainOp: document.getElementById('btn-fly-again-op'),
     modeLabel: document.getElementById('mode-label'),
     district: document.getElementById('district'),
     prompt: document.getElementById('prompt-label'),
@@ -69,7 +74,7 @@
   let prevInteractHeld = false;
   let prevBeamHeld = false;
 
-  // title | shed | yard | ship | fly | results
+  // title | shed | yard | ship | fly | operate | results
   let mode = 'title';
   let t = 0;
   let lastTs = 0;
@@ -80,6 +85,12 @@
 
   let score = 0;
   let beamed = 0;
+  /** 20th-person surgery Easter egg — once per run */
+  let recognizedDone = false;
+  /** Operate-mode state: walk → surgery stages → choice */
+  let operate = null;
+  /** Snapshot of fly run to resume after surgery */
+  let flyResume = null;
 
   let avatar = null;
   let camX = 0;
@@ -349,6 +360,8 @@
       el.btnInteract.textContent = 'BOARD';
     } else if (mode === 'ship' && nearInteract() && !boardSit) {
       el.btnInteract.textContent = 'SIT';
+    } else if (mode === 'operate' && operate && operate.phase === 'walk' && nearOperateTable()) {
+      el.btnInteract.textContent = 'OPERATE';
     } else {
       el.btnInteract.textContent = 'USE';
     }
@@ -546,6 +559,7 @@
       yard: 'YARD',
       ship: 'SHIP',
       fly: 'FLY',
+      operate: 'OPERATE',
     };
     el.modeLabel.textContent = labels[mode] || '';
     if (mode === 'fly' && fly) {
@@ -557,8 +571,21 @@
       const prog = (fly.microplastics | 0) % thresh;
       if (el.plastics) el.plastics.textContent = prog + '/' + thresh;
       if (el.chicken) el.chicken.textContent = String(fly.chicken | 0);
+      if (el.multLabel && el.multValue) {
+        if (fly.scoreMultTimer > 0) {
+          el.multLabel.classList.remove('hidden');
+          el.multValue.textContent = '2× ' + Math.ceil(fly.scoreMultTimer / 60) + 's';
+        } else {
+          el.multLabel.classList.add('hidden');
+        }
+      }
+    } else if (mode === 'operate') {
+      el.district.classList.remove('hidden');
+      el.district.textContent = 'Sickbay · Subject #' + beamed;
+      if (el.multLabel) el.multLabel.classList.add('hidden');
     } else {
       el.district.classList.add('hidden');
+      if (el.multLabel) el.multLabel.classList.add('hidden');
     }
     syncInvHud();
     syncBeamUi();
@@ -571,16 +598,25 @@
   /** Beam touch control + fly-only HUD bits — hidden until fly. */
   function syncBeamUi() {
     const flying = mode === 'fly';
+    const inRunHud = flying || mode === 'operate';
     if (el.btnBeam) el.btnBeam.classList.toggle('hidden', !flying);
     // Keep #btn-destruct / #hud-destruct — visibility only; placement owned elsewhere
     if (el.btnDestruct) el.btnDestruct.classList.toggle('hidden', !flying);
     if (el.hudDestruct) el.hudDestruct.classList.toggle('hidden', !flying);
     if (el.beamed) {
       const wrap = document.getElementById('beamed-label');
-      if (wrap) wrap.classList.toggle('hidden', !flying);
+      if (wrap) wrap.classList.toggle('hidden', !inRunHud);
     }
     if (el.plasticsLabel) el.plasticsLabel.classList.toggle('hidden', !flying);
     if (el.chickenLabel) el.chickenLabel.classList.toggle('hidden', !flying);
+  }
+
+  function hideOperateChoice() {
+    if (el.operateChoice) el.operateChoice.classList.add('hidden');
+  }
+
+  function showOperateChoice() {
+    if (el.operateChoice) el.operateChoice.classList.remove('hidden');
   }
 
   function setPrompt(text) {
@@ -593,6 +629,7 @@
     const playing = name === 'play';
     el.hud.classList.toggle('hidden', !playing);
     el.touch.classList.toggle('hidden', !playing);
+    if (name !== 'play') hideOperateChoice();
     syncBeamUi();
   }
 
@@ -755,6 +792,10 @@
     }
     score = 0;
     beamed = 0;
+    recognizedDone = false;
+    operate = null;
+    flyResume = null;
+    hideOperateChoice();
     particles = [];
     floaters = [];
     flashMsg = null;
@@ -877,7 +918,9 @@
     syncInteractBtn();
   }
 
-  function enterFly() {
+  function enterFly(opts) {
+    opts = opts || {};
+    const resume = opts.resume && flyResume ? flyResume : null;
     selfDestructing = false;
     destructTimer = 0;
     mode = 'fly';
@@ -886,6 +929,25 @@
     prevBeamHeld = false;
     boardSit = null;
     landing = null;
+    operate = null;
+    hideOperateChoice();
+
+    if (resume) {
+      fly = resume;
+      fly.beaming = false;
+      fly.beamTimer = 0;
+      fly.vx = 0;
+      fly.vy = 0;
+      fly.invuln = Math.max(fly.invuln | 0, 40);
+      flyResume = null;
+      ensureLandmarks();
+      ensureStreetlights();
+      showScreen('play');
+      syncHud();
+      setPrompt('←→↑↓ fly · Space/USE beam · people+loot good · red=DON\'T · Enter end');
+      showFlash('Back in the cooler — surgery complete. Fly on!', 140);
+      return;
+    }
 
     fly = {
       scrollX: 0,
@@ -918,6 +980,7 @@
       legExtend: 0,
       /** Fly craft draw scale — smaller + snappier feel */
       ufoScale: 0.92,
+      cowSpawned: 0,
     };
     ensureLandmarks();
     ensureStreetlights();
@@ -959,6 +1022,9 @@
     fly = null;
     landing = null;
     boardSit = null;
+    operate = null;
+    flyResume = null;
+    hideOperateChoice();
     resetCamino();
     avatar = null;
     tayler = null;
@@ -1084,10 +1150,14 @@
 
   function spawnFlyTarget(atX) {
     if (!fly) return;
-    // Mix: ~50% people, ~22% loot, ~28% hazards (loot not too rare)
+    // Mix: ~50% people, ~22% loot, ~28% hazards; ~4% Holy Cow Easter egg
     const roll = Math.random();
     let kind;
-    if (roll < 0.5) {
+    const forceCow = (fly.cowSpawned | 0) === 0 && (fly.scrollX | 0) > 1400 && Math.random() < 0.12;
+    if (forceCow || Math.random() < 0.04) {
+      kind = W.COW_KIND;
+      fly.cowSpawned = (fly.cowSpawned | 0) + 1;
+    } else if (roll < 0.5) {
       kind = W.pick(W.PEOPLE_KINDS);
     } else if (roll < 0.72) {
       // plastics a bit more common than KFC (threshold repairs)
@@ -1236,11 +1306,11 @@
     if (k === 'e' || k === 'enter') {
       if (mode === 'fly') {
         if (k === 'e') beamQueued = true;
-      } else if (mode === 'shed' || mode === 'yard' || mode === 'ship') {
+      } else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate') {
         interactQueued = true;
       }
     }
-    if ((k === 'arrowup' || k === 'w') && (mode === 'shed' || mode === 'yard' || mode === 'ship')) {
+    if ((k === 'arrowup' || k === 'w') && (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate')) {
       // Lit-joint Up → mouth puff (handled in updatePuffInput); keep Up-as-interact otherwise
       if (!(mode === 'shed' && canPuffJoint() && !(nearDoor() && ufoLanded()))) {
         interactQueued = true;
@@ -1249,10 +1319,16 @@
 
     if ((e.code === 'Space' || k === ' ')) {
       if (mode === 'fly') beamQueued = true;
-      else if (mode === 'shed' || mode === 'yard' || mode === 'ship') jumpQueued = true;
+      else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate') jumpQueued = true;
     }
 
     if (k === 'b' && mode === 'fly') beamQueued = true;
+
+    // Post-surgery choice keys
+    if (mode === 'operate' && operate && operate.phase === 'choice') {
+      if (k === 'l') chooseLandShed();
+      if (k === 'f') chooseFlyAgainFromOperate();
+    }
 
     if (k === 'enter' && mode === 'fly') {
       endMission();
@@ -1268,7 +1344,7 @@
 
   canvas.addEventListener('click', () => {
     if (mode === 'title') insertCassetteAndStart();
-    else if (mode === 'shed' || mode === 'yard' || mode === 'ship') interactQueued = true;
+    else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate') interactQueued = true;
   });
 
   function bindTitleInsert(node) {
@@ -1284,6 +1360,18 @@
   bindTitleInsert(el.cassetteSlot);
 
   el.btnAgain.addEventListener('click', startGame);
+  if (el.btnLandShed) {
+    el.btnLandShed.addEventListener('click', function () {
+      Audio.play('ui');
+      chooseLandShed();
+    });
+  }
+  if (el.btnFlyAgainOp) {
+    el.btnFlyAgainOp.addEventListener('click', function () {
+      Audio.play('ui');
+      chooseFlyAgainFromOperate();
+    });
+  }
   if (el.btnSaveScore) el.btnSaveScore.addEventListener('click', onSaveScoreClick);
   if (el.scoreName) {
     el.scoreName.addEventListener('keydown', (e) => {
@@ -1310,6 +1398,9 @@
     puffTimer = 0;
     prevUpHeld = false;
     boardSit = null;
+    operate = null;
+    flyResume = null;
+    hideOperateChoice();
     syncInvHud();
     resetStereoTitleUI();
     showScreen('title');
@@ -1340,12 +1431,12 @@
   el.btnBeam.addEventListener('touchstart', (e) => {
     e.preventDefault();
     if (mode === 'fly') beamQueued = true;
-    else if (mode === 'shed' || mode === 'yard' || mode === 'ship') interactQueued = true;
+    else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate') interactQueued = true;
   }, { passive: false });
   el.btnBeam.addEventListener('mousedown', (e) => {
     e.preventDefault();
     if (mode === 'fly') beamQueued = true;
-    else if (mode === 'shed' || mode === 'yard' || mode === 'ship') interactQueued = true;
+    else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate') interactQueued = true;
   });
 
   function onInteractPointer(e) {
@@ -1442,6 +1533,9 @@
     }
     if (mode === 'ship' && !boardSit && avatar) {
       return Math.abs(avatar.x - W.SHIP_HELM_X) < 90;
+    }
+    if (mode === 'operate' && operate && operate.phase === 'walk' && avatar) {
+      return nearOperateTable();
     }
     return false;
   }
@@ -1813,7 +1907,13 @@
       fly.beamWide = false;
     }
 
-    if (fly.scoreMultTimer > 0) fly.scoreMultTimer--;
+    if (fly.scoreMultTimer > 0) {
+      fly.scoreMultTimer--;
+      // Periodic reminder while Holy Cow 2× is active
+      if (fly.scoreMultTimer > 0 && fly.scoreMultTimer % 360 === 0) {
+        showFlash('2× ACTIVE — ' + Math.ceil(fly.scoreMultTimer / 60) + 's', 70);
+      }
+    }
 
     if (Math.random() < 0.0015 && fly.moonJuice <= 0) {
       fly.moonJuice = 280;
@@ -1933,6 +2033,16 @@
           W.addFloater(floaters, fly.ufoX, CH * 0.55, '+' + pts + ' 🍗', '#ffcc66');
           Audio.play('power');
           showFlash(W.pick(W.CHICKEN_LINERS), 120);
+        } else if (tg.kind.cow) {
+          let pts = tg.kind.points + (fly.beamWide ? 40 : 0);
+          // Cow itself isn't multiplied (grants the buff); still a big score pop
+          score += pts;
+          fly.scoreMultTimer = Math.max(fly.scoreMultTimer, 1800);
+          W.burst(particles, fly.ufoX, CH * 0.7, '#ffe066', 22);
+          W.burst(particles, fly.ufoX, fly.ufoY + 10, '#fff8d0', 10);
+          W.addFloater(floaters, fly.ufoX, CH * 0.55, '+' + pts + ' 🐄', '#ffe066');
+          Audio.play('power');
+          showFlash('HOLY COW! 2× for 30s', 160);
         } else if (tg.kind.human) {
           let pts = tg.kind.points + (fly.beamWide ? 40 : 0);
           if (fly.scoreMultTimer > 0) pts = (pts * 2) | 0;
@@ -1941,8 +2051,18 @@
           W.burst(particles, fly.ufoX, CH * 0.7, '#7dff3a', 14);
           W.addFloater(floaters, fly.ufoX, CH * 0.55, '+' + pts, '#7dff3a');
           Audio.play('score');
-          if (Math.random() < 0.45) showFlash(W.pick(W.ONE_LINERS), 130);
-          else showFlash('Beamed: ' + tg.kind.label + '!', 70);
+          if (!recognizedDone && beamed >= 20) {
+            recognizedDone = true; // lock immediately — once per run
+            showFlash('SON OF A BITCH — you recognize that guy!', 160);
+            // Defer cutaway so flash + score sync land first
+            setTimeout(function () {
+              if (mode === 'fly') startRecognizeOperate();
+            }, 900);
+          } else if (Math.random() < 0.45) {
+            showFlash(W.pick(W.ONE_LINERS), 130);
+          } else {
+            showFlash('Beamed: ' + tg.kind.label + '!', 70);
+          }
         } else {
           if (fly.invuln <= 0) {
             fly.lives--;
@@ -1970,6 +2090,181 @@
     syncHud();
   }
 
+  const SURGERY_STAGES = [
+    { dur: 70, msg: 'Scalpel… wait, is that a drumstick?', loot: 'chicken' },
+    { dur: 75, msg: 'Finding #1: MORE KFC. Classic.', loot: 'chicken' },
+    { dur: 80, msg: 'Finding #2: microplastics. So many microplastics.', loot: 'plastics' },
+    { dur: 70, msg: 'Finding #3: another bucket. Finger lickin\' cosmic.', loot: 'chicken' },
+    { dur: 65, msg: 'Closing… subject mostly chicken & sparkly trash.', loot: 'plastics' },
+  ];
+
+  function snapshotFlyForResume() {
+    if (!fly) return null;
+    // Shallow clone + fresh target/prop arrays so resume is safe
+    return {
+      scrollX: fly.scrollX,
+      ufoX: fly.ufoX,
+      ufoY: fly.ufoY,
+      vx: 0,
+      vy: 0,
+      districtIndex: fly.districtIndex,
+      districtTimer: fly.districtTimer,
+      lives: fly.lives,
+      maxLives: fly.maxLives,
+      microplastics: fly.microplastics,
+      chicken: fly.chicken,
+      scoreMultTimer: fly.scoreMultTimer,
+      targets: (fly.targets || []).filter(function (tg) { return !tg.beamed; }).map(function (tg) {
+        return { x: tg.x, kind: tg.kind, wobble: tg.wobble, beamed: false };
+      }),
+      props: (fly.props || []).slice(),
+      spawnTimer: 30,
+      propTimer: 10,
+      beaming: false,
+      beamTimer: 0,
+      beamWide: !!fly.beamWide,
+      moonJuice: fly.moonJuice,
+      invuln: 40,
+      hitFlash: 0,
+      shake: 0,
+      shakeX: 0,
+      shakeY: 0,
+      controlsUnlocked: true,
+      legExtend: 0,
+      ufoScale: fly.ufoScale != null ? fly.ufoScale : 0.92,
+      cowSpawned: fly.cowSpawned | 0,
+    };
+  }
+
+  function startRecognizeOperate() {
+    if (mode !== 'fly' || !fly) return;
+    recognizedDone = true;
+    flyResume = snapshotFlyForResume();
+    // Preserve loot counters on resume object; also keep live refs for surgery gag increments
+    const lootRef = flyResume;
+    mode = 'operate';
+    interactQueued = false;
+    jumpQueued = false;
+    prevInteractHeld = true;
+    boardSit = null;
+    fly = null;
+    camX = Math.max(0, W.SHIP_TABLE_X - CW * 0.35);
+    avatar = makeAvatar(160, GROUND);
+    operate = {
+      phase: 'walk', // walk | surgery | choice
+      stage: 0,
+      timer: 0,
+      lootRef: lootRef,
+      surgeryDone: false,
+    };
+    hideOperateChoice();
+    showScreen('play');
+    syncHud();
+    Audio.play('ui');
+    showFlash('Cutting to sickbay — walk to the table!', 130);
+    setPrompt('←→ walk · ↑/E/USE — operate on that guy');
+  }
+
+  function nearOperateTable() {
+    if (mode !== 'operate' || !avatar) return false;
+    return Math.abs(avatar.x - W.SHIP_TABLE_X) < 70;
+  }
+
+  function updateOperate() {
+    if (!operate) return;
+
+    if (operate.phase === 'choice') {
+      setPrompt('L — Land at shed · F — Fly again');
+      syncInteractBtn();
+      return;
+    }
+
+    if (operate.phase === 'surgery') {
+      operate.timer++;
+      const stage = SURGERY_STAGES[operate.stage];
+      if (!stage) {
+        operate.phase = 'choice';
+        operate.surgeryDone = true;
+        showOperateChoice();
+        setPrompt('Surgery done. Land at shed or fly again?');
+        showFlash('Only KFC & microplastics. Peak Chilliwack.', 140);
+        Audio.play('power');
+        syncHud();
+        return;
+      }
+      setPrompt(stage.msg);
+      if (operate.timer === 1) {
+        showFlash(stage.msg, 100);
+        Audio.play(stage.loot === 'chicken' ? 'power' : 'score');
+        if (operate.lootRef) {
+          if (stage.loot === 'chicken') {
+            operate.lootRef.chicken = (operate.lootRef.chicken | 0) + 1;
+            score += 40;
+          } else {
+            operate.lootRef.microplastics = (operate.lootRef.microplastics | 0) + 1;
+            score += 25;
+          }
+        }
+        W.burst(particles, W.SHIP_TABLE_X - camX, GROUND - 50,
+          stage.loot === 'chicken' ? '#ffb84a' : '#9ef0ff', 14);
+        W.addFloater(floaters, W.SHIP_TABLE_X - camX, GROUND - 80,
+          stage.loot === 'chicken' ? '+🍗' : '+🧪',
+          stage.loot === 'chicken' ? '#ffcc66' : '#9ef0ff');
+        syncHud();
+      }
+      if (operate.timer >= stage.dur) {
+        operate.stage++;
+        operate.timer = 0;
+      }
+      return;
+    }
+
+    // walk phase
+    updateSideScroller(W.SHIP_WORLD_W);
+    if (nearOperateTable()) {
+      setPrompt('↑ / E / USE — begin surgery');
+      if (wantsInteract()) {
+        operate.phase = 'surgery';
+        operate.stage = 0;
+        operate.timer = 0;
+        Audio.play('ui');
+        showFlash('Operating… this can\'t be hygienic.', 100);
+      }
+    } else {
+      prevInteractHeld = interactHeld();
+      setPrompt('Walk to the operating table — that guy looks familiar');
+    }
+    syncInteractBtn();
+  }
+
+  function chooseLandShed() {
+    if (mode !== 'operate') return;
+    hideOperateChoice();
+    Audio.play('landing');
+    operate = null;
+    flyResume = null;
+    // Return to shed mid-run; keep score/beamed; unlock exit path
+    smokeDone = true;
+    smoking = false;
+    smokeProgress = 1;
+    windowUfo = 1;
+    ufoLanding = false;
+    jointStage = null;
+    jointPhase = null;
+    returnToShed();
+    showFlash('Landed at the shed. Score banked: ' + score, 140);
+    setPrompt('← → walk · EXIT → yard · score kept');
+  }
+
+  function chooseFlyAgainFromOperate() {
+    if (mode !== 'operate') return;
+    hideOperateChoice();
+    Audio.play('power');
+    operate = null;
+    // recognizedDone already true — never re-triggers
+    enterFly({ resume: true });
+  }
+
   function update() {
     if (selfDestructing) {
       destructTimer++;
@@ -1988,6 +2283,7 @@
     else if (mode === 'yard') updateYard();
     else if (mode === 'ship') updateShip();
     else if (mode === 'fly') updateFly();
+    else if (mode === 'operate') updateOperate();
 
     W.updateFx(particles, floaters);
     if (flashTimer > 0) flashTimer--;
@@ -2266,6 +2562,39 @@
         } else {
           ctx.fillText('Aliens step aside…', CW / 2, 90);
         }
+        ctx.textAlign = 'left';
+      }
+    } else if (mode === 'operate') {
+      W.drawShipInterior(ctx, CW, CH, camX, t, {
+        operate: true,
+        surgeryDone: !!(operate && operate.surgeryDone),
+        alienYield: 0,
+        seatTaken: false,
+      });
+      if (avatar && (!operate || operate.phase !== 'surgery')) {
+        W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {});
+      } else if (avatar && operate && operate.phase === 'surgery') {
+        // Zakk leaning over the table
+        W.drawZakk(ctx, W.SHIP_TABLE_X - camX - 36, avatar.y, 1, false, t, {});
+      }
+      if (operate && operate.phase === 'walk' && nearOperateTable()) {
+        ctx.fillStyle = '#7dff3a';
+        ctx.font = 'bold 16px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('▲ OPERATE', W.SHIP_TABLE_X - camX, GROUND - 100);
+        ctx.textAlign = 'left';
+      }
+      if (operate && operate.phase === 'surgery') {
+        ctx.fillStyle = '#ffe066';
+        ctx.font = 'bold 16px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('SURGERY IN PROGRESS…', CW / 2, 88);
+        const total = 5;
+        const prog = Math.min(1, (operate.stage + operate.timer / 80) / total);
+        ctx.fillStyle = 'rgba(10,30,16,0.75)';
+        ctx.fillRect(CW / 2 - 80, 100, 160, 12);
+        ctx.fillStyle = '#ff8844';
+        ctx.fillRect(CW / 2 - 78, 102, 156 * prog, 8);
         ctx.textAlign = 'left';
       }
     } else if (mode === 'fly') {

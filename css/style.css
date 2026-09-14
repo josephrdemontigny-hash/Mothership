@@ -1070,3 +1070,61 @@ html, body {
   .save-score { padding: 6px 8px; margin-top: 6px; }
   #score-name { padding: 6px 8px; font-size: 12px; }
 }
+
+
+/* Holy Cow 2× multiplier HUD */
+.mult-label {
+  color: #ffe066;
+  text-shadow: 0 0 8px rgba(255, 200, 60, 0.55);
+  animation: mult-pulse 0.9s ease-in-out infinite;
+}
+@keyframes mult-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+/* Post-surgery choice overlay */
+.operate-choice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 16, 12, 0.72);
+  z-index: 40;
+  pointer-events: auto;
+}
+.operate-choice.hidden {
+  display: none !important;
+}
+.operate-panel {
+  max-width: 360px;
+  text-align: center;
+  padding: 22px 24px 18px;
+  border: 2px solid rgba(125, 255, 58, 0.45);
+  box-shadow: 0 0 28px rgba(80, 255, 140, 0.18);
+}
+.operate-panel h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  color: #7dff3a;
+}
+.operate-panel .btn {
+  display: block;
+  width: 100%;
+  margin: 10px 0 0;
+}
+.operate-keys {
+  margin: 12px 0 0;
+  font-size: 11px;
+  color: #8aaa7a;
+  letter-spacing: 0.04em;
+}
+.operate-keys kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid #6a8a5a;
+  border-radius: 4px;
+  background: #122018;
+  color: #c8f0a8;
+  font-size: 11px;
+}
