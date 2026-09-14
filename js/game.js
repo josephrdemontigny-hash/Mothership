@@ -375,10 +375,23 @@
   }
 
   function getHigh() {
-    return parseInt(localStorage.getItem(HS_KEY) || '0', 10) || 0;
+    try {
+      return parseInt(localStorage.getItem(HS_KEY) || '0', 10) || 0;
+    } catch (_) {
+      return 0;
+    }
   }
   function setHigh(n) {
-    localStorage.setItem(HS_KEY, String(n));
+    try {
+      localStorage.setItem(HS_KEY, String(Math.max(0, Math.floor(Number(n) || 0))));
+    } catch (_) { /* private mode / quota */ }
+  }
+
+  function safeGetItem(key) {
+    try { return localStorage.getItem(key); } catch (_) { return null; }
+  }
+  function safeSetItem(key, val) {
+    try { localStorage.setItem(key, val); return true; } catch (_) { return false; }
   }
 
   /** Strip tags / junk; keep letters, numbers, spaces; trim; cap length. */
@@ -392,12 +405,12 @@
   }
 
   function isValidName(name) {
-    return typeof name === 'string' && name.length >= 3 && name.length <= 12 && /^[A-Za-z0-9 ]+$/.test(name);
+    return typeof name === 'string' && name.length >= 1 && name.length <= 12 && /^[A-Za-z0-9 ]+$/.test(name);
   }
 
   function loadBoard() {
     try {
-      const raw = localStorage.getItem(LB_KEY);
+      const raw = safeGetItem(LB_KEY);
       const arr = raw ? JSON.parse(raw) : [];
       if (!Array.isArray(arr)) return [];
       return arr
@@ -416,10 +429,13 @@
 
   function persistBoard(entries) {
     const trimmed = (entries || []).slice(0, LB_MAX);
-    localStorage.setItem(LB_KEY, JSON.stringify(trimmed));
+    if (!safeSetItem(LB_KEY, JSON.stringify(trimmed))) {
+      return false;
+    }
     // Keep personal-best key in sync with board top (never invent remote scores).
     const top = trimmed.length ? trimmed[0].score : 0;
     if (top > getHigh()) setHigh(top);
+    return true;
   }
 
   function syncHighFromBoard() {
@@ -473,19 +489,41 @@
     if (score > 0) {
       el.saveScoreWrap.classList.remove('hidden');
       const board = loadBoard();
+      const personalHigh = getHigh();
+      const isPersonalBest = score >= personalHigh && score > 0;
       const wouldBeFirst = !board.length || score > board[0].score;
+      const worst = board.length ? board[board.length - 1].score : 0;
+      const qualifies = board.length < LB_MAX || score > worst;
       if (el.saveScoreLabel) {
-        el.saveScoreLabel.textContent = wouldBeFirst ? '★ NEW HIGH — SAVE SCORE' : 'SAVE SCORE';
-        el.saveScoreLabel.classList.toggle('new-high', wouldBeFirst);
+        let label = 'SAVE SCORE';
+        if (wouldBeFirst) label = '★ NEW #1 — SAVE SCORE';
+        else if (isPersonalBest) label = '★ NEW HIGH — SAVE SCORE';
+        else if (qualifies) label = 'SAVE TO LEADERBOARD';
+        el.saveScoreLabel.textContent = label;
+        el.saveScoreLabel.classList.toggle('new-high', wouldBeFirst || isPersonalBest);
       }
+      const last = safeGetItem(NAME_KEY) || '';
       if (el.scoreName) {
-        const last = localStorage.getItem(NAME_KEY) || '';
         el.scoreName.value = last;
         el.scoreName.disabled = false;
+        setTimeout(function () {
+          if (mode === 'results' && el.scoreName && !el.scoreName.disabled) {
+            try { el.scoreName.focus(); el.scoreName.select(); } catch (_) {}
+          }
+        }, 80);
       }
       if (el.btnSaveScore) {
         el.btnSaveScore.disabled = false;
         el.btnSaveScore.textContent = 'SUBMIT';
+      }
+      // If we already know their name, auto-submit qualifying scores so highs don't get lost
+      const lastClean = sanitizeName(last);
+      if (lastClean && isValidName(lastClean) && (isPersonalBest || qualifies || wouldBeFirst)) {
+        setTimeout(function () {
+          if (mode !== 'results' || !el.btnSaveScore || el.btnSaveScore.disabled) return;
+          if (sanitizeName(el.scoreName && el.scoreName.value) !== lastClean) return;
+          onSaveScoreClick();
+        }, 220);
       }
     } else {
       el.saveScoreWrap.classList.add('hidden');
@@ -495,25 +533,47 @@
   /** Returns { ok, isNewHigh, entry } or { ok:false, reason } */
   function submitScoreToBoard() {
     if (score <= 0) return { ok: false, reason: 'Score must be > 0' };
-    const clean = sanitizeName(el.scoreName ? el.scoreName.value : '');
+    let clean = sanitizeName(el.scoreName ? el.scoreName.value : '');
+    if (!clean) clean = 'PILOT';
     if (!isValidName(clean)) {
-      return { ok: false, reason: 'Name: 3–12 letters, numbers, spaces' };
+      return { ok: false, reason: 'Name: 1–12 letters, numbers, spaces' };
     }
     const entry = { name: clean, score: Math.floor(score), ts: Date.now() };
-    const board = loadBoard();
+    // Always lock personal best even if board is full of higher scores
+    if (entry.score > getHigh()) setHigh(entry.score);
+
+    let board = loadBoard();
+    // Upsert: keep best score per name (case-insensitive)
+    const nameKey = clean.toLowerCase();
+    const prevIdx = board.findIndex((e) => (e.name || '').toLowerCase() === nameKey);
+    if (prevIdx >= 0) {
+      if (entry.score < board[prevIdx].score) {
+        // Don't demote an existing better score for this name
+        safeSetItem(NAME_KEY, clean);
+        return {
+          ok: true,
+          isNewHigh: false,
+          entry: board[prevIdx],
+          keptBest: true,
+          reason: 'Kept your best (' + board[prevIdx].score + ')',
+        };
+      }
+      board.splice(prevIdx, 1);
+    }
     board.push(entry);
-    board.sort((a, b) => b.score - a.score || a.ts - b.ts);
+    board.sort((a, b) => b.score - a.score || b.ts - a.ts);
     const trimmed = board.slice(0, LB_MAX);
-    // Drop if didn't make top 10
     const madeIt = trimmed.some((e) => e.ts === entry.ts && e.score === entry.score && e.name === entry.name);
     if (!madeIt) {
-      return { ok: false, reason: 'Not quite top 10 — fly again!' };
+      safeSetItem(NAME_KEY, clean);
+      return { ok: false, reason: 'Not quite top 10 — personal best still saved' };
     }
-    persistBoard(trimmed);
-    localStorage.setItem(NAME_KEY, clean);
-    if (entry.score > getHigh()) setHigh(entry.score);
-    const isNewHigh = trimmed[0] && trimmed[0].ts === entry.ts;
-    return { ok: true, isNewHigh: !!isNewHigh, entry };
+    if (!persistBoard(trimmed)) {
+      return { ok: false, reason: 'Could not write leaderboard (storage blocked)' };
+    }
+    safeSetItem(NAME_KEY, clean);
+    const isNewHigh = !!(trimmed[0] && trimmed[0].ts === entry.ts);
+    return { ok: true, isNewHigh: isNewHigh, entry: entry };
   }
 
   function onSaveScoreClick() {
@@ -528,7 +588,10 @@
       return;
     }
     if (el.saveScoreMsg) {
-      el.saveScoreMsg.textContent = result.isNewHigh ? '★ NEW HIGH SAVED!' : 'SCORE SAVED';
+      let msg = 'SCORE SAVED';
+      if (result.isNewHigh) msg = '★ NEW HIGH SAVED!';
+      else if (result.keptBest) msg = result.reason || 'KEPT YOUR BEST';
+      el.saveScoreMsg.textContent = msg;
       el.saveScoreMsg.classList.remove('hidden', 'err');
     }
     if (el.btnSaveScore) {
@@ -997,7 +1060,8 @@
     mode = 'results';
     const high = getHigh();
     const isNew = score > high;
-    if (isNew) setHigh(score);
+    // Always persist if this run matches/beats stored high (covers storage race / missed writes)
+    if (score >= high && score > 0) setHigh(score);
     el.resBeamed.textContent = String(beamed);
     el.resScore.textContent = String(score);
     el.resHigh.textContent = String(Math.max(high, score));
@@ -1281,26 +1345,33 @@
     return edge;
   }
 
+  function isTypingScoreName() {
+    const ae = document.activeElement;
+    return !!(el.scoreName && (ae === el.scoreName || (ae && ae.id === 'score-name')));
+  }
+
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
+    const typingName = isTypingScoreName();
     keys[k] = true;
-    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k) || e.code === 'Space') {
+    // Never steal Space/arrows while the name field is focused
+    if (!typingName && (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k) || e.code === 'Space')) {
       e.preventDefault();
     }
-    if (k === 'm') {
+    if (k === 'm' && !typingName) {
       gestureUnlock();
       Audio.toggle();
       updateMuteUI();
     }
-    if ((k === 'enter' || k === ' ') && mode === 'title') insertCassetteAndStart();
-    if ((k === 'enter' || k === ' ') && mode === 'results') {
-      const ae = document.activeElement;
-      const typingName = el.scoreName && (ae === el.scoreName || (ae && ae.id === 'score-name'));
+    if ((k === 'enter' || k === ' ') && mode === 'title' && !typingName) insertCassetteAndStart();
+    if (mode === 'results') {
       if (typingName) {
         if (k === 'enter') onSaveScoreClick();
-        return;
+        return; // let Space type a space in the name
       }
-      startGame();
+      // Only Enter restarts — Space used to skip save by accident
+      if (k === 'enter') startGame();
+      return;
     }
 
     if (k === 'e' || k === 'enter') {
