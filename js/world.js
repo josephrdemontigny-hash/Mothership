@@ -564,32 +564,119 @@
   // ——— Characters (Pokémon GO–style soft avatars; no IP) ———
 
   /** Soft volumetric capsule (sausage limb) from (x0,y0)→(x1,y1). */
-  function goCapsule(ctx, x0, y0, x1, y1, r, hi, mid, lo) {
+  function goCapsule(ctx, x0, y0, x1, y1, r, hi, mid, lo, opts) {
+    opts = opts || {};
     const dx = x1 - x0, dy = y1 - y0;
     const len = Math.hypot(dx, dy) || 0.001;
     const ang = Math.atan2(dy, dx);
+    const r0 = opts.r0 != null ? opts.r0 : r;
+    const r1 = opts.r1 != null ? opts.r1 : (opts.flatEnd ? Math.max(1.2, r * 0.72) : r);
+    const flatEnd = !!opts.flatEnd;
     ctx.save();
     ctx.translate(x0, y0);
     ctx.rotate(ang);
-    const g = ctx.createLinearGradient(0, -r, 0, r);
+    const g = ctx.createLinearGradient(0, -Math.max(r0, r1), 0, Math.max(r0, r1));
     g.addColorStop(0, hi);
     g.addColorStop(0.42, mid);
     g.addColorStop(1, lo);
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.moveTo(0, -r);
-    ctx.lineTo(len, -r);
-    ctx.arc(len, 0, r, -Math.PI / 2, Math.PI / 2);
-    ctx.lineTo(0, r);
-    ctx.arc(0, 0, r, Math.PI / 2, -Math.PI / 2);
+    if (Math.abs(r0 - r1) < 0.05 && !flatEnd) {
+      ctx.moveTo(0, -r0);
+      ctx.lineTo(len, -r1);
+      ctx.arc(len, 0, r1, -Math.PI / 2, Math.PI / 2);
+      ctx.lineTo(0, r0);
+      ctx.arc(0, 0, r0, Math.PI / 2, -Math.PI / 2);
+    } else {
+      // tapered / cuff end — flat or slightly rounded tip (not a fat sausage ball)
+      ctx.moveTo(0, -r0);
+      ctx.lineTo(len, -r1);
+      if (flatEnd) {
+        ctx.lineTo(len + 0.6, -r1 * 0.35);
+        ctx.lineTo(len + 0.6, r1 * 0.35);
+        ctx.lineTo(len, r1);
+      } else {
+        ctx.quadraticCurveTo(len + r1 * 0.55, 0, len, r1);
+      }
+      ctx.lineTo(0, r0);
+      ctx.arc(0, 0, r0, Math.PI / 2, -Math.PI / 2);
+    }
     ctx.closePath();
     ctx.fill();
     // soft specular ridge
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
     ctx.beginPath();
-    ctx.ellipse(len * 0.32, -r * 0.38, Math.max(2, len * 0.28), r * 0.32, 0, 0, Math.PI * 2);
+    ctx.ellipse(len * 0.32, -r0 * 0.35, Math.max(2, len * 0.28), r0 * 0.28, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+  }
+
+  /** Small palm + finger hint so limbs never read as blunt sausages. */
+  function goHand(ctx, hx, hy, ang, skinHi, skin, skinLo) {
+    ctx.save();
+    ctx.translate(hx, hy);
+    ctx.rotate(ang);
+    const g = ctx.createRadialGradient(-0.6, -0.8, 0.4, 0.4, 0.2, 3.4);
+    g.addColorStop(0, skinHi);
+    g.addColorStop(0.55, skin);
+    g.addColorStop(1, skinLo);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(0.6, 0.2, 2.5, 2.1, 0.15, 0, Math.PI * 2);
+    ctx.fill();
+    // finger nubs
+    ctx.fillStyle = skin;
+    for (let i = 0; i < 3; i++) {
+      const fx = 2.2 + i * 0.15;
+      const fy = -1.5 + i * 1.35;
+      ctx.beginPath();
+      ctx.ellipse(fx, fy, 1.05, 0.75, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = skinLo;
+    ctx.beginPath();
+    ctx.ellipse(1.4, 2.0, 1.1, 0.7, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /** Sleeve upper + shorter forearm + cuff line + hand (anti-sausage arms). */
+  function goArmLimb(ctx, ax, ay, ang1, ang2, len1, len2, r1, r2, sleeveCols, skinCols) {
+    const jx = ax + Math.sin(ang1) * len1;
+    const jy = ay + Math.cos(ang1) * len1;
+    const ex = jx + Math.sin(ang2) * len2;
+    const ey = jy + Math.cos(ang2) * len2;
+    // upper sleeve
+    goCapsule(ctx, ax, ay, jx, jy, r1, sleeveCols[0], sleeveCols[1], sleeveCols[2]);
+    // cuff band at elbow (clear sleeve vs forearm break)
+    const cuffR = Math.max(r1, r2) * 1.05;
+    const cg = ctx.createRadialGradient(jx - 0.8, jy - 0.8, 0.3, jx, jy, cuffR);
+    cg.addColorStop(0, sleeveCols[0]);
+    cg.addColorStop(0.55, sleeveCols[1]);
+    cg.addColorStop(1, sleeveCols[2]);
+    ctx.fillStyle = cg;
+    ctx.beginPath();
+    ctx.arc(jx, jy, cuffR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.arc(jx, jy, cuffR * 0.78, -0.8, 2.2);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.arc(jx, jy, cuffR * 0.92, 0.4, 3.4);
+    ctx.stroke();
+    // shorter tapered forearm (flat cuff end — not fat rounded tip)
+    goCapsule(ctx, jx, jy, ex, ey, r2, skinCols[0], skinCols[1], skinCols[2], {
+      r0: r2 * 1.05,
+      r1: r2 * 0.78,
+      flatEnd: true,
+    });
+    // hand
+    goHand(ctx, ex, ey, ang2 + Math.PI / 2, skinCols[0], skinCols[1], skinCols[2]);
+    return { jx, jy, ex, ey };
   }
 
   /** Rounded soft torso / blob with clay gradient + specular. */
@@ -618,19 +705,19 @@
     ctx.fill();
   }
 
-  /** Spherical-ish soft head. */
+  /** Soft head — normal adult proportion, not balloon squash. */
   function goHead(ctx, hx, hy, rx, ry, skinHi, skin, skinLo) {
-    const g = ctx.createRadialGradient(hx - rx * 0.25, hy - ry * 0.35, 1.5, hx, hy, rx * 1.15);
+    const g = ctx.createRadialGradient(hx - rx * 0.22, hy - ry * 0.32, 1.2, hx, hy, rx * 1.12);
     g.addColorStop(0, skinHi);
-    g.addColorStop(0.5, skin);
+    g.addColorStop(0.55, skin);
     g.addColorStop(1, skinLo);
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.ellipse(hx, hy, rx, ry, 0.04, 0, Math.PI * 2);
+    ctx.ellipse(hx, hy, rx, ry, 0.03, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
     ctx.beginPath();
-    ctx.ellipse(hx - rx * 0.2, hy - ry * 0.35, rx * 0.35, ry * 0.22, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(hx - rx * 0.18, hy - ry * 0.32, rx * 0.28, ry * 0.16, -0.25, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -641,13 +728,13 @@
     const ex = jx + Math.sin(ang2) * len2;
     const ey = jy + Math.cos(ang2) * len2;
     goCapsule(ctx, ax, ay, jx, jy, r1, c1[0], c1[1], c1[2]);
-    // joint ball overlap
-    const jg = ctx.createRadialGradient(jx - 1, jy - 1, 0.5, jx, jy, r1 * 1.05);
+    // joint socket overlap (subtle — avoid big clown balls)
+    const jg = ctx.createRadialGradient(jx - 1, jy - 1, 0.4, jx, jy, r1 * 0.95);
     jg.addColorStop(0, c1[0]);
     jg.addColorStop(1, c1[2]);
     ctx.fillStyle = jg;
     ctx.beginPath();
-    ctx.arc(jx, jy, r1 * 1.05, 0, Math.PI * 2);
+    ctx.arc(jx, jy, r1 * 0.92, 0, Math.PI * 2);
     ctx.fill();
     goCapsule(ctx, jx, jy, ex, ey, r2, c2[0], c2[1], c2[2]);
     return { jx, jy, ex, ey };
@@ -656,9 +743,9 @@
   function goWalkPose(moving, seated, t) {
     if (seated || !moving) {
       return {
-        bob: 0, sway: 0, lean: seated ? 0.4 : 0.8,
-        nThigh: seated ? 1.15 : 0.06, nKnee: seated ? 1.35 : 0.12,
-        fThigh: seated ? 1.05 : -0.05, fKnee: seated ? 1.25 : 0.1,
+        bob: 0, sway: 0, lean: seated ? 0.25 : 0.55,
+        nThigh: seated ? 1.32 : 0.05, nKnee: seated ? 1.05 : 0.14,
+        fThigh: seated ? 1.18 : -0.04, fKnee: seated ? 0.95 : 0.12,
         nArm: seated ? 0.35 : 0.12, nElbow: seated ? 0.55 : 0.35,
         fArm: seated ? 0.25 : -0.1, fElbow: seated ? 0.45 : 0.3,
         plantN: true, plantF: true
@@ -670,19 +757,19 @@
     const liftN = Math.max(0, s);   // near foot airborne when swing forward
     const liftF = Math.max(0, -s);
     return {
-      bob: Math.abs(s) * 2.6,
-      sway: s * 2.0,
-      lean: 3.2 + Math.abs(s) * 0.6,
+      bob: Math.abs(s) * 1.8,
+      sway: s * 1.35,
+      lean: 2.2 + Math.abs(s) * 0.35,
       // thighs: + = forward (+x in local), 0 = straight down
-      nThigh: s * 0.58,
-      nKnee: 0.18 + liftN * 0.72,          // bend more when lifted
-      fThigh: -s * 0.58,
-      fKnee: 0.18 + liftF * 0.72,
+      nThigh: s * 0.48,
+      nKnee: 0.16 + liftN * 0.62,          // bend more when lifted
+      fThigh: -s * 0.48,
+      fKnee: 0.16 + liftF * 0.62,
       // opposite arm swing, elbows soft-bent
-      nArm: -s * 0.52,
-      nElbow: 0.4 + Math.max(0, -s) * 0.35,
-      fArm: s * 0.52,
-      fElbow: 0.4 + Math.max(0, s) * 0.35,
+      nArm: -s * 0.42,
+      nElbow: 0.38 + Math.max(0, -s) * 0.28,
+      fArm: s * 0.42,
+      fElbow: 0.38 + Math.max(0, s) * 0.28,
       plantN: liftN < 0.15,
       plantF: liftF < 0.15
     };
@@ -806,20 +893,20 @@
     const bob = pose.bob;
     const lean = pose.lean;
     const sway = pose.sway;
-    const hipY = -26 - bob;
-    const hipX = lean * 0.35 + sway * 0.15;
-    const bodyCy = -40 - bob;
-    const bodyCx = lean * 0.55 + sway * 0.08;
+    const hipY = (seated ? -17 : -27) - bob;
+    const hipX = lean * 0.3 + sway * 0.12;
+    const bodyCy = (seated ? -33 : -41) - bob;
+    const bodyCx = lean * 0.45 + sway * 0.06;
     const ground = 0;
+    const headY0 = seated ? -53 : -60;
 
     // ——— FAR LEG (behind) ———
     {
-      const hx = hipX - 3.5 + sway * -0.2;
+      const hx = hipX - 3.2 + sway * -0.15;
       const hy = hipY;
-      let ang1 = pose.fThigh;
-      let ang2 = pose.fThigh - pose.fKnee;
-      if (seated) { ang1 = 1.05; ang2 = 1.55; }
-      const end = goJointLimb(ctx, hx, hy, ang1, ang2, 13, 12, 4.2, 3.6,
+      const ang1 = pose.fThigh;
+      const ang2 = pose.fThigh - pose.fKnee;
+      const end = goJointLimb(ctx, hx, hy, ang1, ang2, 14, 13, 3.5, 3.0,
         [pantHi, pant, pantLo], [pant, pantLo, '#040406']);
       goClampFoot(end, pose.plantF, ground);
       // redraw calf/boot at clamped y if needed — approximate plant by drawing boot at clamped
@@ -833,18 +920,18 @@
       const sy = bodyCy - 10;
       const a1 = 0.15 + pose.fArm;
       const a2 = a1 + pose.fElbow;
-      const end = goJointLimb(ctx, sx, sy, a1, a2, 10, 10, 3.8, 3.2,
+      const end = goArmLimb(ctx, sx, sy, a1, a2, 11, 8.2, 2.85, 2.35,
         [blkHi, blk, blkLo], [skinHi, skin, skinLo]);
       // tiny tattoo ticks on forearm
       ctx.strokeStyle = 'rgba(40,20,40,0.55)';
-      ctx.lineWidth = 0.9;
+      ctx.lineWidth = 0.85;
       ctx.beginPath();
-      ctx.moveTo(end.jx + 1, end.jy + 1); ctx.lineTo(end.ex - 1, end.ey - 2);
+      ctx.moveTo(end.jx + 1.2, end.jy + 1.2); ctx.lineTo(end.ex - 1.5, end.ey - 1.5);
       ctx.stroke();
     }
 
     // ——— TORSO ———
-    goTorso(ctx, bodyCx, bodyCy, 20, 24, 9, '#2a2a32', '#141418', '#050508');
+    goTorso(ctx, bodyCx, bodyCy, 18, 23, 7.5, '#2a2a32', '#141418', '#050508');
     // teal placket + collar
     const tg = ctx.createLinearGradient(bodyCx, bodyCy - 10, bodyCx, bodyCy + 10);
     tg.addColorStop(0, '#2ec4a0');
@@ -908,27 +995,27 @@
       let a2 = a1 + pose.nElbow;
       if (seated) { a1 = 0.4; a2 = 0.95; }
       if (opts.smoking) { a1 = 0.55; a2 = 1.15; }
-      const end = goJointLimb(ctx, sx, sy, a1, a2, 10.5, 10.5, 4.0, 3.3,
+      const end = goArmLimb(ctx, sx, sy, a1, a2, 10.5, 8.0, 2.95, 2.4,
         [blkHi, blk, blkLo], [skinHi, skin, skinLo]);
       ctx.strokeStyle = 'rgba(40,20,40,0.55)';
-      ctx.lineWidth = 0.9;
+      ctx.lineWidth = 0.85;
       ctx.beginPath();
-      ctx.moveTo(end.jx + 1, end.jy + 1); ctx.lineTo(end.ex - 1, end.ey - 2);
+      ctx.moveTo(end.jx + 1.2, end.jy + 1.2); ctx.lineTo(end.ex - 1.5, end.ey - 1.5);
       ctx.stroke();
       if (opts.smoking) {
         ctx.strokeStyle = skin;
-        ctx.lineWidth = 3.0;
+        ctx.lineWidth = 2.4;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(end.ex, end.ey);
+        ctx.moveTo(end.ex + 1.5, end.ey + 1);
         ctx.lineTo(end.ex + 7, end.ey + 8);
         ctx.stroke();
       }
-      ctx.strokeStyle = 'rgba(255,40,180,0.28)';
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = 'rgba(255,40,180,0.22)';
+      ctx.lineWidth = 1.0;
       ctx.beginPath();
-      ctx.moveTo(sx + 3, sy);
-      ctx.lineTo(end.ex + 2, end.ey - 2);
+      ctx.moveTo(sx + 2.5, sy);
+      ctx.lineTo(end.jx + 1, end.jy);
       ctx.stroke();
     }
 
@@ -1102,8 +1189,8 @@
       const sy = bodyCy - 10;
       const a1 = 0.15 + pose.fArm;
       const a2 = a1 + pose.fElbow;
-      // plaid upper via capsule colors approximating plaid mid
-      goJointLimb(ctx, sx, sy, a1, a2, 10, 10, 3.8, 3.2,
+      // plaid sleeve covers upper arm; shorter skin forearm + hand
+      goArmLimb(ctx, sx, sy, a1, a2, 11, 8.0, 2.85, 2.35,
         ['#4a6a88', plaidBase, '#2a4058'], [skinHi, skin, skinLo]);
     }
 
@@ -1198,14 +1285,14 @@
       let a2 = a1 + pose.nElbow;
       if (seated) { a1 = 0.4; a2 = 0.95; }
       if (opts.smoking) { a1 = 0.55; a2 = 1.15; }
-      const end = goJointLimb(ctx, sx, sy, a1, a2, 10.5, 10.5, 4.0, 3.3,
+      const end = goArmLimb(ctx, sx, sy, a1, a2, 10.5, 8.0, 2.95, 2.4,
         ['#4a6a88', plaidBase, '#2a4058'], [skinHi, skin, skinLo]);
       if (opts.smoking) {
         ctx.strokeStyle = skin;
-        ctx.lineWidth = 3.0;
+        ctx.lineWidth = 2.4;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(end.ex, end.ey);
+        ctx.moveTo(end.ex + 1.5, end.ey + 1);
         ctx.lineTo(end.ex + 7, end.ey + 8);
         ctx.stroke();
       }
@@ -3104,11 +3191,16 @@
       ctx.fill();
     }
 
-    // Soft ground shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.32)';
-    ctx.beginPath();
-    ctx.ellipse(2, 38, 78, 9, 0, 0, Math.PI * 2);
-    ctx.fill();
+    // Ground contact shadow only — never paint a blob on the sky while airborne
+    const legExtEarly = opts.legExtend != null ? Math.max(0, Math.min(1, opts.legExtend)) : 1;
+    const showGroundShadow = opts.groundShadow === true || (opts.groundShadow !== false && legExtEarly > 0.35);
+    if (showGroundShadow) {
+      const sa = 0.12 + legExtEarly * 0.22;
+      ctx.fillStyle = 'rgba(0,0,0,' + sa + ')';
+      ctx.beginPath();
+      ctx.ellipse(2, 38, 70 + legExtEarly * 10, 6 + legExtEarly * 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // ——— Classic smooth flying saucer ———
     // Underside dish (gentle bowl)
@@ -3742,12 +3834,16 @@
       for (let bi = 0; bi < BAND_ROSTER.length; bi++) {
         const bm = BAND_ROSTER[bi];
         const bx = bm.x - camX;
-        drawCitizen(ctx, bx, groundY, bm.look, t);
-        // name plate / talked cue
+        // Same GO soft pipeline as Zakk/Tayler — costumed from band-grid refs
+        drawBandMate(ctx, bx, groundY, bm.look, t, {
+          seed: bi * 37,
+          label: bm.id,
+          noLabel: false,
+        });
         ctx.fillStyle = talked[bm.id] ? 'rgba(125,255,58,0.45)' : 'rgba(255,220,100,0.7)';
         ctx.font = 'bold 8px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(talked[bm.id] ? '✓' : '▲', bx, groundY - 78);
+        ctx.fillText(talked[bm.id] ? '✓' : '▲', bx, groundY - 100);
         ctx.textAlign = 'left';
       }
     }
@@ -4108,6 +4204,341 @@
   }
 
   // ——— Fly side-scroller ———
+  /**
+   * Retrofit bandmate — same soft GO pipeline as Zakk/Tayler (goHead / goArmLimb / goBoot),
+   * costumed from band-grid refs. Distinct looks, shared art language (not citizen sticks).
+   */
+  function drawBandMate(ctx, x, y, look, t, opts) {
+    opts = opts || {};
+    const scale = opts.scale != null ? opts.scale : CHAR_SCALE * 0.92;
+    const f = 1;
+    const pose = goWalkPose(false, false, t + (opts.seed || 0));
+    const skinHi = '#e8c4a4', skin = '#d4a882', skinLo = '#b07a58';
+    const pantHi = '#2e2e36', pant = '#16161c', pantLo = '#08080c';
+
+    // Costume kits from refs/band-grid-neon.jpeg
+    const kits = {
+      blazer: {
+        sleeve: ['#9a7048', '#6a4a2a', '#3a2818'],
+        torso: ['#8a5a32', '#6a4224', '#3a2814'],
+        pant: ['#2a2a32', '#16161c', '#08080c'],
+        boot: ['#3a2a20', '#1a1210', '#080606'],
+        hair: 'sandy', face: 'mustache', hat: 'none', glasses: 'goldAvi',
+        shirt: 'cream',
+      },
+      graphic: {
+        sleeve: ['#2a2a30', '#141418', '#060608'],
+        torso: ['#1a1a1e', '#101014', '#050508'],
+        pant: ['#222228', '#141418', '#08080c'],
+        boot: ['#2a2a30', '#141418', '#050506'],
+        hair: 'beard', face: 'beard', hat: 'blackCap', glasses: 'rect',
+        shirt: 'hk',
+      },
+      denim: {
+        sleeve: ['#4a6a8a', '#2a4a6a', '#1a3048'],
+        torso: ['#3a5a7a', '#2a4a6a', '#1a3048'],
+        pant: ['#2a3a4a', '#1a2838', '#0e1620'],
+        boot: ['#2a2a30', '#141418', '#050506'],
+        hair: 'shortDark', face: 'clean', hat: 'none', glasses: 'darkAvi',
+        shirt: 'whiteTee',
+      },
+      raglan: {
+        sleeve: ['#2a8a3a', '#1a6a28', '#0e4018'],
+        torso: ['#f0f0ec', '#d8d8d0', '#b0b0a8'],
+        pant: ['#2a2a32', '#16161c', '#08080c'],
+        boot: ['#3a2a20', '#1a1210', '#080606'],
+        hair: 'curly', face: 'stubble', hat: 'none', glasses: 'darkAvi',
+        shirt: 'raglan',
+      },
+      western: {
+        sleeve: ['#2a2a32', '#141418', '#060608'],
+        torso: ['#1a1a22', '#101014', '#050508'],
+        pant: ['#2e2e36', '#16161c', '#08080c'],
+        boot: ['#2a2a30', '#141418', '#050506'],
+        hair: 'mustache', face: 'mustache', hat: 'flatCap', glasses: 'darkAvi',
+        shirt: 'western',
+      },
+      plaid: {
+        sleeve: ['#4a6a88', '#3a5a78', '#2a4058'],
+        torso: ['#3a5a78', '#2a4a68', '#1a3048'],
+        pant: ['#4a6288', '#2a3a5a', '#1a2838'],
+        boot: ['#6a3a20', '#5a2e18', '#3a1a10'],
+        hair: 'stubble', face: 'stubble', hat: 'backCap', glasses: 'darkAvi',
+        shirt: 'plaid',
+      },
+    };
+    const kit = kits[look] || kits.denim;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(f * scale, scale);
+
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath();
+    ctx.ellipse(2, 0, 14, 3.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const bob = pose.bob * 0.4;
+    const lean = pose.lean * 0.5;
+    const sway = pose.sway * 0.4;
+    const hipY = -27 - bob;
+    const hipX = lean * 0.3;
+    const bodyCy = -41 - bob;
+    const bodyCx = lean * 0.4;
+
+    // FAR LEG
+    {
+      const end = goJointLimb(ctx, hipX - 3.2, hipY, pose.fThigh, pose.fThigh - pose.fKnee, 13.5, 12.5, 3.4, 2.9,
+        kit.pant, [kit.pant[1], kit.pant[2], '#040406']);
+      goBoot(ctx, end.ex, Math.min(end.ey, 0), end.ex + 6, kit.boot, '#555');
+    }
+    // FAR ARM
+    {
+      goArmLimb(ctx, bodyCx - 9, bodyCy - 10, 0.15 + pose.fArm, 0.15 + pose.fArm + pose.fElbow,
+        11, 8.0, 2.8, 2.3, kit.sleeve, [skinHi, skin, skinLo]);
+    }
+
+    // TORSO
+    if (kit.shirt === 'plaid') {
+      const tw = 18, th = 22, rad = 7;
+      const tx = bodyCx - tw / 2, ty = bodyCy - th / 2;
+      ctx.save();
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(tx, ty, tw, th, rad);
+      else ctx.rect(tx, ty, tw, th);
+      ctx.clip();
+      ctx.fillStyle = '#3a5a78';
+      ctx.fillRect(tx, ty, tw, th);
+      ctx.strokeStyle = 'rgba(230,200,60,0.75)';
+      ctx.lineWidth = 1.1;
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath(); ctx.moveTo(tx, ty + 3 + i * 5); ctx.lineTo(tx + tw, ty + 3 + i * 5); ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(230,240,255,0.5)';
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath(); ctx.moveTo(tx + 2 + i * 5, ty); ctx.lineTo(tx + 2 + i * 5, ty + th); ctx.stroke();
+      }
+      ctx.restore();
+    } else if (kit.shirt === 'raglan') {
+      goTorso(ctx, bodyCx, bodyCy, 18, 22, 7, '#f4f4f0', '#e0e0d8', '#c0c0b8');
+      // green sleeves already on arms; chest graphic hint
+      ctx.fillStyle = 'rgba(200,80,80,0.45)';
+      ctx.beginPath();
+      ctx.ellipse(bodyCx, bodyCy - 2, 4, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // necklace
+      ctx.strokeStyle = 'rgba(200,180,100,0.7)';
+      ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      ctx.arc(bodyCx, bodyCy - 6, 5, 0.2, Math.PI - 0.2);
+      ctx.stroke();
+      ctx.fillStyle = '#c4a35a';
+      ctx.beginPath();
+      ctx.arc(bodyCx, bodyCy + 1, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (kit.shirt === 'hk') {
+      goTorso(ctx, bodyCx, bodyCy, 18, 22, 7, '#2a2a30', '#141418', '#060608');
+      ctx.fillStyle = '#ff8ab8';
+      ctx.beginPath();
+      ctx.arc(bodyCx, bodyCy - 4, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ff9944';
+      ctx.beginPath();
+      ctx.moveTo(bodyCx - 5, bodyCy - 2); ctx.lineTo(bodyCx - 3, bodyCy + 4); ctx.lineTo(bodyCx - 1, bodyCy - 1);
+      ctx.moveTo(bodyCx + 5, bodyCy - 2); ctx.lineTo(bodyCx + 3, bodyCy + 4); ctx.lineTo(bodyCx + 1, bodyCy - 1);
+      ctx.fill();
+      ctx.fillStyle = '#eee';
+      ctx.font = 'bold 4px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('HK', bodyCx, bodyCy + 6);
+      ctx.textAlign = 'left';
+    } else if (kit.shirt === 'western') {
+      goTorso(ctx, bodyCx, bodyCy, 18, 22, 7, '#2a2a32', '#141418', '#050508');
+      const tg = ctx.createLinearGradient(bodyCx, bodyCy - 10, bodyCx, bodyCy + 10);
+      tg.addColorStop(0, '#2ec4a0');
+      tg.addColorStop(0.5, '#1a8a7a');
+      tg.addColorStop(1, '#c4a35a');
+      ctx.fillStyle = tg;
+      ctx.fillRect(bodyCx - 1.2, bodyCy - 8, 2.4, 16);
+      // pocket embroidery hints
+      ctx.strokeStyle = 'rgba(200,180,100,0.45)';
+      ctx.lineWidth = 0.8;
+      ctx.strokeRect(bodyCx - 7, bodyCy - 2, 4, 3.5);
+      ctx.strokeRect(bodyCx + 3, bodyCy - 2, 4, 3.5);
+    } else if (kit.shirt === 'cream') {
+      goTorso(ctx, bodyCx, bodyCy, 18, 22, 7, kit.torso[0], kit.torso[1], kit.torso[2]);
+      ctx.fillStyle = '#e8d8b8';
+      ctx.beginPath();
+      ctx.moveTo(bodyCx - 3, bodyCy - 11);
+      ctx.lineTo(bodyCx, bodyCy + 6);
+      ctx.lineTo(bodyCx + 3, bodyCy - 11);
+      ctx.closePath();
+      ctx.fill();
+    } else if (kit.shirt === 'whiteTee') {
+      goTorso(ctx, bodyCx, bodyCy, 18, 22, 7, kit.torso[0], kit.torso[1], kit.torso[2]);
+      ctx.fillStyle = '#f0f0f0';
+      ctx.fillRect(bodyCx - 4, bodyCy - 6, 8, 12);
+    } else {
+      goTorso(ctx, bodyCx, bodyCy, 18, 22, 7, kit.torso[0], kit.torso[1], kit.torso[2]);
+    }
+
+    goTorso(ctx, hipX, hipY - 2, 15, 9, 4.5, kit.pant[0], kit.pant[1], kit.pant[2]);
+
+    // NEAR LEG
+    {
+      const end = goJointLimb(ctx, hipX + 3.2, hipY, pose.nThigh, pose.nThigh - pose.nKnee, 13.5, 12.5, 3.5, 3.0,
+        kit.pant, kit.pant);
+      goBoot(ctx, end.ex, Math.min(end.ey, 0), end.ex + 6, kit.boot, '#666');
+    }
+    // NEAR ARM
+    {
+      goArmLimb(ctx, bodyCx + 9, bodyCy - 10, 0.1 + pose.nArm, 0.1 + pose.nArm + pose.nElbow,
+        10.5, 8.0, 2.9, 2.35, kit.sleeve, [skinHi, skin, skinLo]);
+    }
+
+    // neck + head
+    goCapsule(ctx, bodyCx + 1.5, bodyCy - 10, bodyCx + 1.5, bodyCy - 16, 3.2, skinHi, skin, skinLo);
+    const hx = bodyCx + 2.2;
+    const hy = -60 - bob;
+    ctx.fillStyle = skinLo;
+    ctx.beginPath();
+    ctx.ellipse(hx - 9.2, hy + 1, 2.4, 3.0, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    goHead(ctx, hx, hy, 9.4, 10.8, skinHi, skin, skinLo);
+
+    // nose
+    ctx.fillStyle = skinLo;
+    ctx.beginPath();
+    ctx.moveTo(hx + 5, hy);
+    ctx.quadraticCurveTo(hx + 11.5, hy + 2.2, hx + 5.2, hy + 5);
+    ctx.closePath();
+    ctx.fill();
+
+    if (kit.face === 'mustache') {
+      ctx.fillStyle = '#1a1210';
+      ctx.beginPath();
+      ctx.ellipse(hx - 1.2, hy + 6.0, 4.4, 2.0, -0.35, 0, Math.PI * 2);
+      ctx.ellipse(hx + 5.8, hy + 6.5, 5.2, 2.3, 0.32, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (kit.face === 'beard') {
+      ctx.fillStyle = '#2a1a16';
+      ctx.beginPath();
+      ctx.ellipse(hx + 1, hy + 8.5, 7.5, 5.5, 0.05, 0, Math.PI);
+      ctx.fill();
+      ctx.fillStyle = '#1a1210';
+      ctx.beginPath();
+      ctx.ellipse(hx + 1, hy + 5.8, 5.5, 2.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (kit.face === 'stubble') {
+      ctx.fillStyle = 'rgba(60,40,30,0.4)';
+      ctx.beginPath();
+      ctx.ellipse(hx + 1.2, hy + 6.8, 7.0, 4.2, 0.08, 0, Math.PI);
+      ctx.fill();
+    }
+
+    if (kit.glasses === 'goldAvi') {
+      goAviator(ctx, hx, hy - 0.6);
+      // gold tint hint
+      ctx.strokeStyle = 'rgba(220,180,60,0.55)';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.ellipse(hx - 3.0, hy - 0.6, 3.2, 2.6, -0.22, 0, Math.PI * 2);
+      ctx.ellipse(hx + 5.4, hy - 0.6, 4.6, 3.0, 0.1, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (kit.glasses === 'rect') {
+      ctx.fillStyle = 'rgba(30,40,55,0.35)';
+      ctx.fillRect(hx - 6.2, hy - 2.2, 5.2, 3.8);
+      ctx.fillRect(hx + 1.5, hy - 2.2, 5.6, 3.8);
+      ctx.strokeStyle = '#1a1a1e';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(hx - 6.2, hy - 2.2, 5.2, 3.8);
+      ctx.strokeRect(hx + 1.5, hy - 2.2, 5.6, 3.8);
+      ctx.beginPath();
+      ctx.moveTo(hx - 1.0, hy - 0.2);
+      ctx.lineTo(hx + 1.5, hy - 0.2);
+      ctx.stroke();
+    } else {
+      goAviator(ctx, hx, hy - 0.6);
+    }
+
+    // hair / hats
+    if (kit.hat === 'flatCap') {
+      const capY = hy - 8.0;
+      const capG = ctx.createLinearGradient(hx - 10, capY - 6, hx + 14, capY + 4);
+      capG.addColorStop(0, '#3a2a1c');
+      capG.addColorStop(0.4, '#7a6a54');
+      capG.addColorStop(1, '#4a3a2a');
+      ctx.fillStyle = capG;
+      ctx.beginPath();
+      ctx.ellipse(hx + 1.2, capY, 11.0, 5.6, 0.06, Math.PI, 0);
+      ctx.fill();
+      ctx.fillStyle = '#5a4a38';
+      ctx.beginPath();
+      ctx.ellipse(hx + 10, capY + 2.4, 9.2, 3.0, 0.14, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (kit.hat === 'backCap') {
+      const capY = hy - 8.0;
+      const capG = ctx.createLinearGradient(hx - 14, capY - 5, hx + 10, capY + 4);
+      capG.addColorStop(0, '#4a1028');
+      capG.addColorStop(0.45, '#7a2848');
+      capG.addColorStop(1, '#3a0c1c');
+      ctx.fillStyle = capG;
+      ctx.beginPath();
+      ctx.ellipse(hx, capY, 11.2, 5.4, 0, Math.PI, 0);
+      ctx.fill();
+      ctx.fillStyle = '#5a1830';
+      ctx.beginPath();
+      ctx.ellipse(hx - 11.2, capY + 2.4, 10.0, 3.2, -0.22, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (kit.hat === 'blackCap') {
+      const capY = hy - 8.2;
+      ctx.fillStyle = '#1a1a1e';
+      ctx.beginPath();
+      ctx.ellipse(hx, capY, 10.5, 5.2, 0, Math.PI, 0);
+      ctx.fill();
+      ctx.fillStyle = '#2a2a30';
+      ctx.beginPath();
+      ctx.ellipse(hx + 9, capY + 2.2, 8.5, 2.8, 0.12, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (kit.hair === 'sandy') {
+      ctx.fillStyle = '#c4a070';
+      ctx.beginPath();
+      ctx.ellipse(hx - 1, hy - 7, 9.5, 5.5, 0, Math.PI, 0);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(hx - 8, hy - 2, 3.5, 6, -0.3, 0, Math.PI * 2);
+      ctx.ellipse(hx + 8, hy - 1, 3.8, 7, 0.25, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (kit.hair === 'curly') {
+      ctx.fillStyle = '#2a1a14';
+      for (let i = 0; i < 7; i++) {
+        const a = -0.2 + i * 0.35;
+        ctx.beginPath();
+        ctx.arc(hx + Math.sin(a) * 8, hy - 6 + Math.cos(a) * 2, 3.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.ellipse(hx - 9, hy + 2, 3.5, 7, 0, 0, Math.PI * 2);
+      ctx.ellipse(hx + 9, hy + 3, 3.8, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (kit.hair === 'shortDark') {
+      ctx.fillStyle = '#1a1210';
+      ctx.beginPath();
+      ctx.ellipse(hx, hy - 7.5, 9.2, 4.5, 0, Math.PI, 0);
+      ctx.fill();
+    }
+
+    ctx.restore();
+
+    if (!opts.noLabel && opts.label) {
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.font = 'bold 9px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(opts.label, x, y + 12);
+      ctx.textAlign = 'left';
+    }
+  }
+
   function drawCitizen(ctx, x, y, look, t) {
     const s = 0.82;
     ctx.save();
@@ -5697,6 +6128,7 @@
     drawHuman,
     drawZakk,
     drawTayler,
+    drawBandMate,
     drawTaylor,
     drawClayUFO,
     drawCitizen,
