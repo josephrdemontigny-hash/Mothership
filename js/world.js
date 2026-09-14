@@ -1002,15 +1002,6 @@
       ctx.beginPath();
       ctx.moveTo(end.jx + 1.2, end.jy + 1.2); ctx.lineTo(end.ex - 1.5, end.ey - 1.5);
       ctx.stroke();
-      if (opts.smoking) {
-        ctx.strokeStyle = skin;
-        ctx.lineWidth = 2.4;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(end.ex + 1.5, end.ey + 1);
-        ctx.lineTo(end.ex + 7, end.ey + 8);
-        ctx.stroke();
-      }
       ctx.strokeStyle = 'rgba(255,40,180,0.22)';
       ctx.lineWidth = 1.0;
       ctx.beginPath();
@@ -1085,16 +1076,17 @@
       const jointLit = !!opts.jointLit;
       const puffing = !!opts.puffing && jointLit;
       const puffProg = opts.puffProg != null ? opts.puffProg : (puffing ? 1 : 0);
-      let jx = x + f * 24 * scale;
-      let jy = y - (seated ? 16 : 20) * scale;
-      let jang = f > 0 ? -0.5 : Math.PI + 0.5;
+      // Small joint at fingertips (no fake giant finger stroke)
+      let jx = x + f * 18 * scale;
+      let jy = y - (seated ? 28 : 34) * scale;
+      let jang = f > 0 ? -0.85 : Math.PI + 0.85;
       if (puffing) {
         const rise = 0.55 + puffProg * 0.45;
-        jx = x + f * (24 - 12 * rise) * scale;
-        jy = y - (20 + 38 * rise) * scale;
-        jang = f > 0 ? (-0.5 + 0.38 * rise) : (Math.PI + 0.5 - 0.38 * rise);
+        jx = x + f * (12 - 4 * rise) * scale;
+        jy = y - (48 + 18 * rise) * scale;
+        jang = f > 0 ? (-1.1 + 0.25 * rise) : (Math.PI + 1.1 - 0.25 * rise);
       }
-      drawJoint(ctx, jx, jy, jang, { lit: jointLit });
+      drawJoint(ctx, jx, jy, jang, { lit: jointLit, len: 11 });
       if (puffing) {
         const mouthX = x + f * 10 * scale;
         const mouthY = y - 58 * scale;
@@ -1287,15 +1279,6 @@
       if (opts.smoking) { a1 = 0.55; a2 = 1.15; }
       const end = goArmLimb(ctx, sx, sy, a1, a2, 10.5, 8.0, 2.95, 2.4,
         ['#4a6a88', plaidBase, '#2a4058'], [skinHi, skin, skinLo]);
-      if (opts.smoking) {
-        ctx.strokeStyle = skin;
-        ctx.lineWidth = 2.4;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(end.ex + 1.5, end.ey + 1);
-        ctx.lineTo(end.ex + 7, end.ey + 8);
-        ctx.stroke();
-      }
     }
 
     // neck + head
@@ -1368,13 +1351,14 @@
     ctx.restore();
 
     if (opts.smoking) {
-      const jx = x + f * 24 * scale;
-      const jy = y - (seated ? 16 : 20) * scale;
       const jointLit = !!opts.jointLit;
       const puffing = !!opts.puffing && jointLit;
-      drawJoint(ctx, jx, jy, f > 0 ? -0.55 : Math.PI + 0.55, { lit: jointLit });
+      // Fingertip joint — no giant finger stroke
+      const jx = x + f * 18 * scale;
+      const jy = y - (seated ? 28 : 34) * scale;
+      drawJoint(ctx, jx, jy, f > 0 ? -0.85 : Math.PI + 0.85, { lit: jointLit, len: 11 });
       if (puffing) {
-        drawSmokePuffs(ctx, jx + f * 10, jy - 10, t, 1.4);
+        drawSmokePuffs(ctx, jx + f * 6, jy - 8, t, 1.2);
       }
     }
 
