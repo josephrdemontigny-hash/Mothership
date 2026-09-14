@@ -81,7 +81,7 @@
   let prevInteractHeld = false;
   let prevBeamHeld = false;
 
-  // title | shed | yard | ship | fly | operate | landmark | bandTour | results
+  // title | shed | yard | ship | fly | operate | landmark | bandTour | street | results
   let mode = 'title';
   let t = 0;
   let lastTs = 0;
@@ -102,6 +102,10 @@
   let landmarkVisit = null;
   /** Band abduction tour after van/bus beam */
   let bandTour = null;
+  /** Yale Rd El Camino cruise Easter egg (after band beamed) */
+  let streetDriveUnlocked = false;
+  let street = null;
+  let streetHintCd = 0;
   /** Edge-detect ↓ for land confirm while hovering a landmark */
   let prevLandDownHeld = false;
 
@@ -177,7 +181,9 @@
     return Math.abs(avatar.x - doorX) < 52 && Math.abs(avatar.x - camino.x) < 140;
   }
 
-  function makeCaminoDriverDraw() {
+  function makeCaminoDriverDraw(opts) {
+    opts = opts || {};
+    const withPassenger = !!opts.passenger;
     return function (ctx) {
       // Head-in-window: drawElCamino clips to CAMINO_WIN so only cabin glass shows Zakk.
       // Feet/body stay below the clip; scale keeps the head readable at game size.
@@ -188,6 +194,15 @@
         noShadow: true,
         smoking: false,
       });
+      // Optional Tayler passenger silhouette (band beamed / boarded)
+      if (withPassenger) {
+        ctx.fillStyle = 'rgba(18, 14, 22, 0.72)';
+        ctx.beginPath();
+        ctx.ellipse(W.CAMINO_DOOR_DX + 28, -92, 10, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(40, 32, 48, 0.55)';
+        ctx.fillRect(W.CAMINO_DOOR_DX + 18, -82, 20, 14);
+      }
     };
   }
 
@@ -309,6 +324,205 @@
     camX = Math.max(0, Math.min(Math.max(0, worldW - CW), avatar.x - CW * 0.4));
   }
 
+  function unlockStreetDrive() {
+    if (streetDriveUnlocked) {
+      if (fly) fly.streetDriveUnlocked = true;
+      if (flyResume) flyResume.streetDriveUnlocked = true;
+      return;
+    }
+    streetDriveUnlocked = true;
+    if (fly) fly.streetDriveUnlocked = true;
+    if (flyResume) flyResume.streetDriveUnlocked = true;
+  }
+
+  function syncStreetUnlockFromFlags(src) {
+    if (!src) return;
+    if (src.streetDriveUnlocked || src.beamedVan || src.beamedBus) unlockStreetDrive();
+  }
+
+  function buildStreetProps() {
+    const props = [];
+    for (const lm of FLY_LANDMARKS) {
+      props.push({ x: lm.x, kind: lm.kind, label: lm.label, landmark: true });
+    }
+    for (const v of FLY_VEHICLES) {
+      props.push({
+        x: v.x, kind: v.kind, label: v.label, vehicle: true,
+        flag: v.flag, promptName: v.promptName,
+      });
+    }
+    const spacing = STREETLIGHT_SPACING;
+    for (let x = spacing; x <= 5600; x += spacing) {
+      const xi = x | 0;
+      if (FLY_LANDMARKS.some((lm) => Math.abs(xi - lm.x) < 45)) continue;
+      if (FLY_VEHICLES.some((v) => Math.abs(xi - v.x) < 55)) continue;
+      props.push({ x: xi, kind: 'streetlight', streetlight: true });
+    }
+    // Flavour buildings between landmarks
+    const kinds = ['house', 'tree', 'car', 'shop', 'barn', 'corn', 'apt', 'tree', 'car', 'house'];
+    for (let i = 0; i < 70; i++) {
+      const x = 80 + i * 78 + ((i * 17) % 40);
+      if (FLY_LANDMARKS.some((lm) => Math.abs(x - lm.x) < 70)) continue;
+      if (FLY_VEHICLES.some((v) => Math.abs(x - v.x) < 80)) continue;
+      props.push(makeProp(x, kinds[i % kinds.length]));
+    }
+    return props;
+  }
+
+  /** Peel out of the yard onto Yale Rd (fly-map ground layer). */
+  function enterStreetDrive() {
+    if (!streetDriveUnlocked || !camino) return;
+    mode = 'street';
+    interactQueued = false;
+    jumpQueued = false;
+    prevInteractHeld = true;
+    boardSit = null;
+    drivingCamino = true;
+    camino.inYard = true;
+    const startX = 640;
+    street = {
+      scrollX: Math.max(0, startX - CW * 0.38),
+      caminoX: startX,
+      vx: Math.max(2.5, camino.vx || 0),
+      facingRight: true,
+      wheelRot: camino.wheelRot || 0,
+      lane: 0,
+      props: buildStreetProps(),
+      districtIndex: 0,
+      hasPassenger: true,
+      scale: 0.78,
+    };
+    camino.x = startX;
+    camino.facingRight = true;
+    avatar.x = caminoDoorX();
+    avatar.y = GROUND;
+    camX = street.scrollX;
+    Audio.play('power');
+    Audio.play('ui');
+    showFlash('EASTER EGG — El Camino on Yale Rd', 150);
+    setTimeout(function () {
+      if (mode === 'street') {
+        showFlash("Band's on the mothership — take the Camino.", 140);
+      }
+    }, 1600);
+    setPrompt('← → drive · ↑↓ lane · E / HOME yard · Enter wrap');
+    showScreen('play');
+    syncHud();
+    syncInteractBtn();
+  }
+
+  /** Park the cruise — back to yard near the Yale Rd exit. */
+  function exitStreetDrive(opts) {
+    opts = opts || {};
+    if (mode !== 'street') return;
+    street = null;
+    mode = 'yard';
+    interactQueued = false;
+    jumpQueued = false;
+    prevInteractHeld = true;
+    drivingCamino = true;
+    if (!camino) resetCamino();
+    camino.inYard = true;
+    camino.x = 980;
+    camino.facingRight = false;
+    camino.vx = -1.2;
+    if (!landing) {
+      const targetY = GROUND - 86;
+      landing = {
+        phase: 'landed',
+        x: 720,
+        y: targetY,
+        targetY: targetY,
+        scale: 2.28,
+        lights: true,
+        timer: 0,
+        legExtend: 1,
+        showPilots: false,
+      };
+    }
+    if (!tayler) tayler = { x: 240, y: GROUND };
+    avatar.x = caminoDoorX();
+    avatar.y = GROUND;
+    camX = Math.max(0, Math.min(Math.max(0, 1200 - CW), avatar.x - CW * 0.4));
+    Audio.play('ui');
+    if (opts.ended) {
+      showFlash('Yale Rd cruise wrapped — Camino back at the yard.', 120);
+    } else {
+      showFlash('Home stretch — Camino back by the shed.', 110);
+    }
+    setPrompt('← → drive · E exit · ← shed · mothership →');
+    showScreen('play');
+    syncHud();
+    syncInteractBtn();
+  }
+
+  function updateStreetDrive() {
+    if (!street || !camino) return;
+    if (streetHintCd > 0) streetHintCd--;
+
+    const accel = 0.58;
+    const maxSpd = 10.5;
+    const friction = 0.9;
+    const ix = inputX();
+    street.vx += ix * accel;
+    street.vx *= friction;
+    if (Math.abs(street.vx) > maxSpd) street.vx = Math.sign(street.vx) * maxSpd;
+    if (Math.abs(ix) > 0.1) street.facingRight = ix > 0;
+    street.caminoX += street.vx;
+    street.wheelRot += street.vx * 0.045;
+
+    // Slight lane shift on the road
+    const iy = inputY();
+    street.lane += iy * 0.07;
+    street.lane = Math.max(-1, Math.min(1, street.lane));
+    if (Math.abs(iy) < 0.1) street.lane *= 0.96;
+
+    // Don't drive west of Mom's shed
+    const minX = 420;
+    if (street.caminoX < minX) {
+      street.caminoX = minX;
+      street.vx = Math.max(0, street.vx);
+    }
+
+    const prefer = CW * 0.38;
+    street.scrollX = Math.max(0, street.caminoX - prefer);
+
+    const newDistrict = Math.min(
+      W.DISTRICTS.length - 1,
+      Math.floor(street.scrollX / 900)
+    );
+    if (newDistrict !== street.districtIndex) {
+      street.districtIndex = newDistrict;
+      showFlash(W.DISTRICTS[street.districtIndex].name + ' — still no UFO required', 80);
+    }
+
+    camino.x = street.caminoX;
+    camino.facingRight = street.facingRight;
+    camino.wheelRot = street.wheelRot;
+    camino.vx = street.vx;
+    avatar.x = caminoDoorX();
+    avatar.y = GROUND;
+    avatar.vx = street.vx;
+    avatar.facing = street.facingRight ? 1 : -1;
+    camX = street.scrollX;
+
+    street.drawDriver = makeCaminoDriverDraw({ passenger: !!street.hasPassenger });
+
+    const nearHome = street.caminoX < 780;
+    if (nearHome) {
+      setPrompt('← → drive · E / HOME — back to yard · Enter wrap');
+    } else {
+      setPrompt('← → Yale Rd · ↑↓ lane · E home · Enter wrap');
+    }
+
+    if (wantsInteract()) {
+      exitStreetDrive({ ended: false });
+      return;
+    }
+    syncInteractBtn();
+    syncHud();
+  }
+
   /**
    * Press-required Tayler sesh (not one long auto-cutscene).
    * Labels match UX copy casually.
@@ -379,6 +593,10 @@
         return;
       }
       el.btnInteract.textContent = 'USE';
+      return;
+    }
+    if (mode === 'street') {
+      el.btnInteract.textContent = 'HOME';
       return;
     }
     if (drivingCamino) {
@@ -663,6 +881,7 @@
       operate: 'OPERATE',
       landmark: 'VISIT',
       bandTour: 'BAND',
+      street: 'YALE RD',
     };
     el.modeLabel.textContent = labels[mode] || '';
     const flyHud = (mode === 'fly' && fly) ? fly
@@ -704,6 +923,11 @@
       el.district.classList.remove('hidden');
       el.district.textContent = 'Mothership · Retrofit aboard';
       if (el.multLabel) el.multLabel.classList.add('hidden');
+    } else if (mode === 'street' && street) {
+      el.district.classList.remove('hidden');
+      const dn = W.DISTRICTS[street.districtIndex % W.DISTRICTS.length].name;
+      el.district.textContent = 'Yale Rd · ' + dn;
+      if (el.multLabel) el.multLabel.classList.add('hidden');
     } else {
       el.district.classList.add('hidden');
       if (el.multLabel) el.multLabel.classList.add('hidden');
@@ -719,7 +943,7 @@
   /** Beam touch control + fly-only HUD bits — hidden until fly. */
   function syncBeamUi() {
     const flying = mode === 'fly';
-    const visiting = mode === 'landmark' || mode === 'bandTour';
+    const visiting = mode === 'landmark' || mode === 'bandTour' || mode === 'street';
     const inRunHud = flying || mode === 'operate' || visiting;
     if (el.btnBeam) el.btnBeam.classList.toggle('hidden', !flying);
     // Keep #btn-destruct / #hud-destruct — visibility only; placement owned elsewhere
@@ -922,6 +1146,9 @@
     flyResume = null;
     landmarkVisit = null;
     bandTour = null;
+    streetDriveUnlocked = false;
+    street = null;
+    streetHintCd = 0;
     prevLandDownHeld = false;
     hideOperateChoice();
     particles = [];
@@ -1079,6 +1306,8 @@
       if (!fly.visitedLandmarks) fly.visitedLandmarks = {};
       if (fly.beamedVan == null) fly.beamedVan = false;
       if (fly.beamedBus == null) fly.beamedBus = false;
+      if (fly.streetDriveUnlocked == null) fly.streetDriveUnlocked = false;
+      syncStreetUnlockFromFlags(fly);
       if (fly.boostFuelMax == null) fly.boostFuelMax = 100;
       if (fly.boostFuel == null) fly.boostFuel = 60;
       flyResume = null;
@@ -1135,6 +1364,7 @@
       forceCowSoon: false,
       beamedVan: false,
       beamedBus: false,
+      streetDriveUnlocked: !!streetDriveUnlocked,
       boostFuelMax: 100,
       boostFuel: 70,
     };
@@ -1151,6 +1381,7 @@
   function endMission() {
     Audio.play('gameOver');
     bandTour = null;
+    street = null;
     mode = 'results';
     const high = getHigh();
     const isNew = score > high;
@@ -1183,6 +1414,10 @@
     operate = null;
     flyResume = null;
     landmarkVisit = null;
+    bandTour = null;
+    street = null;
+    streetDriveUnlocked = false;
+    streetHintCd = 0;
     hideOperateChoice();
     resetCamino();
     avatar = null;
@@ -1429,6 +1664,8 @@
   function interactHeld() {
     const useKeys = !!(keys['e'] || keys['enter']);
     const upKeys = upHeld();
+    // Yale Rd cruise: ↑↓ are lane — only E/HOME exits
+    if (mode === 'street') return useKeys;
     // While holding lit joint (and not at open exit door), Up is for puffing
     if (canPuffJoint() && !(nearDoor() && ufoLanded())) {
       return useKeys;
@@ -1515,6 +1752,9 @@
     if (k === 'e' || k === 'enter') {
       if (mode === 'fly') {
         if (k === 'e') interactQueued = true; // land if near landmark, else beam (updateFly)
+      } else if (mode === 'street') {
+        if (k === 'e') interactQueued = true;
+        else exitStreetDrive({ ended: true });
       } else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark' || mode === 'bandTour') {
         interactQueued = true;
       }
@@ -1564,6 +1804,7 @@
 
   canvas.addEventListener('click', () => {
     if (mode === 'title') insertCassetteAndStart();
+    else if (mode === 'street') interactQueued = true;
     else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark' || mode === 'bandTour') interactQueued = true;
   });
 
@@ -1653,11 +1894,13 @@
   el.btnBeam.addEventListener('touchstart', (e) => {
     e.preventDefault();
     if (mode === 'fly') beamQueued = true;
+    else if (mode === 'street') interactQueued = true;
     else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark' || mode === 'bandTour') interactQueued = true;
   }, { passive: false });
   el.btnBeam.addEventListener('mousedown', (e) => {
     e.preventDefault();
     if (mode === 'fly') beamQueued = true;
+    else if (mode === 'street') interactQueued = true;
     else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark' || mode === 'bandTour') interactQueued = true;
   });
 
@@ -2049,8 +2292,18 @@
 
     // Driving Camino in the yard
     if (drivingCamino && camino && camino.inYard) {
+      if (streetHintCd > 0) streetHintCd--;
       updateCaminoDrive(1200);
-      setPrompt('← → drive · E exit · ← shed door · mothership →');
+      const pad = W.CAMINO_HALF_W * 0.55;
+      const atRoad = camino.x >= 1200 - pad - 0.5;
+      const pushingOut = inputX() > 0.2 || camino.vx > 0.55;
+      if (streetDriveUnlocked) {
+        setPrompt(atRoad || camino.x > 1000
+          ? '→ YALE RD / ↑ ROAD — peel out · E exit'
+          : '← → drive · E exit · → YALE RD · ← shed');
+      } else {
+        setPrompt('← → drive · E exit · ← shed door · mothership →');
+      }
       if (wantsInteract()) {
         exitCamino();
         syncInteractBtn();
@@ -2060,6 +2313,17 @@
       if (camino.x - W.CAMINO_HALF_W * 0.25 < W.YARD_SHED_DOOR_X + 10 && camino.vx < -0.4) {
         driveCaminoToShed();
         return;
+      }
+      // Yale Rd Easter egg — past the yard / YALE RD sign
+      if (atRoad && pushingOut) {
+        if (streetDriveUnlocked) {
+          enterStreetDrive();
+          return;
+        }
+        if (streetHintCd <= 0) {
+          showFlash('Beam the band first…', 100);
+          streetHintCd = 100;
+        }
       }
       syncInteractBtn();
       return;
@@ -2580,6 +2844,7 @@
       return false;
     }
     fly[vehicle.flag] = true;
+    unlockStreetDrive();
     let pts = BAND_BEAM_POINTS;
     if (fly.scoreMultTimer > 0) pts = (pts * 2) | 0;
     score += pts;
@@ -2661,6 +2926,7 @@
     W.addFloater(floaters, mate.x - camX, GROUND - 90, '+25', '#ffe066');
     syncHud();
     if (bandTour.talkCount >= (W.BAND_SIZE | 6)) {
+      unlockStreetDrive();
       showFlash('Whole tour checked — Fly again or land at shed?', 130);
       bandTour.phase = 'choice';
       showOperateChoice();
@@ -2706,6 +2972,7 @@
     if (mode !== 'bandTour') return;
     hideOperateChoice();
     Audio.play('power');
+    unlockStreetDrive();
     bandTour = null;
     enterFly({ resume: true, fromLandmark: true });
     showFlash('Back in the cooler — Retrofit secured. Fly on!', 130);
@@ -2715,6 +2982,7 @@
     if (mode !== 'bandTour') return;
     hideOperateChoice();
     Audio.play('landing');
+    unlockStreetDrive();
     bandTour = null;
     flyResume = null;
     smokeDone = true;
@@ -2969,6 +3237,7 @@
       forceCowSoon: !!fly.forceCowSoon,
       beamedVan: !!fly.beamedVan,
       beamedBus: !!fly.beamedBus,
+      streetDriveUnlocked: !!(streetDriveUnlocked || fly.streetDriveUnlocked || fly.beamedVan || fly.beamedBus),
       boostFuelMax: fly.boostFuelMax != null ? fly.boostFuelMax : 100,
       boostFuel: fly.boostFuel != null ? fly.boostFuel : 60,
     };
@@ -3098,10 +3367,12 @@
   /** Voluntary home landing from fly — yard behind mom's house, score kept */
   function landHomeFromFly() {
     if (mode !== 'fly' || !fly) return;
+    syncStreetUnlockFromFlags(fly);
     fly = null;
     flyResume = null;
     landmarkVisit = null;
     bandTour = null;
+    street = null;
     operate = null;
     hideOperateChoice();
     selfDestructing = false;
@@ -3151,6 +3422,7 @@
     else if (mode === 'operate') updateOperate();
     else if (mode === 'landmark') updateLandmark();
     else if (mode === 'bandTour') updateBandTour();
+    else if (mode === 'street') updateStreetDrive();
 
     W.updateFx(particles, floaters);
     if (flashTimer > 0) flashTimer--;
@@ -3377,6 +3649,14 @@
       if (!drivingCamino) {
         W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {});
       }
+      if (drivingCamino && streetDriveUnlocked && camino && camino.x > 980) {
+        const bob = Math.sin(t * 0.012) * 3;
+        ctx.fillStyle = '#ffd76a';
+        ctx.font = 'bold 14px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('→ YALE RD / ↑ ROAD', 1100 - camX, GROUND - 130 + bob);
+        ctx.textAlign = 'left';
+      }
       if (!drivingCamino && nearCaminoDoor()) {
         const bob = Math.sin(t * 0.01) * 3;
         ctx.fillStyle = '#ffd76a';
@@ -3562,6 +3842,19 @@
         ctx.fillText('↓/E LAND — ' + tipLm.label, CW / 2, 100 + bob);
         ctx.textAlign = 'left';
       }
+    } else if (mode === 'street' && street) {
+      street.drawDriver = makeCaminoDriverDraw({ passenger: !!street.hasPassenger });
+      W.drawStreetDriveScene(ctx, CW, CH, street, t);
+      const bob = Math.sin(t * 0.012) * 3;
+      ctx.fillStyle = '#ffd76a';
+      ctx.font = 'bold 14px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      if (street.caminoX < 780) {
+        ctx.fillText('E — BACK TO YARD', CW / 2, 92 + bob);
+      } else {
+        ctx.fillText('EL CAMINO · YALE RD', CW / 2, 92 + bob);
+      }
+      ctx.textAlign = 'left';
     }
 
     W.drawFx(ctx, particles, floaters);

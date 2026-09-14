@@ -5748,6 +5748,89 @@
     ctx.textAlign = 'left';
   }
 
+  /**
+   * Easter egg: El Camino cruise on Yale Rd — same Chilliwack fly ground layer,
+   * no UFO. street: { scrollX, caminoX, facingRight, wheelRot, lane, props,
+   *   districtIndex, drawDriver, scale, hasPassenger }
+   */
+  function drawStreetDriveScene(ctx, w, h, street, t) {
+    street = street || {};
+    const scrollX = street.scrollX || 0;
+    const groundY = h * 0.78;
+
+    drawFlySkylineBackdrop(ctx, w, h, groundY, scrollX);
+
+    // ground bands (match drawFlyScene)
+    ctx.fillStyle = '#5a9a3a';
+    ctx.fillRect(0, groundY, w, h - groundY);
+    ctx.fillStyle = '#8a8680';
+    ctx.fillRect(0, groundY - 7, w, 7);
+    ctx.fillStyle = '#6a6a68';
+    ctx.fillRect(0, groundY - 1, w, 1);
+    // Yale Rd
+    ctx.fillStyle = '#4a4a4a';
+    ctx.fillRect(0, groundY + 8, w, 26);
+    ctx.strokeStyle = '#e8e8a0';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([18, 14]);
+    ctx.beginPath();
+    const dashOff = -((scrollX * 1.1) % 32);
+    ctx.moveTo(dashOff, groundY + 21);
+    ctx.lineTo(w + 20, groundY + 21);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const props = street.props || [];
+    for (const p of props) {
+      const px = p.x - scrollX;
+      if (px < -80 || px > w + 80) continue;
+      drawBuilding(ctx, px, groundY, p.kind, p.label, p.x, p.col);
+    }
+
+    const d = DISTRICTS[(street.districtIndex | 0) % DISTRICTS.length];
+    if (d.id === 'vedder' || d.id === 'cultus') {
+      ctx.fillStyle = d.accent;
+      ctx.globalAlpha = 0.4;
+      ctx.fillRect(0, groundY - 8, w, 10);
+      ctx.globalAlpha = 1;
+    }
+
+    // Camino on the road (slight lane offset)
+    const lane = Math.max(-1, Math.min(1, street.lane || 0));
+    const roadY = groundY + 20 + lane * 7;
+    const caminoScreenX = (street.caminoX != null ? street.caminoX : scrollX + w * 0.38) - scrollX;
+    const driverFn = street.drawDriver;
+    drawElCamino(ctx, caminoScreenX, roadY, t, {
+      dusty: false,
+      facingRight: !!street.facingRight,
+      wheelRot: street.wheelRot || 0,
+      drawDriver: typeof driverFn === 'function' ? driverFn : null,
+      noLabel: true,
+      scale: street.scale != null ? street.scale : 0.78,
+    });
+
+    // Soft HUD
+    ctx.fillStyle = 'rgba(10,30,16,0.72)';
+    ctx.fillRect(12, h - 36, 300, 24);
+    ctx.fillStyle = '#ffd76a';
+    ctx.font = '11px Segoe UI, sans-serif';
+    ctx.fillText('YALE RD · El Camino cruise', 18, h - 20);
+
+    ctx.fillStyle = 'rgba(10,30,16,0.72)';
+    ctx.fillRect(w - 230, h - 36, 218, 24);
+    ctx.fillStyle = '#c8e0b8';
+    ctx.font = '10px Segoe UI, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('←→ drive · ↑↓ lane · E home', w - 18, h - 20);
+    ctx.textAlign = 'left';
+
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.font = 'bold 12px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(d.name, w / 2, 48);
+    ctx.textAlign = 'left';
+  }
+
   function drawTitleBackdrop(ctx, w, h, t) {
     drawSky(ctx, w, h, t);
     drawMountains(ctx, w, h * 0.7, t * 0.02);
@@ -6929,6 +7012,7 @@
     drawBoardCutscene,
     drawCassetteScene,
     drawFlyScene,
+    drawStreetDriveScene,
     drawHuman,
     drawZakk,
     drawTayler,
