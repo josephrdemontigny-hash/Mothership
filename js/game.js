@@ -346,7 +346,17 @@
   function syncInteractBtn() {
     if (!el.btnInteract) return;
     if (mode === 'fly') {
-      el.btnInteract.textContent = nearLandableLandmark() ? 'LAND' : 'USE';
+      const nv = nearBandVehicle();
+      if (nv && nv.lowEnough && !nv.already) el.btnInteract.textContent = 'LAND';
+      else if (nearLandableLandmark()) el.btnInteract.textContent = 'LAND';
+      else el.btnInteract.textContent = 'USE';
+      return;
+    }
+    if (mode === 'bandTour' && bandTour && bandTour.phase === 'walk' && avatar) {
+      const mate = nearBandMate();
+      if (mate) el.btnInteract.textContent = bandTour.talked[mate.id] ? 'DONE' : 'USE';
+      else if (avatar.x < 120) el.btnInteract.textContent = 'WRAP';
+      else el.btnInteract.textContent = 'USE';
       return;
     }
     if (mode === 'landmark' && landmarkVisit && landmarkVisit.phase === 'walk' && avatar) {
@@ -890,6 +900,7 @@
     operate = null;
     flyResume = null;
     landmarkVisit = null;
+    bandTour = null;
     prevLandDownHeld = false;
     hideOperateChoice();
     particles = [];
@@ -1111,6 +1122,7 @@
 
   function endMission() {
     Audio.play('gameOver');
+    bandTour = null;
     mode = 'results';
     const high = getHigh();
     const isNew = score > high;
@@ -1462,11 +1474,11 @@
     if (k === 'e' || k === 'enter') {
       if (mode === 'fly') {
         if (k === 'e') interactQueued = true; // land if near landmark, else beam (updateFly)
-      } else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark') {
+      } else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark' || mode === 'bandTour') {
         interactQueued = true;
       }
     }
-    if ((k === 'arrowup' || k === 'w') && (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark')) {
+    if ((k === 'arrowup' || k === 'w') && (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark' || mode === 'bandTour')) {
       // Lit-joint Up → mouth puff (handled in updatePuffInput); keep Up-as-interact otherwise
       if (!(mode === 'shed' && canPuffJoint() && !(nearDoor() && ufoLanded()))) {
         interactQueued = true;
@@ -1475,20 +1487,28 @@
 
     if ((e.code === 'Space' || k === ' ')) {
       if (mode === 'fly') beamQueued = true;
-      else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark') jumpQueued = true;
+      else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark' || mode === 'bandTour') jumpQueued = true;
     }
 
     if (k === 'b' && mode === 'fly') beamQueued = true;
 
-    // Post-surgery choice keys
+    // Post-surgery / band-tour choice keys
     if (mode === 'operate' && operate && operate.phase === 'choice') {
       if (k === 'l') chooseLandShed();
       if (k === 'f') chooseFlyAgainFromOperate();
     }
+    if (mode === 'bandTour') {
+      if (k === 'l') chooseLandShedFromBandTour();
+      if (k === 'f') chooseFlyAgainFromBandTour();
+      if (bandTour && bandTour.phase === 'walk' && (k === 'l' || k === 'f')) {
+        // keys handled above
+      }
+    }
 
     if (k === 'enter' && mode === 'fly') {
-      // Prefer landing when hovering a landmark — don't end the run by accident
-      if (nearLandableLandmark()) interactQueued = true;
+      // Prefer landing when hovering a landmark / band vehicle — don't end the run by accident
+      const nv = nearBandVehicle();
+      if ((nv && nv.lowEnough) || nearLandableLandmark()) interactQueued = true;
       else endMission();
     }
     if ((k === 'x' || k === 'delete' || k === 'backspace') && mode === 'fly') {
@@ -1502,7 +1522,7 @@
 
   canvas.addEventListener('click', () => {
     if (mode === 'title') insertCassetteAndStart();
-    else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark') interactQueued = true;
+    else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark' || mode === 'bandTour') interactQueued = true;
   });
 
   function bindTitleInsert(node) {
@@ -1589,12 +1609,12 @@
   el.btnBeam.addEventListener('touchstart', (e) => {
     e.preventDefault();
     if (mode === 'fly') beamQueued = true;
-    else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark') interactQueued = true;
+    else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark' || mode === 'bandTour') interactQueued = true;
   }, { passive: false });
   el.btnBeam.addEventListener('mousedown', (e) => {
     e.preventDefault();
     if (mode === 'fly') beamQueued = true;
-    else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark') interactQueued = true;
+    else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark' || mode === 'bandTour') interactQueued = true;
   });
 
   function onInteractPointer(e) {
@@ -1699,6 +1719,9 @@
     if (mode === 'landmark' && landmarkVisit && landmarkVisit.phase === 'walk' && avatar) {
       return Math.abs(avatar.x - W.LANDMARK_HOTSPOT_X) < 60
         || Math.abs(avatar.x - W.LANDMARK_EXIT_X) < 55;
+    }
+    if (mode === 'bandTour' && bandTour && bandTour.phase === 'walk' && avatar) {
+      return !!nearBandMate() || avatar.x < 120;
     }
     return false;
   }
@@ -2463,20 +2486,25 @@
     }
     updateSideScroller(W.SHIP_WORLD_W);
     const mate = nearBandMate();
+    const nearHatch = avatar && avatar.x < 120;
     if (mate) {
       if (bandTour.talked[mate.id]) {
-        setPrompt('▲ Already vibed — F fly again · L shed');
+        setPrompt('▲ Already vibed — walk on · F fly · L shed');
       } else {
-        setPrompt('▲ USE — talk to ' + (mate.id || 'bandmate'));
+        setPrompt('▲ USE — talk to Retrofit ' + (mate.id || 'bandmate'));
       }
       if (wantsInteract()) doBandMateTalk(mate);
+    } else if (nearHatch) {
+      setPrompt('▲ USE — wrap tour (Fly / Land)');
+      if (wantsInteract()) {
+        bandTour.phase = 'choice';
+        showOperateChoice();
+        showFlash('Tour pause — Fly again or land at shed?', 110);
+        setPrompt('F — Fly again · L — Land at shed');
+      }
     } else {
       prevInteractHeld = interactHeld();
-      setPrompt('←→ walk · USE near bandmates · F fly · L shed');
-    }
-    // Allow early exit to choice
-    if (keys['f']) {
-      // handled in keydown
+      setPrompt('←→ walk · USE near bandmates · hatch← wrap · F fly · L shed');
     }
     syncInteractBtn();
     syncHud();
@@ -2853,6 +2881,7 @@
   }
 
   function chooseLandShed() {
+    if (mode === 'bandTour') { chooseLandShedFromBandTour(); return; }
     if (mode !== 'operate') return;
     hideOperateChoice();
     Audio.play('landing');
@@ -2877,6 +2906,7 @@
     fly = null;
     flyResume = null;
     landmarkVisit = null;
+    bandTour = null;
     operate = null;
     hideOperateChoice();
     selfDestructing = false;
@@ -2896,6 +2926,7 @@
   }
 
   function chooseFlyAgainFromOperate() {
+    if (mode === 'bandTour') { chooseFlyAgainFromBandTour(); return; }
     if (mode !== 'operate') return;
     hideOperateChoice();
     Audio.play('power');
@@ -2924,6 +2955,7 @@
     else if (mode === 'fly') updateFly();
     else if (mode === 'operate') updateOperate();
     else if (mode === 'landmark') updateLandmark();
+    else if (mode === 'bandTour') updateBandTour();
 
     W.updateFx(particles, floaters);
     if (flashTimer > 0) flashTimer--;
@@ -3235,6 +3267,38 @@
         ctx.fillRect(CW / 2 - 80, 100, 160, 12);
         ctx.fillStyle = '#ff8844';
         ctx.fillRect(CW / 2 - 78, 102, 156 * prog, 8);
+        ctx.textAlign = 'left';
+      }
+    } else if (mode === 'bandTour') {
+      W.drawShipInterior(ctx, CW, CH, camX, t, {
+        bandTour: true,
+        bandTalked: bandTour ? bandTour.talked : {},
+        alienYield: 0,
+        seatTaken: false,
+      });
+      if (avatar && bandTour && bandTour.phase === 'walk') {
+        W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {});
+        const mate = nearBandMate();
+        const bob = Math.sin(t * 0.01) * 3;
+        if (mate) {
+          ctx.fillStyle = '#7dff3a';
+          ctx.font = 'bold 15px Segoe UI, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(bandTour.talked[mate.id] ? '▲ DONE' : '▲ USE', mate.x - camX, GROUND - 100 + bob);
+          ctx.textAlign = 'left';
+        } else if (avatar.x < 120) {
+          ctx.fillStyle = '#7dff3a';
+          ctx.font = 'bold 15px Segoe UI, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('▲ WRAP TOUR', 70 - camX, GROUND - 100 + bob);
+          ctx.textAlign = 'left';
+        }
+      }
+      if (bandTour && bandTour.phase === 'choice') {
+        ctx.fillStyle = '#ffe066';
+        ctx.font = 'bold 16px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('BAND TOUR WRAP — Fly again or land?', CW / 2, 88);
         ctx.textAlign = 'left';
       }
     } else if (mode === 'landmark') {
