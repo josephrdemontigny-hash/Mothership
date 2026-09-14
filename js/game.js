@@ -2541,21 +2541,21 @@
 
 
   const LANDMARK_USE_PROMPTS = {
-    clockTower: 'ring the tower bell',
-    museum: 'pocket the exhibit',
-    royalHotel: 'order KFC room service',
-    theatre: 'shred a one-bar riff',
-    fireHall: 'slide the pole / hit the bell',
-    vedderBridge: 'toss crumbs to the river',
+    clockTower: 'pull the chime rope',
+    museum: 'read the case label',
+    royalHotel: 'ring for room service',
+    theatre: 'take the stage mic',
+    fireHall: 'slide the brass pole',
+    vedderBridge: 'scatter crumbs over the rail',
   };
 
   const LANDMARK_DONE_LINERS = {
-    clockTower: 'Bell already rang — ears still ringing.',
-    museum: 'Security already knows your face.',
-    royalHotel: 'One bucket per visit. House rules.',
-    theatre: 'Encore already cashed.',
-    fireHall: 'False alarm already filed.',
-    vedderBridge: 'River took its offering. Come back next run.',
+    clockTower: 'Chimes already answered — hands still wrong.',
+    museum: 'Docent already clocked you.',
+    royalHotel: 'Kitchen closed for this visit.',
+    theatre: 'House lights already up.',
+    fireHall: 'Apparatus already mustered.',
+    vedderBridge: 'River kept what you threw.',
   };
 
 
@@ -2798,21 +2798,21 @@
     if (kind === 'clockTower') {
       score += 150;
       landmarkVisit.pendingShake = 36;
-      showFlash("Noon? It's alien o'clock.", 130);
+      showFlash("Hands wrong. Chimes right. Classic Five Corners.", 140);
       Audio.play('score');
       W.burst(particles, hx, hy, '#ffe066', 18);
       W.addFloater(floaters, hx, hy - 30, '+150 🔔', '#ffe066');
     } else if (kind === 'museum') {
       flyResume.microplastics = (flyResume.microplastics | 0) + 2;
       score += 80;
-      showFlash('Educational theft.', 120);
+      showFlash('Case 14: Microplastic of Chilliwack. Educational.', 130);
       Audio.play('score');
       W.burst(particles, hx, hy, '#9ef0ff', 16);
       W.addFloater(floaters, hx, hy - 30, '+🧪×2', '#9ef0ff');
     } else if (kind === 'royalHotel') {
       flyResume.chicken = (flyResume.chicken | 0) + 2;
       score += 90;
-      showFlash('The Royal still delivers.', 120);
+      showFlash('Room service — Wellington Ave still delivers.', 130);
       Audio.play('power');
       W.burst(particles, hx, hy, '#ffb84a', 16);
       W.addFloater(floaters, hx, hy - 30, '+🍗×2', '#ffb84a');
@@ -2820,18 +2820,18 @@
       flyResume.moonJuice = Math.max(flyResume.moonJuice | 0, 240);
       flyResume.beamWide = true;
       score += 100;
-      showFlash('Encore for the mothership.', 120);
+      showFlash("Paramount '49 — one bar for the mothership.", 130);
       Audio.play('power');
       W.burst(particles, hx, hy, '#88ffcc', 18);
       W.addFloater(floaters, hx, hy - 30, 'MOON JUICE', '#88ffcc');
     } else if (kind === 'fireHall') {
       if ((flyResume.lives | 0) < (flyResume.maxLives | 0)) {
         flyResume.lives = (flyResume.lives | 0) + 1;
-        showFlash('False alarm: aliens.', 120);
+        showFlash('False alarm on Yale — aliens on the pole.', 130);
         W.addFloater(floaters, hx, hy - 30, '+1 HULL', '#ff8866');
       } else {
         score += 60;
-        showFlash('False alarm: aliens. (Hull full)', 110);
+        showFlash('False alarm. Hull full — brass still ringing.', 120);
         W.addFloater(floaters, hx, hy - 30, '+60', '#ffcc33');
       }
       Audio.play('power');
@@ -2839,7 +2839,7 @@
     } else if (kind === 'vedderBridge') {
       score += 75;
       flyResume.forceCowSoon = true;
-      showFlash('Vedder takes another offering.', 120);
+      showFlash('Crumbs over the rail — Vedder takes its cut.', 130);
       Audio.play('score');
       W.burst(particles, hx, hy, '#9ef0ff', 14);
       W.addFloater(floaters, hx, hy - 30, '+75 🐄?', '#c8e8ff');
@@ -3509,10 +3509,10 @@
     } else if (mode === 'landmark') {
       if (landmarkVisit && landmarkVisit.phase === 'settle' && fly) {
         W.drawFlyScene(ctx, CW, CH, fly, t);
-        ctx.fillStyle = 'rgba(10,30,16,0.35)';
+        ctx.fillStyle = 'rgba(12,14,16,0.4)';
         ctx.fillRect(0, 0, CW, CH);
-        ctx.fillStyle = '#7dff3a';
-        ctx.font = 'bold 18px Segoe UI, sans-serif';
+        ctx.fillStyle = '#e0c070';
+        ctx.font = 'bold 17px Segoe UI, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('LANDING — ' + (landmarkVisit.label || ''), CW / 2, 88);
         ctx.textAlign = 'left';
@@ -3526,16 +3526,16 @@
           W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {});
           const bob = Math.sin(t * 0.01) * 3;
           if (Math.abs(avatar.x - W.LANDMARK_HOTSPOT_X) < 60) {
-            ctx.fillStyle = '#7dff3a';
-            ctx.font = 'bold 15px Segoe UI, sans-serif';
+            ctx.fillStyle = landmarkVisit.interacted ? '#a09070' : '#e0c070';
+            ctx.font = 'bold 14px Segoe UI, sans-serif';
             ctx.textAlign = 'center';
             const tip = landmarkVisit.interacted ? '▲ DONE' : '▲ USE';
             ctx.fillText(tip, W.LANDMARK_HOTSPOT_X - camX, GROUND - 110 + bob);
             ctx.textAlign = 'left';
           }
           if (Math.abs(avatar.x - W.LANDMARK_EXIT_X) < 55) {
-            ctx.fillStyle = '#88c8ff';
-            ctx.font = 'bold 15px Segoe UI, sans-serif';
+            ctx.fillStyle = '#9eb8c8';
+            ctx.font = 'bold 14px Segoe UI, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('▲ TAKEOFF', W.LANDMARK_EXIT_X - camX, GROUND - 110 + bob);
             ctx.textAlign = 'left';
