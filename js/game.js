@@ -1283,6 +1283,16 @@
     }
   }
 
+
+  const PARKED_CAR_COLS = ['#446688', '#884444', '#555', '#c4a35a', '#2a5a3a'];
+  function makeProp(x, kind) {
+    const prop = { x: x, kind: kind };
+    if (kind === 'car') {
+      prop.col = PARKED_CAR_COLS[Math.abs(x | 0) % PARKED_CAR_COLS.length];
+    }
+    return prop;
+  }
+
   function spawnProp(atX) {
     if (!fly) return;
     const kinds = districtPropKinds();
@@ -1294,7 +1304,7 @@
     for (const v of FLY_VEHICLES) {
       if (Math.abs(x0 - v.x) < 70) x0 = v.x + (x0 < v.x ? -85 : 85);
     }
-    fly.props.push({ x: x0, kind: W.pick(kinds) });
+    fly.props.push(makeProp(x0, W.pick(kinds)));
     if (Math.random() < 0.62) {
       let x1 = x0 + W.rand(28, 64);
       for (const lm of FLY_LANDMARKS) {
@@ -1303,7 +1313,7 @@
       for (const v of FLY_VEHICLES) {
         if (Math.abs(x1 - v.x) < 70) x1 = v.x + 90;
       }
-      fly.props.push({ x: x1, kind: W.pick(kinds) });
+      fly.props.push(makeProp(x1, W.pick(kinds)));
     }
   }
 

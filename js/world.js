@@ -4660,7 +4660,7 @@
     drawLandmarkLabel(ctx, cx, groundY + 14, label || 'BRAVE TOUR BUS');
   }
 
-  function drawBuilding(ctx, x, groundY, kind, label) {
+  function drawBuilding(ctx, x, groundY, kind, label, worldX, bakedCol) {
     if (kind === 'streetlight') { drawStreetlight(ctx, x, groundY); return; }
     if (kind === 'homeShed') { drawHomeShed(ctx, x, groundY, label); return; }
     if (kind === 'clockTower') { drawClockTower(ctx, x, groundY, label); return; }
@@ -4672,8 +4672,11 @@
     if (kind === 'retrofitVan') { drawRetrofitVan(ctx, x, groundY, label); return; }
     if (kind === 'braveBus') { drawBraveTourBus(ctx, x, groundY, label); return; }
     if (kind === 'car') {
+      // Color must be stable vs scroll — never hash screen x (that flashes while flying)
       const cols = ['#446688', '#884444', '#555', '#c4a35a', '#2a5a3a'];
-      drawParkedCar(ctx, x, groundY, cols[(Math.abs(x | 0) % cols.length)]);
+      const seed = worldX != null ? worldX : x;
+      const col = bakedCol || cols[(Math.abs(seed | 0) % cols.length)];
+      drawParkedCar(ctx, x, groundY, col);
       return;
     }
     if (kind === 'house') {
@@ -5147,7 +5150,7 @@
     for (const p of props) {
       const px = p.x - scrollX;
       if (px < -80 || px > w + 80) continue;
-      drawBuilding(ctx, px, groundY, p.kind, p.label);
+      drawBuilding(ctx, px, groundY, p.kind, p.label, p.x, p.col);
     }
 
     // district flavour strip
