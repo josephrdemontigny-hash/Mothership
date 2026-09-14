@@ -155,6 +155,14 @@
   const CAMINO_DOOR_DX = -42;
   /** Approx half-length for exit / bounds checks (canvas car ~380px wide) */
   const CAMINO_HALF_W = 190;
+  /** Interactive band gear in shed (world X) — game.js proximity / USE */
+  const SHED_INSTRUMENTS = [
+    { id: 'drums', x: 520, label: 'DRUMS', radius: 55 },
+    { id: 'bass', x: 760, label: 'BASS', radius: 48 },
+    { id: 'keys', x: 860, label: 'KEYS', radius: 48 },
+    // Guitar near amp; keep radius tight so stereo/joint table win when closer
+    { id: 'guitar', x: 1045, label: 'GUITAR', radius: 42 },
+  ];
   /** Side-window rect in local nose-left space — driver is clipped here */
   const CAMINO_WIN = { x: -98, y: -118, w: 88, h: 40 };
   /** Large framed backyard window on back wall (world X of glass left edge) */
@@ -616,28 +624,38 @@
     ctx.save();
     ctx.translate(hx, hy);
     ctx.rotate(ang);
-    const g = ctx.createRadialGradient(-0.6, -0.8, 0.4, 0.4, 0.2, 3.4);
+    const g = ctx.createRadialGradient(-0.5, -0.6, 0.3, 0.3, 0.15, 2.8);
     g.addColorStop(0, skinHi);
     g.addColorStop(0.55, skin);
     g.addColorStop(1, skinLo);
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.ellipse(0.6, 0.2, 2.5, 2.1, 0.15, 0, Math.PI * 2);
+    // small GO-avatar palm
+    ctx.ellipse(0.45, 0.15, 2.05, 1.75, 0.12, 0, Math.PI * 2);
     ctx.fill();
-    // finger nubs
+    // short finger nubs — never a long thick digit
     ctx.fillStyle = skin;
     for (let i = 0; i < 3; i++) {
-      const fx = 2.2 + i * 0.15;
-      const fy = -1.5 + i * 1.35;
+      const fx = 1.75 + i * 0.12;
+      const fy = -1.15 + i * 1.05;
       ctx.beginPath();
-      ctx.ellipse(fx, fy, 1.05, 0.75, 0.4, 0, Math.PI * 2);
+      ctx.ellipse(fx, fy, 0.78, 0.55, 0.35, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.fillStyle = skinLo;
     ctx.beginPath();
-    ctx.ellipse(1.4, 2.0, 1.1, 0.7, -0.5, 0, Math.PI * 2);
+    ctx.ellipse(1.1, 1.55, 0.85, 0.55, -0.45, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+  }
+
+  /** Fingertip in limb-local space (goHand fingers along handAng). */
+  function smokeHandTip(end, a2) {
+    const handAng = a2 + Math.PI / 2;
+    return {
+      lx: end.ex + Math.cos(handAng) * 2.4,
+      ly: end.ey + Math.sin(handAng) * 2.4,
+    };
   }
 
   /** Sleeve upper + shorter forearm + cuff line + hand (anti-sausage arms). */
@@ -988,6 +1006,7 @@
     }
 
     // ——— NEAR ARM ———
+    let smokeHand = null;
     {
       const sx = bodyCx + 9;
       const sy = bodyCy - 10;
@@ -1008,6 +1027,7 @@
       ctx.moveTo(sx + 2.5, sy);
       ctx.lineTo(end.jx + 1, end.jy);
       ctx.stroke();
+      if (opts.smoking) smokeHand = smokeHandTip(end, a2);
     }
 
     // ——— NECK + HEAD ———
@@ -1076,17 +1096,21 @@
       const jointLit = !!opts.jointLit;
       const puffing = !!opts.puffing && jointLit;
       const puffProg = opts.puffProg != null ? opts.puffProg : (puffing ? 1 : 0);
-      // Small joint at fingertips (no fake giant finger stroke)
-      let jx = x + f * 18 * scale;
-      let jy = y - (seated ? 28 : 34) * scale;
+      // Pin to real hand tip (GO palm) — no floating offset / no thick finger stroke
+      let jx = smokeHand ? (x + f * scale * smokeHand.lx) : (x + f * 18 * scale);
+      let jy = smokeHand ? (y + scale * smokeHand.ly) : (y - (seated ? 28 : 34) * scale);
       let jang = f > 0 ? -0.85 : Math.PI + 0.85;
       if (puffing) {
         const rise = 0.55 + puffProg * 0.45;
-        jx = x + f * (12 - 4 * rise) * scale;
-        jy = y - (48 + 18 * rise) * scale;
-        jang = f > 0 ? (-1.1 + 0.25 * rise) : (Math.PI + 1.1 - 0.25 * rise);
+        const hx0 = smokeHand ? (x + f * scale * smokeHand.lx) : (x + f * 18 * scale);
+        const hy0 = smokeHand ? (y + scale * smokeHand.ly) : (y - 34 * scale);
+        const mx = x + f * 10 * scale;
+        const my = y - 58 * scale;
+        jx = hx0 + (mx - hx0) * rise;
+        jy = hy0 + (my - hy0) * rise;
+        jang = f > 0 ? (-0.85 + 0.35 * rise) : (Math.PI + 0.85 - 0.35 * rise);
       }
-      drawJoint(ctx, jx, jy, jang, { lit: jointLit, len: 11 });
+      drawJoint(ctx, jx, jy, jang, { lit: jointLit, len: 11, lineW: 2 });
       if (puffing) {
         const mouthX = x + f * 10 * scale;
         const mouthY = y - 58 * scale;
@@ -1270,6 +1294,7 @@
     }
 
     // NEAR ARM
+    let smokeHand = null;
     {
       const sx = bodyCx + 9;
       const sy = bodyCy - 10;
@@ -1279,6 +1304,7 @@
       if (opts.smoking) { a1 = 0.55; a2 = 1.15; }
       const end = goArmLimb(ctx, sx, sy, a1, a2, 10.5, 8.0, 2.95, 2.4,
         ['#4a6a88', plaidBase, '#2a4058'], [skinHi, skin, skinLo]);
+      if (opts.smoking) smokeHand = smokeHandTip(end, a2);
     }
 
     // neck + head
@@ -1353,10 +1379,10 @@
     if (opts.smoking) {
       const jointLit = !!opts.jointLit;
       const puffing = !!opts.puffing && jointLit;
-      // Fingertip joint — no giant finger stroke
-      const jx = x + f * 18 * scale;
-      const jy = y - (seated ? 28 : 34) * scale;
-      drawJoint(ctx, jx, jy, f > 0 ? -0.85 : Math.PI + 0.85, { lit: jointLit, len: 11 });
+      // Pin to real hand tip — no giant finger stroke
+      const jx = smokeHand ? (x + f * scale * smokeHand.lx) : (x + f * 18 * scale);
+      const jy = smokeHand ? (y + scale * smokeHand.ly) : (y - (seated ? 28 : 34) * scale);
+      drawJoint(ctx, jx, jy, f > 0 ? -0.85 : Math.PI + 0.85, { lit: jointLit, len: 11, lineW: 2 });
       if (puffing) {
         drawSmokePuffs(ctx, jx + f * 6, jy - 8, t, 1.2);
       }
@@ -2972,6 +2998,38 @@
     // Cable spaghetti near amps / stereo
     drawCableSpaghetti(ctx, 1088 - camX, floorY - 2, t);
     drawCableSpaghetti(ctx, 1145 - camX, floorY - 1, t + 400);
+
+    // Instrument USE prompts + brief play pulse (game: instrumentPromptId / instrumentPulse)
+    (function drawInstrumentHotspots() {
+      const pulse = opts.instrumentPulse || null;
+      const promptId = opts.instrumentPromptId || null;
+      for (let i = 0; i < SHED_INSTRUMENTS.length; i++) {
+        const inst = SHED_INSTRUMENTS[i];
+        const sx = inst.x - camX;
+        if (pulse && pulse.id === inst.id && (pulse.frames == null || pulse.frames > 0)) {
+          const p = 0.55 + 0.45 * Math.sin((t || 0) * 0.04);
+          ctx.fillStyle = 'rgba(0,220,255,' + (0.12 + 0.14 * p) + ')';
+          ctx.beginPath();
+          ctx.ellipse(sx, floorY - 28, 36, 18, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(255,40,180,' + (0.08 + 0.1 * p) + ')';
+          ctx.beginPath();
+          ctx.ellipse(sx, floorY - 50, 22, 40, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (promptId === inst.id) {
+          const bob = Math.sin((t || 0) * 0.01) * 3;
+          ctx.fillStyle = '#1a5a1a';
+          ctx.font = 'bold 12px Segoe UI, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('▲ USE', sx, floorY - 98 + bob);
+          ctx.font = 'bold 9px Segoe UI, sans-serif';
+          ctx.fillStyle = 'rgba(20,80,40,0.85)';
+          ctx.fillText(inst.label, sx, floorY - 84 + bob);
+          ctx.textAlign = 'left';
+        }
+      }
+    })();
 
     // Stereo lives toward EXIT, a long walk from the cassette
     propAt(SHED_STEREO_X - camX, function () {
@@ -6088,6 +6146,7 @@
     SHED_CASSETTE_X,
     SHED_STEREO_X,
     SHED_CAMINO_X,
+    SHED_INSTRUMENTS,
     CAMINO_DOOR_DX,
     CAMINO_HALF_W,
     SHED_WINDOW_X,

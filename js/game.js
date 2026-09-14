@@ -107,6 +107,9 @@
   let tapeInStereo = true;
   /** Shared sesh with Tayler (press-to-advance steps) */
   let smoking = false;
+  /** Shed instrument play pulse { id, frames } */
+  let instrumentPulse = null;
+  let instrumentCooldown = 0;
   /** Overall 0..1 progress across joint stages (HUD bar) */
   let smokeProgress = 0;
   /** Finished joint + UFO land gate complete */
@@ -911,6 +914,8 @@
     boardSit = null;
     tapeInStereo = true;
     smoking = false;
+    instrumentPulse = null;
+    instrumentCooldown = 0;
     smokeProgress = 0;
     smokeDone = false;
     windowUfo = 0;
@@ -1161,6 +1166,8 @@
     avatar = null;
     tayler = null;
     smoking = false;
+    instrumentPulse = null;
+    instrumentCooldown = 0;
     smokeProgress = 0;
     smokeDone = false;
     windowUfo = 0;
@@ -1576,6 +1583,8 @@
     mode = 'title';
     tapeInStereo = true;
     smoking = false;
+    instrumentPulse = null;
+    instrumentCooldown = 0;
     smokeProgress = 0;
     smokeDone = false;
     windowUfo = 0;
@@ -1708,6 +1717,77 @@
     return Math.abs(avatar.x - tayler.x) < 72;
   }
 
+  const INSTRUMENT_GAGS = {
+    drums: [
+      'Kick hits like Vedder',
+      'Fill from the mothership',
+      'Snare cracked the shed windows',
+    ],
+    bass: [
+      'Low end from Chilliwack',
+      'Four strings, zero gravity',
+      'Bass shrugs — still in tune somehow',
+    ],
+    keys: [
+      'G chord from the mothership',
+      'Rhodes coughs neon',
+      'Pad from beyond Yale Road',
+    ],
+    guitar: [
+      'Strat coughs mothership feedback',
+      'Power chord, Paramount parking lot',
+      'Amp says yes — yellow van approved',
+    ],
+  };
+
+  /** Nearest shed instrument within its radius (no priority filters). */
+  function nearestShedInstrument() {
+    if (mode !== 'shed' || !avatar || !W.SHED_INSTRUMENTS) return null;
+    let best = null;
+    let bestD = Infinity;
+    for (let i = 0; i < W.SHED_INSTRUMENTS.length; i++) {
+      const inst = W.SHED_INSTRUMENTS[i];
+      const d = Math.abs(avatar.x - inst.x);
+      if (d < inst.radius && d < bestD) {
+        best = inst;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Instrument available for USE — loses to Tayler sesh, Camino, door.
+   * Prefer nearest hotspot when overlaps exist (guitar near amp/stereo).
+   */
+  function shedInstrumentAvailable() {
+    if (mode !== 'shed' || !avatar || drivingCamino) return null;
+    if (jointPhase === 'anim') return null;
+    if (nearTaylerSesh() || nearTaylerForPrompt()) return null;
+    if (nearCaminoDoor()) return null;
+    if (nearDoor()) return null;
+    return nearestShedInstrument();
+  }
+
+  function playShedInstrument(inst) {
+    if (!inst || instrumentCooldown > 0) return;
+    instrumentCooldown = 28;
+    instrumentPulse = { id: inst.id, frames: 36 };
+    const lines = INSTRUMENT_GAGS[inst.id] || ['Jam from the mothership'];
+    const gag = W.pick ? W.pick(lines) : lines[0];
+    showFlash(gag, 95);
+    W.addFloater(floaters, inst.x - camX, GROUND - 90, inst.label, '#7dffcc');
+    W.burst(particles, inst.x - camX, GROUND - 40, '#00d8ff', 8);
+    // Prefer dedicated tone; fall back creatively
+    if (Audio && Audio.play) {
+      Audio.play(inst.id);
+      if (inst.id === 'drums') setTimeout(() => Audio.play('power'), 40);
+      else if (inst.id === 'guitar') setTimeout(() => Audio.play('score'), 50);
+      else if (inst.id === 'keys') setTimeout(() => Audio.play('ui'), 30);
+      else if (inst.id === 'bass') setTimeout(() => Audio.play('smoke'), 60);
+    }
+  }
+
   function ufoLanded() {
     return windowUfo >= 0.98;
   }
@@ -1716,7 +1796,7 @@
     if (drivingCamino) return true;
     if (nearCaminoDoor()) return true;
     if (mode === 'shed') {
-      return nearTaylerSesh() || nearDoor();
+      return nearTaylerSesh() || nearDoor() || !!shedInstrumentAvailable();
     }
     if (mode === 'yard' && landing && landing.phase === 'landed') {
       return Math.abs(avatar.x - landing.x) < 110;
@@ -1758,6 +1838,11 @@
   // ——— Updates ———
   function updateShed() {
     updatePuffInput();
+    if (instrumentCooldown > 0) instrumentCooldown--;
+    if (instrumentPulse) {
+      instrumentPulse.frames--;
+      if (instrumentPulse.frames <= 0) instrumentPulse = null;
+    }
 
     // Easter egg: drive the gold El Camino (optional — never required)
     if (drivingCamino && camino && !camino.inYard) {
@@ -1898,6 +1983,12 @@
           enterYard();
           return;
         }
+      }
+    } else if (shedInstrumentAvailable()) {
+      const inst = shedInstrumentAvailable();
+      setPrompt('↑ / E / USE — ' + inst.label);
+      if (wantsInteract()) {
+        playShedInstrument(inst);
       }
     } else {
       prevInteractHeld = interactHeld();
@@ -3039,6 +3130,7 @@
       // Mute ashtray ambient during active unlit sesh (reads as joint smoke)
       const inUnlitSesh = !jointLit && (smoking || jointPhase === 'await' || jointPhase === 'anim');
       const shedCamino = camino && !camino.inYard;
+      const instAvail = (!drivingCamino) ? shedInstrumentAvailable() : null;
       W.drawShed(ctx, CW, CH, camX, t, {
         cassetteTaken: true,
         tapeInStereo: true,
@@ -3055,6 +3147,9 @@
         caminoWheelRot: shedCamino ? camino.wheelRot : 0,
         caminoDrawDriver: (shedCamino && drivingCamino) ? makeCaminoDriverDraw() : null,
         caminoNoLabel: !!(shedCamino && drivingCamino),
+        instrumentPromptId: instAvail ? instAvail.id : null,
+        instrumentPulse: instrumentPulse,
+        avatarX: avatar ? avatar.x : null,
       });
       // Sesh anim owns the joint prop — avoid double-drawing on characters
       const seshOwnsJoint = (jointPhase === 'anim' || ufoLanding) && !!jointStage &&

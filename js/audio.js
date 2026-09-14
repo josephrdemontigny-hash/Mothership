@@ -295,6 +295,30 @@
     smoke() {
       tone(160, 0.05, 'sine', 0.03);
     },
+    // Tiny shed instrument gags (Retrofit-ish one-shot stingers)
+    drums() {
+      tone(75, 0.07, 'sine', 0.11);
+      setTimeout(() => tone(55, 0.1, 'triangle', 0.08), 35);
+      setTimeout(() => noiseBurst(0.05, 0.04, 900, 'bandpass'), 20);
+      setTimeout(() => tone(90, 0.05, 'square', 0.04), 110);
+    },
+    bass() {
+      tone(98, 0.16, 'sawtooth', 0.07);
+      setTimeout(() => tone(73, 0.2, 'sine', 0.055), 80);
+      setTimeout(() => tone(49, 0.18, 'triangle', 0.04), 160);
+    },
+    keys() {
+      // G major-ish sparkle
+      tone(392, 0.1, 'triangle', 0.055);
+      setTimeout(() => tone(493, 0.12, 'triangle', 0.05), 60);
+      setTimeout(() => tone(587, 0.16, 'triangle', 0.045), 130);
+    },
+    guitar() {
+      tone(196, 0.07, 'sawtooth', 0.05);
+      setTimeout(() => tone(247, 0.09, 'sawtooth', 0.045), 45);
+      setTimeout(() => tone(294, 0.14, 'triangle', 0.04), 100);
+      setTimeout(() => tone(392, 0.1, 'triangle', 0.03), 180);
+    },
   };
 
   global.MothershipAudio = {
