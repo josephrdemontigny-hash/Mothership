@@ -140,10 +140,10 @@
     { id: 'rhythm', look: 'plaid', x: 820, line: 'Rhythm (cap back): "BRAVE bus still smells like Molson."' },
   ];
 
-  /** Landmark visit interiors (side-scroller rooms) */
-  const LANDMARK_WORLD_W = 780;
-  const LANDMARK_HOTSPOT_X = 420;
-  const LANDMARK_EXIT_X = 110;
+  /** Landmark visit interiors (side-scroller rooms) — denser cinematic chambers */
+  const LANDMARK_WORLD_W = 1040;
+  const LANDMARK_HOTSPOT_X = 580;
+  const LANDMARK_EXIT_X = 120;
   /** Visible cassette prop in shed (on clutter near stereo) */
   const SHED_CASSETTE_X = 600;
   const SHED_CASSETTE_Y_OFF = 42; // above floor
@@ -4692,14 +4692,14 @@
   function drawClockTower(ctx, x, groundY, label) {
     const baseW = 28;
     const cx = x + baseW / 2;
-    // stone shaft
-    ctx.fillStyle = '#c8b89a';
+    // aged limestone shaft
+    ctx.fillStyle = '#b8a888';
     ctx.fillRect(x + 6, groundY - 118, 16, 118);
     // slightly wider mid section
-    ctx.fillStyle = '#b8a888';
+    ctx.fillStyle = '#a89878';
     ctx.fillRect(x + 3, groundY - 78, 22, 28);
     // clock face block
-    ctx.fillStyle = '#d8c8a8';
+    ctx.fillStyle = '#c8b898';
     ctx.fillRect(x, groundY - 108, 28, 26);
     // clock faces (N/S readable)
     ctx.fillStyle = '#fff8e8';
@@ -4730,6 +4730,14 @@
     // door
     ctx.fillStyle = '#3a2818';
     ctx.fillRect(cx - 5, groundY - 18, 10, 18);
+    // coloured pigeon flock (public art) on ledge
+    const pcols = ['#c04050', '#3a88c0', '#d4a020'];
+    for (let i = 0; i < 3; i++) {
+      ctx.fillStyle = pcols[i];
+      ctx.beginPath();
+      ctx.ellipse(cx - 8 + i * 7, groundY - 110, 3.2, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
     drawLandmarkLabel(ctx, cx, groundY + 14, label || 'CLOCK TOWER');
   }
 
@@ -4744,8 +4752,8 @@
     ctx.fillStyle = '#b8b8b8';
     ctx.fillRect(x + 14, groundY - 20, 22, 6);
     ctx.fillRect(x + 56, groundY - 20, 22, 6);
-    // white body
-    ctx.fillStyle = '#f2efe6';
+    // Beaux-Arts cream body
+    ctx.fillStyle = '#ebe6d8';
     ctx.fillRect(x, groundY - 72, w, 52);
     // columns
     ctx.fillStyle = '#e8e4d8';
@@ -4782,10 +4790,10 @@
   function drawVedderBridge(ctx, x, groundY, label) {
     const w = 140;
     const cx = x + w / 2;
-    // water under span
-    ctx.fillStyle = '#3a8ccc';
+    // dusk water under span
+    ctx.fillStyle = '#2a6a98';
     ctx.fillRect(x + 10, groundY - 6, w - 20, 14);
-    ctx.fillStyle = 'rgba(180,230,255,0.35)';
+    ctx.fillStyle = 'rgba(200,160,100,0.25)';
     ctx.fillRect(x + 18, groundY - 2, 20, 3);
     ctx.fillRect(x + 70, groundY + 2, 28, 3);
     // deck
@@ -4822,9 +4830,9 @@
   function drawRoyalHotel(ctx, x, groundY, label) {
     const w = 78;
     const cx = x + w / 2;
-    ctx.fillStyle = '#8a4040';
+    ctx.fillStyle = '#7a3a38';
     ctx.fillRect(x, groundY - 88, w, 88);
-    ctx.fillStyle = '#6a3030';
+    ctx.fillStyle = '#5a2828';
     ctx.fillRect(x - 2, groundY - 96, w + 4, 10);
     // windows grid
     for (let r = 0; r < 4; r++) {
@@ -4850,10 +4858,10 @@
   function drawFireHall(ctx, x, groundY, label) {
     const w = 70;
     const cx = x + w / 2;
-    ctx.fillStyle = '#a03030';
+    ctx.fillStyle = '#8a3830';
     ctx.fillRect(x, groundY - 58, w, 58);
     // hose / bell tower
-    ctx.fillStyle = '#8a2828';
+    ctx.fillStyle = '#6a2824';
     ctx.fillRect(x + w - 22, groundY - 96, 18, 96);
     ctx.fillStyle = '#4a2020';
     ctx.beginPath();
@@ -4881,11 +4889,11 @@
   function drawTheatre(ctx, x, groundY, label) {
     const w = 84;
     const cx = x + w / 2;
-    // facade
-    ctx.fillStyle = '#3a3550';
+    // Streamline Moderne facade
+    ctx.fillStyle = '#3a3048';
     ctx.fillRect(x, groundY - 100, w, 100);
     // stepped top
-    ctx.fillStyle = '#2a2840';
+    ctx.fillStyle = '#2a2038';
     ctx.fillRect(x + 12, groundY - 112, w - 24, 12);
     ctx.fillRect(x + 24, groundY - 122, w - 48, 10);
     // marquee
@@ -5754,7 +5762,1089 @@
   }
 
 
-  /** Side-view Wes Anderson / clay landmark interiors — walk, USE, takeoff hatch */
+  /** Side-view cinematic landmark interiors — mature Chilliwack chambers */
+  function lmDustMotes(ctx, w, groundY, t, camX, density) {
+    density = density || 18;
+    ctx.save();
+    for (let i = 0; i < density; i++) {
+      const seed = i * 97.13;
+      const x = ((seed * 37 + t * (0.012 + (i % 5) * 0.003) - camX * 0.15) % (w + 40) + w + 40) % (w + 40) - 20;
+      const y = 56 + ((seed * 13) % (groundY - 80));
+      const a = 0.08 + ((i * 17) % 10) * 0.012;
+      const r = 0.6 + (i % 3) * 0.35;
+      ctx.fillStyle = 'rgba(255,236,200,' + a + ')';
+      ctx.beginPath();
+      ctx.arc(x, y + Math.sin(t * 0.0015 + i) * 3, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function lmSoftGrain(ctx, w, h, t) {
+    ctx.save();
+    ctx.globalAlpha = 0.035;
+    for (let i = 0; i < 40; i++) {
+      const x = ((i * 73 + (t * 0.02) | 0) % w);
+      const y = ((i * 91 + 17) % h);
+      ctx.fillStyle = (i % 2) ? '#fff8e8' : '#1a1410';
+      ctx.fillRect(x, y, 1.2, 1.2);
+    }
+    ctx.restore();
+  }
+
+  function lmLightShaft(ctx, x, y0, y1, width, alpha) {
+    ctx.save();
+    const g = ctx.createLinearGradient(x, y0, x, y1);
+    g.addColorStop(0, 'rgba(255,220,160,' + (alpha * 0.55) + ')');
+    g.addColorStop(0.55, 'rgba(255,200,130,' + (alpha * 0.18) + ')');
+    g.addColorStop(1, 'rgba(255,180,100,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(x - width * 0.35, y0);
+    ctx.lineTo(x + width * 0.35, y0);
+    ctx.lineTo(x + width, y1);
+    ctx.lineTo(x - width, y1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function lmDrawHatch(ctx, ex, groundY, t) {
+    // Mature takeoff hatch — brass frame, soft cyan glow (not arcade neon)
+    const pulse = 0.28 + Math.sin(t * 0.008) * 0.08;
+    ctx.fillStyle = '#1c2228';
+    ctx.fillRect(ex - 30, groundY - 100, 60, 100);
+    // inner portal
+    const portal = ctx.createLinearGradient(ex, groundY - 96, ex, groundY - 20);
+    portal.addColorStop(0, '#6aa8c8');
+    portal.addColorStop(0.5, '#3a7088');
+    portal.addColorStop(1, '#1a3040');
+    ctx.fillStyle = portal;
+    ctx.globalAlpha = 0.55 + pulse * 0.35;
+    ctx.fillRect(ex - 22, groundY - 90, 44, 74);
+    ctx.globalAlpha = 1;
+    // soft cyan rim
+    ctx.strokeStyle = 'rgba(140,200,220,' + (0.45 + pulse) + ')';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(ex - 30, groundY - 100, 60, 100);
+    // brass corner plates
+    ctx.fillStyle = '#8a7040';
+    ctx.fillRect(ex - 32, groundY - 102, 10, 6);
+    ctx.fillRect(ex + 22, groundY - 102, 10, 6);
+    ctx.fillRect(ex - 32, groundY - 8, 10, 6);
+    ctx.fillRect(ex + 22, groundY - 8, 10, 6);
+    ctx.fillStyle = 'rgba(220,200,150,0.75)';
+    ctx.font = 'bold 8px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('TAKEOFF', ex, groundY - 104);
+    ctx.fillText('HATCH', ex, groundY - 94);
+    // threshold plate
+    ctx.fillStyle = '#3a4248';
+    ctx.beginPath();
+    ctx.moveTo(ex - 36, groundY);
+    ctx.lineTo(ex + 36, groundY);
+    ctx.lineTo(ex + 22, groundY + 10);
+    ctx.lineTo(ex - 22, groundY + 10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(180,160,100,0.35)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  function lmHotGlow(ctx, x, y, t, interacted, col) {
+    ctx.save();
+    const base = interacted ? 0.18 : (0.38 + Math.sin(t * 0.01) * 0.12);
+    ctx.globalAlpha = base;
+    ctx.fillStyle = col || 'rgba(220,170,80,0.9)';
+    ctx.beginPath();
+    ctx.ellipse(x, y, 40, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function lmTitleBanner(ctx, w, title) {
+    ctx.fillStyle = 'rgba(12,14,16,0.72)';
+    ctx.font = 'bold 12px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    const tw = ctx.measureText(title).width;
+    const bx = w / 2 - tw / 2 - 16;
+    ctx.fillRect(bx, 12, tw + 32, 26);
+    ctx.strokeStyle = 'rgba(180,150,90,0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(bx, 12, tw + 32, 26);
+    ctx.fillStyle = '#e8dcc0';
+    ctx.fillText(title, w / 2, 30);
+    ctx.textAlign = 'left';
+  }
+
+  function drawClockTowerInteriorRoom(ctx, w, h, camX, t, groundY, hx, interacted) {
+    // Tall stone/metal shaft — dusty limestone + aged steel ribs
+    const wall = ctx.createLinearGradient(0, 40, 0, groundY);
+    wall.addColorStop(0, '#6a6258');
+    wall.addColorStop(0.35, '#8a7e6e');
+    wall.addColorStop(0.7, '#7a6e5e');
+    wall.addColorStop(1, '#5a5044');
+    ctx.fillStyle = wall;
+    ctx.fillRect(0, 48, w, groundY - 48);
+
+    // Vertical steel ribs / cable conduit
+    for (let i = 0; i < 8; i++) {
+      const rx = 80 + i * 120 - (camX * 0.08) % 120;
+      ctx.fillStyle = 'rgba(40,36,30,0.35)';
+      ctx.fillRect(rx, 52, 4, groundY - 56);
+      ctx.fillStyle = 'rgba(160,150,130,0.12)';
+      ctx.fillRect(rx + 1, 52, 1, groundY - 56);
+    }
+    // Horizontal catwalk ledges
+    ctx.fillStyle = '#4a453c';
+    ctx.fillRect(0, groundY - 168, w, 6);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(0, groundY - 162, w, 3);
+    // rivets on ledge
+    ctx.fillStyle = '#8a7a58';
+    for (let x = 40; x < w; x += 48) {
+      ctx.beginPath();
+      ctx.arc(x - (camX * 0.05) % 48, groundY - 165, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Arched windows — dusk Five Corners street outside
+    const winYs = [groundY - 250, groundY - 250];
+    const winXs = [hx - 220, hx + 160];
+    for (let wi = 0; wi < 2; wi++) {
+      const wx = winXs[wi] - camX * 0.02;
+      const wy = winYs[wi];
+      const ww = 70;
+      const wh = 95;
+      // arch frame
+      ctx.fillStyle = '#3a342c';
+      ctx.beginPath();
+      ctx.moveTo(wx, wy + wh);
+      ctx.lineTo(wx, wy + 28);
+      ctx.quadraticCurveTo(wx + ww / 2, wy - 8, wx + ww, wy + 28);
+      ctx.lineTo(wx + ww, wy + wh);
+      ctx.closePath();
+      ctx.fill();
+      // glass / dusk sky
+      const dusk = ctx.createLinearGradient(wx, wy, wx, wy + wh);
+      dusk.addColorStop(0, '#4a2a48');
+      dusk.addColorStop(0.4, '#c85838');
+      dusk.addColorStop(0.75, '#e88848');
+      dusk.addColorStop(1, '#3a4858');
+      ctx.fillStyle = dusk;
+      ctx.beginPath();
+      ctx.moveTo(wx + 5, wy + wh - 2);
+      ctx.lineTo(wx + 5, wy + 30);
+      ctx.quadraticCurveTo(wx + ww / 2, wy + 2, wx + ww - 5, wy + 30);
+      ctx.lineTo(wx + ww - 5, wy + wh - 2);
+      ctx.closePath();
+      ctx.fill();
+      // Cheam hint far left of left window
+      if (wi === 0) {
+        ctx.fillStyle = 'rgba(18,16,28,0.75)';
+        ctx.beginPath();
+        ctx.moveTo(wx + 6, wy + wh - 4);
+        ctx.lineTo(wx + 10, wy + 55);
+        ctx.lineTo(wx + 22, wy + 42);
+        ctx.lineTo(wx + 34, wy + 58);
+        ctx.lineTo(wx + 40, wy + wh - 4);
+        ctx.fill();
+      }
+      // Yale Rd street suggestion + warm windows
+      ctx.fillStyle = 'rgba(30,34,42,0.85)';
+      ctx.fillRect(wx + 8, wy + wh - 28, ww - 16, 24);
+      ctx.fillStyle = 'rgba(255,180,80,0.55)';
+      for (let b = 0; b < 4; b++) {
+        ctx.fillRect(wx + 12 + b * 12, wy + wh - 22, 5, 6);
+      }
+      // street lamp glow
+      ctx.fillStyle = 'rgba(255,200,100,0.25)';
+      ctx.beginPath();
+      ctx.arc(wx + ww / 2, wy + wh - 30, 14, 0, Math.PI * 2);
+      ctx.fill();
+      // mullion
+      ctx.strokeStyle = 'rgba(60,50,40,0.7)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(wx + ww / 2, wy + 18);
+      ctx.lineTo(wx + ww / 2, wy + wh - 2);
+      ctx.moveTo(wx + 5, wy + 55);
+      ctx.lineTo(wx + ww - 5, wy + 55);
+      ctx.stroke();
+      lmLightShaft(ctx, wx + ww / 2, wy + 20, groundY, 55, 0.22);
+    }
+
+    // Worn concrete floor
+    const floorG = ctx.createLinearGradient(0, groundY, 0, h);
+    floorG.addColorStop(0, '#5a5448');
+    floorG.addColorStop(0.15, '#3e3830');
+    floorG.addColorStop(1, '#1a1814');
+    ctx.fillStyle = floorG;
+    ctx.fillRect(0, groundY, w, h - groundY);
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+    ctx.lineWidth = 1;
+    for (let x = -((camX | 0) % 56); x < w; x += 56) {
+      ctx.beginPath();
+      ctx.moveTo(x, groundY + 1);
+      ctx.lineTo(x + 18, h);
+      ctx.stroke();
+    }
+    // oil stains
+    ctx.fillStyle = 'rgba(20,18,14,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(hx - 40, groundY + 18, 50, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Large brass gear assembly (left of hotspot)
+    const gx = hx - 90;
+    const gy = groundY - 95;
+    function gear(cx, cy, r, teeth, rot, col) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(rot);
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      for (let i = 0; i < teeth; i++) {
+        const a0 = (i / teeth) * Math.PI * 2;
+        const a1 = a0 + Math.PI / teeth;
+        ctx.lineTo(Math.cos(a0) * r, Math.sin(a0) * r);
+        ctx.lineTo(Math.cos(a0 + 0.08) * (r + 7), Math.sin(a0 + 0.08) * (r + 7));
+        ctx.lineTo(Math.cos(a1 - 0.08) * (r + 7), Math.sin(a1 - 0.08) * (r + 7));
+        ctx.lineTo(Math.cos(a1) * r, Math.sin(a1) * r);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#2a2418';
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.28, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#c4a060';
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    gear(gx, gy, 42, 12, t * 0.0004, '#8a6a38');
+    gear(gx + 58, gy + 28, 28, 10, -t * 0.0006, '#a08048');
+    gear(gx + 30, gy - 38, 18, 8, t * 0.0009, '#6a5030');
+    // gear shadow / depth ring
+    ctx.strokeStyle = 'rgba(40,30,18,0.5)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(gx, gy, 44, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Pendulum
+    const pendX = hx - 20;
+    const swing = Math.sin(t * 0.0022) * 18;
+    ctx.strokeStyle = '#5a4a30';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(pendX, groundY - 200);
+    ctx.lineTo(pendX + swing, groundY - 55);
+    ctx.stroke();
+    const bobG = ctx.createRadialGradient(pendX + swing, groundY - 48, 2, pendX + swing, groundY - 48, 16);
+    bobG.addColorStop(0, '#d4b070');
+    bobG.addColorStop(0.6, '#8a6838');
+    bobG.addColorStop(1, '#3a2810');
+    ctx.fillStyle = bobG;
+    ctx.beginPath();
+    ctx.ellipse(pendX + swing, groundY - 48, 14, 18, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Clock face from inside (hands WRONG — local gag)
+    const faceX = hx + 70;
+    const faceY = groundY - 130;
+    ctx.fillStyle = '#2a241c';
+    ctx.fillRect(faceX - 48, faceY - 48, 96, 96);
+    ctx.fillStyle = '#f0e8d0';
+    ctx.beginPath();
+    ctx.arc(faceX, faceY, 40, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#6a5030';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    // hour marks
+    ctx.strokeStyle = '#3a3020';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+      ctx.beginPath();
+      ctx.moveTo(faceX + Math.cos(a) * 32, faceY + Math.sin(a) * 32);
+      ctx.lineTo(faceX + Math.cos(a) * 38, faceY + Math.sin(a) * 38);
+      ctx.stroke();
+    }
+    // WRONG hands: hour ~2:40, minute pointing nearly up-left — famously incorrect
+    ctx.strokeStyle = '#1a1410';
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(faceX, faceY);
+    ctx.lineTo(faceX + 22, faceY - 6); // hour askew
+    ctx.moveTo(faceX, faceY);
+    ctx.lineTo(faceX - 8, faceY - 28); // minute wrong
+    ctx.stroke();
+    ctx.fillStyle = '#8a3030';
+    ctx.beginPath();
+    ctx.arc(faceX, faceY, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    // small plaque under face
+    ctx.fillStyle = 'rgba(30,24,18,0.7)';
+    ctx.font = 'bold 7px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('HANDS: DEBATABLE', faceX, faceY + 56);
+
+    // Bronze dedication plaque
+    const px = hx - 200;
+    const py = groundY - 70;
+    ctx.fillStyle = '#6a4a28';
+    ctx.fillRect(px, py, 110, 42);
+    ctx.strokeStyle = '#c4a060';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(px, py, 110, 42);
+    ctx.fillStyle = '#e8d4a0';
+    ctx.font = 'bold 8px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('MILLENNIUM', px + 55, py + 14);
+    ctx.fillText('CLOCK TOWER · 2002', px + 55, py + 26);
+    ctx.font = '7px Segoe UI, sans-serif';
+    ctx.fillStyle = '#c8b080';
+    ctx.fillText('FIVE CORNERS', px + 55, py + 37);
+
+    // Coloured pigeons on ledge / sill (public art flock)
+    const pigeonColors = ['#c04050', '#3a88c0', '#d4a020', '#5a9860', '#8a50a0'];
+    for (let i = 0; i < 5; i++) {
+      const pxi = hx - 160 + i * 28 + Math.sin(t * 0.001 + i) * 2;
+      const pyi = groundY - 178 + (i % 2) * 3;
+      ctx.fillStyle = pigeonColors[i];
+      ctx.beginPath();
+      ctx.ellipse(pxi, pyi, 7, 4.5, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(pxi + 6, pyi - 2, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(pxi + 8, pyi - 3, 3, 1);
+      // tiny feet
+      ctx.strokeStyle = '#3a3020';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pxi - 2, pyi + 4);
+      ctx.lineTo(pxi - 2, pyi + 7);
+      ctx.moveTo(pxi + 2, pyi + 4);
+      ctx.lineTo(pxi + 2, pyi + 7);
+      ctx.stroke();
+    }
+
+    // Bell rope / chime hammer USE hotspot — mature brass, not cartoon bell
+    const bx = hx + 10;
+    const by = groundY - 8;
+    // hammer arm
+    ctx.fillStyle = '#5a4a32';
+    ctx.fillRect(bx - 4, groundY - 120, 8, 70);
+    // brass hammer head
+    const hamm = ctx.createLinearGradient(bx - 18, groundY - 55, bx + 18, groundY - 35);
+    hamm.addColorStop(0, '#c4a060');
+    hamm.addColorStop(0.5, '#8a6838');
+    hamm.addColorStop(1, '#4a3820');
+    ctx.fillStyle = hamm;
+    ctx.beginPath();
+    ctx.ellipse(bx, groundY - 48, 20, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,220,160,0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // rope
+    ctx.strokeStyle = interacted ? '#6a5840' : '#a88858';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(bx + 18, groundY - 48);
+    ctx.quadraticCurveTo(bx + 36, groundY - 24, bx + 28, groundY - 2);
+    ctx.stroke();
+    // rope knot / pull handle
+    ctx.fillStyle = interacted ? '#5a4030' : '#8a6040';
+    ctx.beginPath();
+    ctx.arc(bx + 28, groundY - 4, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#c4a070';
+    ctx.beginPath();
+    ctx.arc(bx + 28, groundY - 5, 3, 0, Math.PI * 2);
+    ctx.fill();
+    // small chime plate above
+    ctx.fillStyle = '#9a7a48';
+    ctx.fillRect(bx - 28, groundY - 128, 56, 10);
+    ctx.fillStyle = 'rgba(255,230,180,0.2)';
+    ctx.fillRect(bx - 26, groundY - 126, 52, 3);
+    if (!interacted) {
+      ctx.fillStyle = 'rgba(220,180,100,0.7)';
+      ctx.font = 'bold 8px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('CHIME', bx + 28, groundY - 18);
+    }
+    lmHotGlow(ctx, bx + 28, groundY, t, interacted, 'rgba(220,170,80,0.95)');
+
+    lmDustMotes(ctx, w, groundY, t, camX, 22);
+    lmSoftGrain(ctx, w, h, t);
+  }
+
+  function drawMuseumInteriorRoom(ctx, w, h, camX, t, groundY, hx, interacted) {
+    const wall = ctx.createLinearGradient(0, 40, 0, groundY);
+    wall.addColorStop(0, '#e8e2d4');
+    wall.addColorStop(0.5, '#d8d0c0');
+    wall.addColorStop(1, '#c8bfae');
+    ctx.fillStyle = wall;
+    ctx.fillRect(0, 48, w, groundY - 48);
+
+    // Cornice
+    ctx.fillStyle = '#f4f0e6';
+    ctx.fillRect(0, 48, w, 14);
+    ctx.fillStyle = 'rgba(0,0,0,0.08)';
+    ctx.fillRect(0, 60, w, 4);
+
+    // Pilasters / columns
+    for (let i = 0; i < 5; i++) {
+      const cx = 100 + i * 200 - (camX * 0.05) % 40;
+      ctx.fillStyle = '#f0ebe0';
+      ctx.fillRect(cx, 68, 18, groundY - 72);
+      ctx.fillStyle = '#fffaf2';
+      ctx.fillRect(cx + 3, 68, 5, groundY - 72);
+      // capital
+      ctx.fillStyle = '#e8e0d0';
+      ctx.fillRect(cx - 4, 64, 26, 10);
+      ctx.fillStyle = '#d0c8b8';
+      ctx.fillRect(cx - 2, groundY - 8, 22, 8);
+    }
+
+    // Wood floor
+    const floorG = ctx.createLinearGradient(0, groundY, 0, h);
+    floorG.addColorStop(0, '#8a6a40');
+    floorG.addColorStop(0.2, '#6a5030');
+    floorG.addColorStop(1, '#2a2010');
+    ctx.fillStyle = floorG;
+    ctx.fillRect(0, groundY, w, h - groundY);
+    ctx.strokeStyle = 'rgba(40,28,12,0.25)';
+    for (let x = -((camX | 0) % 36); x < w; x += 36) {
+      ctx.beginPath();
+      ctx.moveTo(x, groundY);
+      ctx.lineTo(x + 10, h);
+      ctx.stroke();
+    }
+
+    // Soft museum spotlights
+    for (let i = 0; i < 4; i++) {
+      const sx = 180 + i * 220;
+      lmLightShaft(ctx, sx - camX * 0.03, 70, groundY, 70, 0.14);
+    }
+
+    // Wall text: Former City Hall
+    ctx.fillStyle = 'rgba(40,36,30,0.75)';
+    ctx.font = 'bold 11px Segoe UI, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('FORMER CITY HALL  ·  SPADINA AVE', 160, 100);
+    ctx.font = '9px Segoe UI, sans-serif';
+    ctx.fillStyle = 'rgba(60,50,40,0.55)';
+    ctx.fillText('Fraser Valley heritage gallery', 160, 114);
+
+    // Photo of Cheam on wall
+    const phx = hx - 210;
+    ctx.fillStyle = '#3a342c';
+    ctx.fillRect(phx, groundY - 140, 72, 58);
+    ctx.fillStyle = '#8aa0b8';
+    ctx.fillRect(phx + 4, groundY - 136, 64, 50);
+    ctx.fillStyle = '#2a3040';
+    ctx.beginPath();
+    ctx.moveTo(phx + 8, groundY - 90);
+    ctx.lineTo(phx + 20, groundY - 118);
+    ctx.lineTo(phx + 36, groundY - 108);
+    ctx.lineTo(phx + 50, groundY - 124);
+    ctx.lineTo(phx + 66, groundY - 90);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = '6px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('MT. CHEAM', phx + 36, groundY - 78);
+
+    // Glass cases
+    function glassCase(cx, label1, label2, artifactDraw) {
+      ctx.fillStyle = '#2a3038';
+      ctx.fillRect(cx - 42, groundY - 6, 84, 6);
+      ctx.fillStyle = '#4a4030';
+      ctx.fillRect(cx - 40, groundY - 12, 80, 8);
+      // glass
+      const glass = ctx.createLinearGradient(cx - 38, groundY - 100, cx + 38, groundY - 20);
+      glass.addColorStop(0, 'rgba(180,210,230,0.18)');
+      glass.addColorStop(0.5, 'rgba(200,220,240,0.28)');
+      glass.addColorStop(1, 'rgba(160,190,210,0.15)');
+      ctx.fillStyle = glass;
+      ctx.fillRect(cx - 38, groundY - 100, 76, 88);
+      ctx.strokeStyle = 'rgba(120,140,160,0.55)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cx - 38, groundY - 100, 76, 88);
+      // highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.fillRect(cx - 34, groundY - 96, 8, 78);
+      if (artifactDraw) artifactDraw();
+      ctx.fillStyle = '#d8d0c0';
+      ctx.font = 'bold 7px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(label1, cx, groundY - 108);
+      ctx.font = '6px Segoe UI, sans-serif';
+      ctx.fillStyle = 'rgba(200,190,170,0.7)';
+      ctx.fillText(label2, cx, groundY - 98);
+    }
+
+    glassCase(hx - 100, 'SETTLER PLOUGH', 'c. 1890', function () {
+      ctx.strokeStyle = '#6a5030';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(hx - 120, groundY - 45);
+      ctx.lineTo(hx - 80, groundY - 55);
+      ctx.lineTo(hx - 75, groundY - 40);
+      ctx.stroke();
+    });
+
+    // Hotspot case — microplastic of Chilliwack (museum label comedy)
+    glassCase(hx, 'CASE 14', 'Valley residue', function () {
+      ctx.fillStyle = interacted ? '#5a7078' : '#7ec8d8';
+      ctx.beginPath();
+      ctx.arc(hx, groundY - 55, 11, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.beginPath();
+      ctx.arc(hx - 3, groundY - 58, 3, 0, Math.PI * 2);
+      ctx.fill();
+      // museum label card
+      ctx.fillStyle = '#f4f0e4';
+      ctx.fillRect(hx - 34, groundY - 36, 68, 22);
+      ctx.fillStyle = '#3a3428';
+      ctx.font = 'bold 6px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Microplastic of', hx, groundY - 26);
+      ctx.fillText('Chilliwack', hx, groundY - 18);
+    });
+
+    glassCase(hx + 110, 'SALMON WEIR', 'Stó:lō', function () {
+      ctx.strokeStyle = '#8a7050';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath();
+        ctx.moveTo(hx + 90 + i * 8, groundY - 70);
+        ctx.lineTo(hx + 95 + i * 8, groundY - 40);
+        ctx.stroke();
+      }
+    });
+
+    lmHotGlow(ctx, hx, groundY, t, interacted, 'rgba(150,200,220,0.85)');
+    lmDustMotes(ctx, w, groundY, t, camX, 12);
+    lmSoftGrain(ctx, w, h, t);
+  }
+
+  function drawRoyalHotelInteriorRoom(ctx, w, h, camX, t, groundY, hx, interacted) {
+    // Dim lobby — dark wood, velvet shadows
+    const wall = ctx.createLinearGradient(0, 40, 0, groundY);
+    wall.addColorStop(0, '#3a2428');
+    wall.addColorStop(0.4, '#4a2c30');
+    wall.addColorStop(1, '#2a181c');
+    ctx.fillStyle = wall;
+    ctx.fillRect(0, 48, w, groundY - 48);
+
+    // Wainscot
+    ctx.fillStyle = '#2a1c18';
+    ctx.fillRect(0, groundY - 90, w, 90);
+    ctx.fillStyle = '#3a2820';
+    ctx.fillRect(0, groundY - 90, w, 6);
+    ctx.strokeStyle = 'rgba(180,140,80,0.2)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < w; x += 40) {
+      ctx.beginPath();
+      ctx.moveTo(x, groundY - 84);
+      ctx.lineTo(x, groundY);
+      ctx.stroke();
+    }
+
+    // Wallpaper stripe above
+    ctx.strokeStyle = 'rgba(120,60,70,0.25)';
+    for (let x = 0; x < w; x += 18) {
+      ctx.beginPath();
+      ctx.moveTo(x, 52);
+      ctx.lineTo(x, groundY - 90);
+      ctx.stroke();
+    }
+
+    // Floor — worn carpet
+    const floorG = ctx.createLinearGradient(0, groundY, 0, h);
+    floorG.addColorStop(0, '#4a2830');
+    floorG.addColorStop(0.3, '#2a181e');
+    floorG.addColorStop(1, '#120c10');
+    ctx.fillStyle = floorG;
+    ctx.fillRect(0, groundY, w, h - groundY);
+    // runner
+    ctx.fillStyle = 'rgba(100,40,50,0.45)';
+    ctx.fillRect(w * 0.2, groundY, w * 0.45, h - groundY);
+    ctx.fillStyle = 'rgba(180,140,60,0.15)';
+    ctx.fillRect(w * 0.2, groundY, 4, h - groundY);
+    ctx.fillRect(w * 0.65, groundY, 4, h - groundY);
+
+    // Brass wall sconce lamps
+    for (let i = 0; i < 3; i++) {
+      const lx = 200 + i * 280;
+      ctx.fillStyle = '#8a7040';
+      ctx.fillRect(lx - 3, groundY - 150, 6, 20);
+      ctx.beginPath();
+      ctx.arc(lx, groundY - 155, 8, 0, Math.PI * 2);
+      ctx.fill();
+      const glow = ctx.createRadialGradient(lx, groundY - 140, 2, lx, groundY - 140, 50);
+      glow.addColorStop(0, 'rgba(255,200,120,0.35)');
+      glow.addColorStop(1, 'rgba(255,160,80,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(lx, groundY - 140, 50, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Check-in desk
+    const dx = hx - 40;
+    ctx.fillStyle = '#3a2818';
+    ctx.fillRect(dx - 70, groundY - 58, 160, 58);
+    ctx.fillStyle = '#5a4030';
+    ctx.fillRect(dx - 74, groundY - 64, 168, 10);
+    ctx.fillStyle = '#8a6a40';
+    ctx.fillRect(dx - 70, groundY - 64, 160, 3);
+    // desk lamp
+    ctx.fillStyle = '#c4a060';
+    ctx.fillRect(dx - 50, groundY - 88, 4, 24);
+    ctx.beginPath();
+    ctx.moveTo(dx - 58, groundY - 88);
+    ctx.lineTo(dx - 42, groundY - 88);
+    ctx.lineTo(dx - 48, groundY - 78);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,200,120,0.4)';
+    ctx.beginPath();
+    ctx.arc(dx - 48, groundY - 70, 20, 0, Math.PI * 2);
+    ctx.fill();
+    // room keys on board
+    ctx.fillStyle = '#2a2018';
+    ctx.fillRect(dx + 40, groundY - 120, 50, 50);
+    ctx.fillStyle = '#c4a060';
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) {
+        ctx.fillRect(dx + 46 + c * 14, groundY - 112 + r * 14, 8, 3);
+        ctx.beginPath();
+        ctx.arc(dx + 50 + c * 14, groundY - 106 + r * 14, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.fillStyle = '#d8c090';
+    ctx.font = 'bold 8px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('ROYAL · 1909', dx + 10, groundY - 42);
+    ctx.font = '7px Segoe UI, sans-serif';
+    ctx.fillStyle = 'rgba(200,180,140,0.6)';
+    ctx.fillText('WELLINGTON AVE', dx + 10, groundY - 30);
+
+    // Beer-parlour doorway
+    ctx.fillStyle = '#1a1010';
+    ctx.fillRect(hx + 160, groundY - 110, 50, 110);
+    ctx.fillStyle = 'rgba(180,100,40,0.25)';
+    ctx.fillRect(hx + 166, groundY - 100, 38, 90);
+    ctx.fillStyle = '#8a7040';
+    ctx.font = 'bold 7px Segoe UI, sans-serif';
+    ctx.fillText('PARLOUR', hx + 185, groundY - 114);
+
+    // Framed B&W lobby photo
+    ctx.fillStyle = '#2a2018';
+    ctx.fillRect(hx - 220, groundY - 150, 64, 50);
+    ctx.fillStyle = '#8a8880';
+    ctx.fillRect(hx - 216, groundY - 146, 56, 42);
+    ctx.fillStyle = '#4a4840';
+    ctx.fillRect(hx - 210, groundY - 130, 44, 20);
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = '5px Segoe UI, sans-serif';
+    ctx.fillText('LOBBY · BERRY ERA', hx - 188, groundY - 96);
+
+    // Room-service cart USE — KFC gag, hotel realism
+    const cx = hx + 70;
+    ctx.fillStyle = interacted ? '#4a4030' : '#5a5040';
+    ctx.fillRect(cx - 28, groundY - 42, 56, 28);
+    ctx.fillStyle = '#3a3428';
+    ctx.fillRect(cx - 30, groundY - 46, 60, 6);
+    // cloche / bucket suggestion
+    ctx.fillStyle = interacted ? '#6a5840' : '#c49040';
+    ctx.beginPath();
+    ctx.ellipse(cx, groundY - 52, 14, 10, 0, Math.PI, 0);
+    ctx.fill();
+    ctx.fillStyle = interacted ? '#5a4830' : '#a07030';
+    ctx.fillRect(cx - 12, groundY - 52, 24, 8);
+    // wheels
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.arc(cx - 18, groundY - 2, 5, 0, Math.PI * 2);
+    ctx.arc(cx + 18, groundY - 2, 5, 0, Math.PI * 2);
+    ctx.fill();
+    // napkin / lid sheen
+    ctx.fillStyle = 'rgba(255,240,200,0.2)';
+    ctx.fillRect(cx - 8, groundY - 58, 6, 4);
+    if (!interacted) {
+      ctx.fillStyle = 'rgba(220,180,100,0.65)';
+      ctx.font = 'bold 7px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('SERVICE', cx, groundY - 66);
+    }
+    lmHotGlow(ctx, cx, groundY, t, interacted, 'rgba(220,160,80,0.9)');
+    lmSoftGrain(ctx, w, h, t);
+  }
+
+  function drawTheatreInteriorRoom(ctx, w, h, camX, t, groundY, hx, interacted) {
+    // Art-deco auditorium — burgundy / gold
+    const wall = ctx.createLinearGradient(0, 40, 0, groundY);
+    wall.addColorStop(0, '#2a1828');
+    wall.addColorStop(0.5, '#3a2030');
+    wall.addColorStop(1, '#1a1018');
+    ctx.fillStyle = wall;
+    ctx.fillRect(0, 48, w, groundY - 48);
+
+    // Curved wall suggestion (arches)
+    ctx.strokeStyle = 'rgba(180,140,60,0.25)';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 6; i++) {
+      const ax = 60 + i * 160;
+      ctx.beginPath();
+      ctx.moveTo(ax, groundY);
+      ctx.quadraticCurveTo(ax + 50, groundY - 180, ax + 100, groundY);
+      ctx.stroke();
+    }
+
+    // Proscenium
+    ctx.fillStyle = '#1a0c14';
+    ctx.fillRect(hx - 160, groundY - 200, 320, 200);
+    // gold frame
+    ctx.strokeStyle = '#a88840';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(hx - 150, groundY - 190, 300, 180);
+    ctx.strokeStyle = 'rgba(220,180,100,0.35)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(hx - 144, groundY - 184, 288, 168);
+    // curtain
+    const curt = ctx.createLinearGradient(hx - 140, 0, hx + 140, 0);
+    curt.addColorStop(0, '#6a1830');
+    curt.addColorStop(0.5, '#881828');
+    curt.addColorStop(1, '#5a1428');
+    ctx.fillStyle = curt;
+    ctx.fillRect(hx - 140, groundY - 180, 280, 120);
+    // curtain folds
+    ctx.strokeStyle = 'rgba(40,8,16,0.35)';
+    for (let i = 0; i < 14; i++) {
+      const fx = hx - 130 + i * 20;
+      ctx.beginPath();
+      ctx.moveTo(fx, groundY - 180);
+      ctx.quadraticCurveTo(fx + 8, groundY - 120, fx, groundY - 60);
+      ctx.stroke();
+    }
+    // soft marquee glow above proscenium
+    const mg = ctx.createRadialGradient(hx, groundY - 200, 4, hx, groundY - 190, 120);
+    mg.addColorStop(0, 'rgba(255,200,100,0.35)');
+    mg.addColorStop(1, 'rgba(255,160,60,0)');
+    ctx.fillStyle = mg;
+    ctx.fillRect(hx - 160, groundY - 230, 320, 50);
+    ctx.fillStyle = '#c4a050';
+    ctx.font = 'bold 10px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('PARAMOUNT  ·  1949', hx, groundY - 198);
+
+    // Velvet seats (rows)
+    for (let row = 0; row < 3; row++) {
+      const ry = groundY - 8 - row * 14;
+      for (let s = 0; s < 10; s++) {
+        const sx = hx - 200 + s * 42 + row * 6;
+        ctx.fillStyle = row === 1 ? '#6a2038' : '#4a1828';
+        ctx.fillRect(sx, ry - 18, 28, 18);
+        ctx.fillStyle = '#3a1020';
+        ctx.fillRect(sx + 2, ry - 22, 24, 6);
+      }
+    }
+
+    // Floor
+    ctx.fillStyle = '#1a1018';
+    ctx.fillRect(0, groundY, w, h - groundY);
+    ctx.fillStyle = 'rgba(180,140,60,0.08)';
+    ctx.fillRect(hx - 80, groundY, 160, h - groundY);
+
+    // Stage floor lip
+    ctx.fillStyle = '#3a2a18';
+    ctx.fillRect(hx - 140, groundY - 22, 280, 14);
+    ctx.fillStyle = '#5a4030';
+    ctx.fillRect(hx - 140, groundY - 24, 280, 4);
+
+    // Mic on stand USE
+    ctx.fillStyle = '#4a4a50';
+    ctx.fillRect(hx - 2, groundY - 70, 4, 50);
+    ctx.fillStyle = interacted ? '#5a5a60' : '#c8c8d0';
+    ctx.beginPath();
+    ctx.ellipse(hx, groundY - 78, 9, 13, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#2a2a2e';
+    ctx.fillRect(hx - 3, groundY - 72, 6, 4);
+    // base
+    ctx.fillStyle = '#3a3a40';
+    ctx.beginPath();
+    ctx.ellipse(hx, groundY - 18, 14, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (!interacted) {
+      ctx.fillStyle = 'rgba(200,180,120,0.6)';
+      ctx.font = 'bold 7px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('MIC', hx, groundY - 92);
+    }
+    lmHotGlow(ctx, hx, groundY, t, interacted, 'rgba(180,220,200,0.75)');
+    lmSoftGrain(ctx, w, h, t);
+  }
+
+  function drawFireHallInteriorRoom(ctx, w, h, camX, t, groundY, hx, interacted) {
+    // Apparatus bay
+    const wall = ctx.createLinearGradient(0, 40, 0, groundY);
+    wall.addColorStop(0, '#6a5048');
+    wall.addColorStop(0.5, '#5a4038');
+    wall.addColorStop(1, '#4a3028');
+    ctx.fillStyle = wall;
+    ctx.fillRect(0, 48, w, groundY - 48);
+
+    // Brick pattern
+    ctx.strokeStyle = 'rgba(40,24,20,0.25)';
+    ctx.lineWidth = 1;
+    for (let row = 0; row < 14; row++) {
+      const oy = 56 + row * 14;
+      const off = (row % 2) * 18;
+      for (let x = -20 + off; x < w; x += 36) {
+        ctx.strokeRect(x, oy, 34, 12);
+      }
+    }
+
+    // Polished concrete floor
+    const floorG = ctx.createLinearGradient(0, groundY, 0, h);
+    floorG.addColorStop(0, '#7a7870');
+    floorG.addColorStop(0.2, '#5a5850');
+    floorG.addColorStop(1, '#2a2824');
+    ctx.fillStyle = floorG;
+    ctx.fillRect(0, groundY, w, h - groundY);
+    // floor shine
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    ctx.fillRect(0, groundY + 4, w, 8);
+    ctx.strokeStyle = 'rgba(255,200,80,0.2)';
+    ctx.setLineDash([20, 16]);
+    ctx.beginPath();
+    ctx.moveTo(40, groundY + 20);
+    ctx.lineTo(w - 40, groundY + 20);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Red bay doors (background)
+    for (let i = 0; i < 3; i++) {
+      const bx = 140 + i * 200;
+      ctx.fillStyle = '#8a2820';
+      ctx.fillRect(bx, groundY - 160, 110, 160);
+      ctx.fillStyle = '#6a2018';
+      for (let p = 0; p < 5; p++) {
+        ctx.fillRect(bx + 8 + p * 20, groundY - 152, 14, 144);
+      }
+      ctx.strokeStyle = '#c4a050';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bx, groundY - 160, 110, 160);
+      // window lights in doors
+      ctx.fillStyle = 'rgba(255,220,120,0.35)';
+      ctx.fillRect(bx + 20, groundY - 140, 70, 18);
+    }
+
+    // Truck silhouette
+    ctx.fillStyle = 'rgba(20,16,14,0.55)';
+    ctx.fillRect(hx - 200, groundY - 55, 130, 55);
+    ctx.fillRect(hx - 180, groundY - 85, 70, 30);
+    ctx.fillStyle = 'rgba(180,40,30,0.5)';
+    ctx.fillRect(hx - 195, groundY - 50, 120, 20);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.arc(hx - 175, groundY - 2, 12, 0, Math.PI * 2);
+    ctx.arc(hx - 95, groundY - 2, 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hose racks
+    ctx.fillStyle = '#3a3428';
+    ctx.fillRect(hx + 120, groundY - 100, 8, 100);
+    ctx.strokeStyle = '#8a3030';
+    ctx.lineWidth = 5;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.arc(hx + 140, groundY - 80 + i * 22, 16, -0.2, Math.PI * 1.1);
+      ctx.stroke();
+    }
+
+    // Turnout gear
+    ctx.fillStyle = '#c45020';
+    ctx.fillRect(hx + 180, groundY - 70, 22, 70);
+    ctx.fillStyle = '#2a2a2a';
+    ctx.fillRect(hx + 182, groundY - 78, 18, 12);
+    ctx.fillStyle = '#c49020';
+    ctx.fillRect(hx + 184, groundY - 40, 14, 6);
+
+    // Brass fire pole USE
+    const poleX = hx;
+    const poleG = ctx.createLinearGradient(poleX - 4, 0, poleX + 4, 0);
+    poleG.addColorStop(0, '#6a5030');
+    poleG.addColorStop(0.4, '#e0c080');
+    poleG.addColorStop(0.7, '#a88848');
+    poleG.addColorStop(1, '#4a3820');
+    ctx.fillStyle = poleG;
+    ctx.fillRect(poleX - 4, 52, 8, groundY - 52);
+    // ceiling mount
+    ctx.fillStyle = '#5a4a30';
+    ctx.fillRect(poleX - 14, 48, 28, 10);
+    // floor plate
+    ctx.fillStyle = '#4a4030';
+    ctx.beginPath();
+    ctx.ellipse(poleX, groundY - 2, 16, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Station bell (secondary, near pole)
+    ctx.fillStyle = interacted ? '#6a5830' : '#c4a040';
+    ctx.beginPath();
+    ctx.arc(hx + 45, groundY - 75, 16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#3a3020';
+    ctx.fillRect(hx + 42, groundY - 95, 6, 12);
+    ctx.strokeStyle = 'rgba(255,230,160,0.35)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(hx + 45, groundY - 75, 16, 0, Math.PI * 2);
+    ctx.stroke();
+
+    if (!interacted) {
+      ctx.fillStyle = 'rgba(220,180,100,0.65)';
+      ctx.font = 'bold 8px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('POLE', poleX, groundY - 110);
+    }
+    lmHotGlow(ctx, poleX + 20, groundY, t, interacted, 'rgba(220,170,70,0.9)');
+    lmDustMotes(ctx, w, groundY, t, camX, 10);
+    lmSoftGrain(ctx, w, h, t);
+  }
+
+  function drawVedderBridgeInteriorRoom(ctx, w, h, camX, t, groundY, hx, interacted) {
+    // Standing on bridge walkway — outdoor dusk
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, w, groundY);
+    ctx.clip();
+    drawFlySkylineBackdrop(ctx, w, groundY + 20, groundY, camX * 0.35 + t * 0.02);
+    ctx.restore();
+
+    // Water below deck
+    const waterTop = groundY + 18;
+    const wg = ctx.createLinearGradient(0, waterTop, 0, h);
+    wg.addColorStop(0, '#2a4860');
+    wg.addColorStop(0.4, '#1a3048');
+    wg.addColorStop(1, '#0c1828');
+    ctx.fillStyle = wg;
+    ctx.fillRect(0, waterTop, w, h - waterTop);
+    // reflections
+    ctx.fillStyle = 'rgba(255,160,80,0.12)';
+    for (let i = 0; i < 8; i++) {
+      const wx = ((t * 0.03 + i * 110) % (w + 60)) - 30;
+      ctx.fillRect(wx, waterTop + 10 + (i % 4) * 12, 50 + (i % 3) * 10, 3);
+    }
+    ctx.fillStyle = 'rgba(180,220,255,0.1)';
+    for (let i = 0; i < 5; i++) {
+      const wx = ((t * 0.05 + i * 140) % (w + 40)) - 20;
+      ctx.fillRect(wx, waterTop + 28 + (i % 3) * 10, 36, 2);
+    }
+    // gravel bar hint
+    ctx.fillStyle = 'rgba(120,110,90,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(w * 0.7, h - 10, 90, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bridge deck (wood/steel)
+    const deckG = ctx.createLinearGradient(0, groundY - 8, 0, waterTop);
+    deckG.addColorStop(0, '#6a5a48');
+    deckG.addColorStop(0.5, '#4a4034');
+    deckG.addColorStop(1, '#3a342c');
+    ctx.fillStyle = deckG;
+    ctx.fillRect(0, groundY - 8, w, 28);
+    // planks
+    ctx.strokeStyle = 'rgba(30,24,18,0.35)';
+    for (let x = -((camX | 0) % 28); x < w; x += 28) {
+      ctx.beginPath();
+      ctx.moveTo(x, groundY - 8);
+      ctx.lineTo(x, groundY + 18);
+      ctx.stroke();
+    }
+    // steel edge
+    ctx.fillStyle = '#3a4048';
+    ctx.fillRect(0, groundY - 12, w, 5);
+    ctx.fillStyle = '#5a6870';
+    ctx.fillRect(0, groundY - 12, w, 2);
+
+    // Rails
+    ctx.strokeStyle = '#4a5058';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, groundY - 48);
+    ctx.lineTo(w, groundY - 48);
+    ctx.moveTo(0, groundY - 28);
+    ctx.lineTo(w, groundY - 28);
+    ctx.stroke();
+    for (let i = 0; i < 20; i++) {
+      const rx = i * 55 - (camX * 0.2) % 55;
+      ctx.fillStyle = '#505860';
+      ctx.fillRect(rx, groundY - 48, 4, 40);
+      // bolt
+      ctx.fillStyle = '#8a9098';
+      ctx.fillRect(rx, groundY - 48, 4, 2);
+    }
+
+    // Life ring
+    ctx.strokeStyle = '#c44030';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.arc(hx - 80, groundY - 55, 14, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#e8e0d0';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(hx - 80, groundY - 55, 14, -0.4, 0.4);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(hx - 80, groundY - 55, 14, Math.PI - 0.4, Math.PI + 0.4);
+    ctx.stroke();
+
+    // Crumbs USE hotspot on rail
+    ctx.fillStyle = interacted ? '#5a4a38' : '#c8b090';
+    ctx.beginPath();
+    ctx.ellipse(hx, groundY - 50, 16, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = interacted ? '#6a5840' : '#e8d8b0';
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      ctx.arc(hx - 10 + i * 5, groundY - 52 + (i % 2), 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (!interacted) {
+      ctx.fillStyle = 'rgba(200,210,220,0.65)';
+      ctx.font = 'bold 7px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('CRUMBS', hx, groundY - 62);
+    }
+    // floaters in water
+    ctx.fillStyle = 'rgba(200,220,240,0.45)';
+    ctx.beginPath();
+    ctx.arc(hx + 40 + Math.sin(t * 0.003) * 12, waterTop + 30, 4, 0, Math.PI * 2);
+    ctx.arc(hx - 30 + Math.cos(t * 0.004) * 10, waterTop + 42, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    lmHotGlow(ctx, hx, groundY, t, interacted, 'rgba(160,200,220,0.8)');
+    lmSoftGrain(ctx, w, h, t);
+  }
+
   function drawLandmarkInterior(ctx, w, h, camX, t, opts) {
     opts = opts || {};
     const kind = opts.kind || 'clockTower';
@@ -5764,272 +6854,27 @@
     const hx = LANDMARK_HOTSPOT_X - camX;
     const ex = LANDMARK_EXIT_X - camX;
 
-    const sky = ctx.createLinearGradient(0, 0, 0, groundY);
-    sky.addColorStop(0, '#dfe8ef');
-    sky.addColorStop(0.55, '#c5d0da');
-    sky.addColorStop(1, '#9aabba');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, w, groundY);
-
-    ctx.fillStyle = '#8a96a4';
-    ctx.beginPath();
-    ctx.moveTo(-20, groundY - 40);
-    ctx.lineTo(w * 0.25, groundY - 90);
-    ctx.lineTo(w * 0.45, groundY - 55);
-    ctx.lineTo(w * 0.7, groundY - 100);
-    ctx.lineTo(w + 20, groundY - 50);
-    ctx.lineTo(w + 20, groundY);
-    ctx.lineTo(-20, groundY);
-    ctx.fill();
-
-    const wallCols = {
-      clockTower: ['#c8b89a', '#b0a080'],
-      museum: ['#f0ebe0', '#ddd6c8'],
-      royalHotel: ['#5a2030', '#3e1520'],
-      theatre: ['#2a1830', '#1a1020'],
-      fireHall: ['#c44030', '#a03028'],
-      vedderBridge: ['#6a7a88', '#4a5864'],
-    };
-    const wc = wallCols[kind] || wallCols.clockTower;
-    const wall = ctx.createLinearGradient(0, 40, 0, groundY);
-    wall.addColorStop(0, wc[0]);
-    wall.addColorStop(1, wc[1]);
-    ctx.fillStyle = wall;
-    ctx.fillRect(0, 48, w, groundY - 48);
-
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.fillRect(0, 0, w, 52);
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    ctx.fillRect(0, 48, w, 4);
-
-    const floorG = ctx.createLinearGradient(0, groundY, 0, h);
-    floorG.addColorStop(0, '#3a342c');
-    floorG.addColorStop(0.2, '#2a2620');
-    floorG.addColorStop(1, '#141210');
-    if (kind === 'vedderBridge') {
-      const fg = ctx.createLinearGradient(0, groundY, 0, h);
-      fg.addColorStop(0, '#8a6a40');
-      fg.addColorStop(1, '#4a3820');
-      ctx.fillStyle = fg;
-    } else if (kind === 'theatre') {
-      ctx.fillStyle = '#1a1018';
-    } else if (kind === 'royalHotel') {
-      ctx.fillStyle = '#2a1820';
-    } else {
-      ctx.fillStyle = floorG;
-    }
-    ctx.fillRect(0, groundY, w, h - groundY);
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 1;
-    for (let x = -((camX | 0) % 40); x < w; x += 40) {
-      ctx.beginPath();
-      ctx.moveTo(x, groundY + 2);
-      ctx.lineTo(x + 14, h);
-      ctx.stroke();
-    }
-
-    ctx.fillStyle = '#1a2830';
-    ctx.fillRect(ex - 28, groundY - 96, 56, 96);
-    ctx.fillStyle = '#88c8ff';
-    ctx.globalAlpha = 0.35 + Math.sin(t * 0.008) * 0.1;
-    ctx.fillRect(ex - 22, groundY - 88, 44, 70);
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = '#7dff3a';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(ex - 28, groundY - 96, 56, 96);
-    ctx.fillStyle = '#c8ffe0';
-    ctx.font = 'bold 9px Segoe UI, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('UFO', ex, groundY - 100);
-    ctx.fillText('HATCH', ex, groundY - 88);
-    ctx.fillStyle = '#4a5a68';
-    ctx.beginPath();
-    ctx.moveTo(ex - 34, groundY);
-    ctx.lineTo(ex + 34, groundY);
-    ctx.lineTo(ex + 20, groundY + 10);
-    ctx.lineTo(ex - 20, groundY + 10);
-    ctx.closePath();
-    ctx.fill();
-
-    function drawHotGlow(x, y, col) {
-      ctx.save();
-      ctx.globalAlpha = interacted ? 0.25 : (0.45 + Math.sin(t * 0.01) * 0.15);
-      ctx.fillStyle = col || '#7dff3a';
-      ctx.beginPath();
-      ctx.ellipse(x, y, 36, 10, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-
+    // Per-kind rooms own their walls/floors; hatch + title overlaid after
     if (kind === 'clockTower') {
-      ctx.fillStyle = '#a89878';
-      ctx.fillRect(hx - 70, groundY - 160, 140, 160);
-      ctx.fillStyle = '#fff8e8';
-      ctx.beginPath();
-      ctx.arc(hx, groundY - 120, 34, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#5a4030';
-      ctx.lineWidth = 3;
-      ctx.stroke();
-      ctx.strokeStyle = '#2a2010';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(hx, groundY - 120);
-      ctx.lineTo(hx + 18, groundY - 128);
-      ctx.moveTo(hx, groundY - 120);
-      ctx.lineTo(hx - 4, groundY - 98);
-      ctx.stroke();
-      ctx.fillStyle = '#c8a040';
-      ctx.beginPath();
-      ctx.ellipse(hx, groundY - 55, 22, 16, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillRect(hx - 3, groundY - 78, 6, 24);
-      ctx.strokeStyle = interacted ? '#886644' : '#d4a574';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(hx + 28, groundY - 50);
-      ctx.quadraticCurveTo(hx + 40, groundY - 20, hx + 32, groundY - 2);
-      ctx.stroke();
-      ctx.fillStyle = '#aa5533';
-      ctx.beginPath();
-      ctx.arc(hx + 32, groundY - 4, 6, 0, Math.PI * 2);
-      ctx.fill();
-      drawHotGlow(hx + 32, groundY, '#ffe066');
+      drawClockTowerInteriorRoom(ctx, w, h, camX, t, groundY, hx, interacted);
     } else if (kind === 'museum') {
-      ctx.fillStyle = '#2a3038';
-      ctx.fillRect(hx - 50, groundY - 8, 100, 8);
-      ctx.fillStyle = 'rgba(180,220,255,0.25)';
-      ctx.fillRect(hx - 46, groundY - 88, 92, 80);
-      ctx.strokeStyle = '#88aacc';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(hx - 46, groundY - 88, 92, 80);
-      ctx.fillStyle = interacted ? '#668888' : '#9ef0ff';
-      ctx.beginPath();
-      ctx.arc(hx, groundY - 48, 14, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffe8a0';
-      ctx.font = 'bold 8px Segoe UI, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('MICRO-', hx, groundY - 70);
-      ctx.fillText('PLASTIC', hx, groundY - 60);
-      ctx.fillText('OF C-WACK', hx, groundY - 28);
-      ctx.fillStyle = '#3a3428';
-      ctx.fillRect(hx - 40, groundY - 18, 80, 12);
-      drawHotGlow(hx, groundY, '#9ef0ff');
+      drawMuseumInteriorRoom(ctx, w, h, camX, t, groundY, hx, interacted);
     } else if (kind === 'royalHotel') {
-      ctx.fillStyle = '#3a2030';
-      ctx.fillRect(hx - 80, groundY - 52, 160, 52);
-      ctx.fillStyle = '#8a4058';
-      ctx.fillRect(hx - 80, groundY - 58, 160, 10);
-      ctx.fillStyle = '#ffd76a';
-      ctx.font = 'bold 11px Segoe UI, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('FRONT DESK', hx, groundY - 40);
-      ctx.fillStyle = '#c8c8d0';
-      ctx.fillRect(hx + 50, groundY - 36, 48, 36);
-      ctx.fillStyle = interacted ? '#886644' : '#ffb84a';
-      ctx.fillRect(hx + 56, groundY - 48, 16, 12);
-      ctx.fillRect(hx + 76, groundY - 44, 14, 10);
-      ctx.fillStyle = '#222';
-      ctx.beginPath();
-      ctx.arc(hx + 60, groundY - 2, 4, 0, Math.PI * 2);
-      ctx.arc(hx + 88, groundY - 2, 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffe8c0';
-      ctx.font = 'bold 9px Segoe UI, sans-serif';
-      ctx.fillText('KFC?', hx + 74, groundY - 20);
-      drawHotGlow(hx + 74, groundY, '#ffb84a');
+      drawRoyalHotelInteriorRoom(ctx, w, h, camX, t, groundY, hx, interacted);
     } else if (kind === 'theatre') {
-      ctx.fillStyle = '#4a2038';
-      ctx.fillRect(hx - 110, groundY - 14, 220, 14);
-      ctx.fillStyle = '#6a3050';
-      ctx.fillRect(hx - 100, groundY - 22, 200, 10);
-      ctx.fillStyle = '#881030';
-      ctx.fillRect(hx - 120, groundY - 160, 24, 146);
-      ctx.fillRect(hx + 96, groundY - 160, 24, 146);
-      ctx.fillStyle = '#888';
-      ctx.fillRect(hx - 2, groundY - 70, 4, 50);
-      ctx.fillStyle = interacted ? '#666' : '#ddd';
-      ctx.beginPath();
-      ctx.ellipse(hx, groundY - 78, 10, 14, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#1a1a1a';
-      ctx.fillRect(hx + 40, groundY - 40, 36, 28);
-      ctx.fillStyle = '#333';
-      ctx.fillRect(hx + 46, groundY - 34, 24, 16);
-      if (!interacted) {
-        ctx.fillStyle = '#88ffcc';
-        ctx.globalAlpha = 0.5 + Math.sin(t * 0.02) * 0.3;
-        ctx.fillRect(hx + 48, groundY - 32, 20, 4);
-        ctx.globalAlpha = 1;
-      }
-      ctx.fillStyle = '#ffe066';
-      ctx.font = 'bold 10px Segoe UI, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('PARAMOUNT', hx, groundY - 100);
-      drawHotGlow(hx, groundY, '#88ffcc');
+      drawTheatreInteriorRoom(ctx, w, h, camX, t, groundY, hx, interacted);
     } else if (kind === 'fireHall') {
-      ctx.fillStyle = '#c0c8d0';
-      ctx.fillRect(hx - 4, 52, 8, groundY - 52);
-      ctx.fillStyle = '#e8eef4';
-      ctx.fillRect(hx - 2, 52, 3, groundY - 52);
-      ctx.fillStyle = interacted ? '#886600' : '#ffcc33';
-      ctx.beginPath();
-      ctx.arc(hx + 50, groundY - 70, 18, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#333';
-      ctx.fillRect(hx + 47, groundY - 92, 6, 10);
-      ctx.fillStyle = '#cc2211';
-      ctx.fillRect(hx - 100, groundY - 36, 70, 36);
-      ctx.fillStyle = '#ffee88';
-      ctx.fillRect(hx - 92, groundY - 28, 20, 12);
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 9px Segoe UI, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('SLIDE / BELL', hx + 20, groundY - 110);
-      drawHotGlow(hx + 50, groundY, '#ffcc33');
+      drawFireHallInteriorRoom(ctx, w, h, camX, t, groundY, hx, interacted);
     } else if (kind === 'vedderBridge') {
-      ctx.fillStyle = '#3a4850';
-      ctx.fillRect(0, groundY - 36, w, 8);
-      for (let i = 0; i < 12; i++) {
-        const rx = i * 70 - (camX * 0.2) % 70;
-        ctx.fillRect(rx, groundY - 70, 5, 34);
-      }
-      ctx.fillStyle = '#3a6a88';
-      ctx.fillRect(0, groundY + 28, w, h - groundY - 28);
-      ctx.fillStyle = 'rgba(180,220,255,0.2)';
-      for (let i = 0; i < 6; i++) {
-        const wx = ((t * 0.04 + i * 90) % (w + 40)) - 20;
-        ctx.fillRect(wx, groundY + 36 + (i % 3) * 8, 40, 3);
-      }
-      ctx.fillStyle = interacted ? '#665544' : '#e8d8b0';
-      ctx.fillRect(hx - 12, groundY - 48, 24, 16);
-      ctx.fillStyle = '#aa8844';
-      ctx.font = 'bold 8px Segoe UI, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('CRUMBS', hx, groundY - 52);
-      ctx.fillStyle = '#c8e8ff';
-      ctx.globalAlpha = 0.6;
-      ctx.beginPath();
-      ctx.arc(hx + 30 + Math.sin(t * 0.003) * 10, groundY + 48, 5, 0, Math.PI * 2);
-      ctx.arc(hx - 20 + Math.cos(t * 0.004) * 8, groundY + 56, 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      drawHotGlow(hx, groundY, '#9ef0ff');
+      drawVedderBridgeInteriorRoom(ctx, w, h, camX, t, groundY, hx, interacted);
+    } else {
+      drawClockTowerInteriorRoom(ctx, w, h, camX, t, groundY, hx, interacted);
     }
 
-    ctx.fillStyle = 'rgba(10,20,16,0.75)';
-    const title = label || kind;
-    ctx.font = 'bold 13px Segoe UI, sans-serif';
-    ctx.textAlign = 'center';
-    const tw = ctx.measureText(title).width;
-    ctx.fillRect(w / 2 - tw / 2 - 14, 14, tw + 28, 24);
-    ctx.strokeStyle = '#7dff3a';
-    ctx.strokeRect(w / 2 - tw / 2 - 14, 14, tw + 28, 24);
-    ctx.fillStyle = '#e8ffe0';
-    ctx.fillText(title, w / 2, 31);
-    ctx.textAlign = 'left';
+    lmDrawHatch(ctx, ex, groundY, t);
+    lmTitleBanner(ctx, w, label || kind);
   }
+
 
 
   global.MothershipWorld = {
