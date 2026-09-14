@@ -128,6 +128,11 @@
   const SHIP_WORLD_W = 980;
   /** Driver's seat / helm interact X */
   const SHIP_HELM_X = 720;
+
+  /** Landmark visit interiors (side-scroller rooms) */
+  const LANDMARK_WORLD_W = 780;
+  const LANDMARK_HOTSPOT_X = 420;
+  const LANDMARK_EXIT_X = 110;
   /** Visible cassette prop in shed (on clutter near stereo) */
   const SHED_CASSETTE_X = 600;
   const SHED_CASSETTE_Y_OFF = 42; // above floor
@@ -4238,6 +4243,285 @@
     ctx.fillRect(0, 0, w, h);
   }
 
+
+  /** Side-view Wes Anderson / clay landmark interiors — walk, USE, takeoff hatch */
+  function drawLandmarkInterior(ctx, w, h, camX, t, opts) {
+    opts = opts || {};
+    const kind = opts.kind || 'clockTower';
+    const label = opts.label || '';
+    const interacted = !!opts.interacted;
+    const groundY = h * 0.72;
+    const hx = LANDMARK_HOTSPOT_X - camX;
+    const ex = LANDMARK_EXIT_X - camX;
+
+    const sky = ctx.createLinearGradient(0, 0, 0, groundY);
+    sky.addColorStop(0, '#dfe8ef');
+    sky.addColorStop(0.55, '#c5d0da');
+    sky.addColorStop(1, '#9aabba');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, w, groundY);
+
+    ctx.fillStyle = '#8a96a4';
+    ctx.beginPath();
+    ctx.moveTo(-20, groundY - 40);
+    ctx.lineTo(w * 0.25, groundY - 90);
+    ctx.lineTo(w * 0.45, groundY - 55);
+    ctx.lineTo(w * 0.7, groundY - 100);
+    ctx.lineTo(w + 20, groundY - 50);
+    ctx.lineTo(w + 20, groundY);
+    ctx.lineTo(-20, groundY);
+    ctx.fill();
+
+    const wallCols = {
+      clockTower: ['#c8b89a', '#b0a080'],
+      museum: ['#f0ebe0', '#ddd6c8'],
+      royalHotel: ['#5a2030', '#3e1520'],
+      theatre: ['#2a1830', '#1a1020'],
+      fireHall: ['#c44030', '#a03028'],
+      vedderBridge: ['#6a7a88', '#4a5864'],
+    };
+    const wc = wallCols[kind] || wallCols.clockTower;
+    const wall = ctx.createLinearGradient(0, 40, 0, groundY);
+    wall.addColorStop(0, wc[0]);
+    wall.addColorStop(1, wc[1]);
+    ctx.fillStyle = wall;
+    ctx.fillRect(0, 48, w, groundY - 48);
+
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(0, 0, w, 52);
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(0, 48, w, 4);
+
+    const floorG = ctx.createLinearGradient(0, groundY, 0, h);
+    floorG.addColorStop(0, '#3a342c');
+    floorG.addColorStop(0.2, '#2a2620');
+    floorG.addColorStop(1, '#141210');
+    if (kind === 'vedderBridge') {
+      const fg = ctx.createLinearGradient(0, groundY, 0, h);
+      fg.addColorStop(0, '#8a6a40');
+      fg.addColorStop(1, '#4a3820');
+      ctx.fillStyle = fg;
+    } else if (kind === 'theatre') {
+      ctx.fillStyle = '#1a1018';
+    } else if (kind === 'royalHotel') {
+      ctx.fillStyle = '#2a1820';
+    } else {
+      ctx.fillStyle = floorG;
+    }
+    ctx.fillRect(0, groundY, w, h - groundY);
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    for (let x = -((camX | 0) % 40); x < w; x += 40) {
+      ctx.beginPath();
+      ctx.moveTo(x, groundY + 2);
+      ctx.lineTo(x + 14, h);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = '#1a2830';
+    ctx.fillRect(ex - 28, groundY - 96, 56, 96);
+    ctx.fillStyle = '#88c8ff';
+    ctx.globalAlpha = 0.35 + Math.sin(t * 0.008) * 0.1;
+    ctx.fillRect(ex - 22, groundY - 88, 44, 70);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = '#7dff3a';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(ex - 28, groundY - 96, 56, 96);
+    ctx.fillStyle = '#c8ffe0';
+    ctx.font = 'bold 9px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('UFO', ex, groundY - 100);
+    ctx.fillText('HATCH', ex, groundY - 88);
+    ctx.fillStyle = '#4a5a68';
+    ctx.beginPath();
+    ctx.moveTo(ex - 34, groundY);
+    ctx.lineTo(ex + 34, groundY);
+    ctx.lineTo(ex + 20, groundY + 10);
+    ctx.lineTo(ex - 20, groundY + 10);
+    ctx.closePath();
+    ctx.fill();
+
+    function drawHotGlow(x, y, col) {
+      ctx.save();
+      ctx.globalAlpha = interacted ? 0.25 : (0.45 + Math.sin(t * 0.01) * 0.15);
+      ctx.fillStyle = col || '#7dff3a';
+      ctx.beginPath();
+      ctx.ellipse(x, y, 36, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    if (kind === 'clockTower') {
+      ctx.fillStyle = '#a89878';
+      ctx.fillRect(hx - 70, groundY - 160, 140, 160);
+      ctx.fillStyle = '#fff8e8';
+      ctx.beginPath();
+      ctx.arc(hx, groundY - 120, 34, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#5a4030';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.strokeStyle = '#2a2010';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(hx, groundY - 120);
+      ctx.lineTo(hx + 18, groundY - 128);
+      ctx.moveTo(hx, groundY - 120);
+      ctx.lineTo(hx - 4, groundY - 98);
+      ctx.stroke();
+      ctx.fillStyle = '#c8a040';
+      ctx.beginPath();
+      ctx.ellipse(hx, groundY - 55, 22, 16, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(hx - 3, groundY - 78, 6, 24);
+      ctx.strokeStyle = interacted ? '#886644' : '#d4a574';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(hx + 28, groundY - 50);
+      ctx.quadraticCurveTo(hx + 40, groundY - 20, hx + 32, groundY - 2);
+      ctx.stroke();
+      ctx.fillStyle = '#aa5533';
+      ctx.beginPath();
+      ctx.arc(hx + 32, groundY - 4, 6, 0, Math.PI * 2);
+      ctx.fill();
+      drawHotGlow(hx + 32, groundY, '#ffe066');
+    } else if (kind === 'museum') {
+      ctx.fillStyle = '#2a3038';
+      ctx.fillRect(hx - 50, groundY - 8, 100, 8);
+      ctx.fillStyle = 'rgba(180,220,255,0.25)';
+      ctx.fillRect(hx - 46, groundY - 88, 92, 80);
+      ctx.strokeStyle = '#88aacc';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(hx - 46, groundY - 88, 92, 80);
+      ctx.fillStyle = interacted ? '#668888' : '#9ef0ff';
+      ctx.beginPath();
+      ctx.arc(hx, groundY - 48, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffe8a0';
+      ctx.font = 'bold 8px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('MICRO-', hx, groundY - 70);
+      ctx.fillText('PLASTIC', hx, groundY - 60);
+      ctx.fillText('OF C-WACK', hx, groundY - 28);
+      ctx.fillStyle = '#3a3428';
+      ctx.fillRect(hx - 40, groundY - 18, 80, 12);
+      drawHotGlow(hx, groundY, '#9ef0ff');
+    } else if (kind === 'royalHotel') {
+      ctx.fillStyle = '#3a2030';
+      ctx.fillRect(hx - 80, groundY - 52, 160, 52);
+      ctx.fillStyle = '#8a4058';
+      ctx.fillRect(hx - 80, groundY - 58, 160, 10);
+      ctx.fillStyle = '#ffd76a';
+      ctx.font = 'bold 11px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('FRONT DESK', hx, groundY - 40);
+      ctx.fillStyle = '#c8c8d0';
+      ctx.fillRect(hx + 50, groundY - 36, 48, 36);
+      ctx.fillStyle = interacted ? '#886644' : '#ffb84a';
+      ctx.fillRect(hx + 56, groundY - 48, 16, 12);
+      ctx.fillRect(hx + 76, groundY - 44, 14, 10);
+      ctx.fillStyle = '#222';
+      ctx.beginPath();
+      ctx.arc(hx + 60, groundY - 2, 4, 0, Math.PI * 2);
+      ctx.arc(hx + 88, groundY - 2, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffe8c0';
+      ctx.font = 'bold 9px Segoe UI, sans-serif';
+      ctx.fillText('KFC?', hx + 74, groundY - 20);
+      drawHotGlow(hx + 74, groundY, '#ffb84a');
+    } else if (kind === 'theatre') {
+      ctx.fillStyle = '#4a2038';
+      ctx.fillRect(hx - 110, groundY - 14, 220, 14);
+      ctx.fillStyle = '#6a3050';
+      ctx.fillRect(hx - 100, groundY - 22, 200, 10);
+      ctx.fillStyle = '#881030';
+      ctx.fillRect(hx - 120, groundY - 160, 24, 146);
+      ctx.fillRect(hx + 96, groundY - 160, 24, 146);
+      ctx.fillStyle = '#888';
+      ctx.fillRect(hx - 2, groundY - 70, 4, 50);
+      ctx.fillStyle = interacted ? '#666' : '#ddd';
+      ctx.beginPath();
+      ctx.ellipse(hx, groundY - 78, 10, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(hx + 40, groundY - 40, 36, 28);
+      ctx.fillStyle = '#333';
+      ctx.fillRect(hx + 46, groundY - 34, 24, 16);
+      if (!interacted) {
+        ctx.fillStyle = '#88ffcc';
+        ctx.globalAlpha = 0.5 + Math.sin(t * 0.02) * 0.3;
+        ctx.fillRect(hx + 48, groundY - 32, 20, 4);
+        ctx.globalAlpha = 1;
+      }
+      ctx.fillStyle = '#ffe066';
+      ctx.font = 'bold 10px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('PARAMOUNT', hx, groundY - 100);
+      drawHotGlow(hx, groundY, '#88ffcc');
+    } else if (kind === 'fireHall') {
+      ctx.fillStyle = '#c0c8d0';
+      ctx.fillRect(hx - 4, 52, 8, groundY - 52);
+      ctx.fillStyle = '#e8eef4';
+      ctx.fillRect(hx - 2, 52, 3, groundY - 52);
+      ctx.fillStyle = interacted ? '#886600' : '#ffcc33';
+      ctx.beginPath();
+      ctx.arc(hx + 50, groundY - 70, 18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#333';
+      ctx.fillRect(hx + 47, groundY - 92, 6, 10);
+      ctx.fillStyle = '#cc2211';
+      ctx.fillRect(hx - 100, groundY - 36, 70, 36);
+      ctx.fillStyle = '#ffee88';
+      ctx.fillRect(hx - 92, groundY - 28, 20, 12);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 9px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('SLIDE / BELL', hx + 20, groundY - 110);
+      drawHotGlow(hx + 50, groundY, '#ffcc33');
+    } else if (kind === 'vedderBridge') {
+      ctx.fillStyle = '#3a4850';
+      ctx.fillRect(0, groundY - 36, w, 8);
+      for (let i = 0; i < 12; i++) {
+        const rx = i * 70 - (camX * 0.2) % 70;
+        ctx.fillRect(rx, groundY - 70, 5, 34);
+      }
+      ctx.fillStyle = '#3a6a88';
+      ctx.fillRect(0, groundY + 28, w, h - groundY - 28);
+      ctx.fillStyle = 'rgba(180,220,255,0.2)';
+      for (let i = 0; i < 6; i++) {
+        const wx = ((t * 0.04 + i * 90) % (w + 40)) - 20;
+        ctx.fillRect(wx, groundY + 36 + (i % 3) * 8, 40, 3);
+      }
+      ctx.fillStyle = interacted ? '#665544' : '#e8d8b0';
+      ctx.fillRect(hx - 12, groundY - 48, 24, 16);
+      ctx.fillStyle = '#aa8844';
+      ctx.font = 'bold 8px Segoe UI, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('CRUMBS', hx, groundY - 52);
+      ctx.fillStyle = '#c8e8ff';
+      ctx.globalAlpha = 0.6;
+      ctx.beginPath();
+      ctx.arc(hx + 30 + Math.sin(t * 0.003) * 10, groundY + 48, 5, 0, Math.PI * 2);
+      ctx.arc(hx - 20 + Math.cos(t * 0.004) * 8, groundY + 56, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      drawHotGlow(hx, groundY, '#9ef0ff');
+    }
+
+    ctx.fillStyle = 'rgba(10,20,16,0.75)';
+    const title = label || kind;
+    ctx.font = 'bold 13px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    const tw = ctx.measureText(title).width;
+    ctx.fillRect(w / 2 - tw / 2 - 14, 14, tw + 28, 24);
+    ctx.strokeStyle = '#7dff3a';
+    ctx.strokeRect(w / 2 - tw / 2 - 14, 14, tw + 28, 24);
+    ctx.fillStyle = '#e8ffe0';
+    ctx.fillText(title, w / 2, 31);
+    ctx.textAlign = 'left';
+  }
+
+
   global.MothershipWorld = {
     DISTRICTS,
     TARGET_KINDS,
@@ -4260,6 +4544,9 @@
     YARD_SHED_DOOR_X,
     SHIP_WORLD_W,
     SHIP_HELM_X,
+    LANDMARK_WORLD_W,
+    LANDMARK_HOTSPOT_X,
+    LANDMARK_EXIT_X,
     SHED_CASSETTE_X,
     SHED_STEREO_X,
     SHED_CAMINO_X,
@@ -4279,6 +4566,7 @@
     drawShed,
     drawYard,
     drawShipInterior,
+    drawLandmarkInterior,
     drawClayAlien,
     drawBoardCutscene,
     drawCassetteScene,

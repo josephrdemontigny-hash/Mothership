@@ -74,7 +74,7 @@
   let prevInteractHeld = false;
   let prevBeamHeld = false;
 
-  // title | shed | yard | ship | fly | operate | results
+  // title | shed | yard | ship | fly | operate | landmark | results
   let mode = 'title';
   let t = 0;
   let lastTs = 0;
@@ -89,8 +89,12 @@
   let recognizedDone = false;
   /** Operate-mode state: walk → surgery stages → choice */
   let operate = null;
-  /** Snapshot of fly run to resume after surgery */
+  /** Snapshot of fly run to resume after surgery / landmark visit */
   let flyResume = null;
+  /** Landmark landing visit: settle → walk → liftoff */
+  let landmarkVisit = null;
+  /** Edge-detect ↓ for land confirm while hovering a landmark */
+  let prevLandDownHeld = false;
 
   let avatar = null;
   let camX = 0;
@@ -340,6 +344,18 @@
   function syncInteractBtn() {
     if (!el.btnInteract) return;
     if (mode === 'fly') {
+      el.btnInteract.textContent = nearLandableLandmark() ? 'LAND' : 'USE';
+      return;
+    }
+    if (mode === 'landmark' && landmarkVisit && landmarkVisit.phase === 'walk' && avatar) {
+      if (Math.abs(avatar.x - W.LANDMARK_EXIT_X) < 55) {
+        el.btnInteract.textContent = 'TAKEOFF';
+        return;
+      }
+      if (Math.abs(avatar.x - W.LANDMARK_HOTSPOT_X) < 60) {
+        el.btnInteract.textContent = landmarkVisit.interacted ? 'DONE' : 'USE';
+        return;
+      }
       el.btnInteract.textContent = 'USE';
       return;
     }
@@ -623,21 +639,27 @@
       ship: 'SHIP',
       fly: 'FLY',
       operate: 'OPERATE',
+      landmark: 'VISIT',
     };
     el.modeLabel.textContent = labels[mode] || '';
-    if (mode === 'fly' && fly) {
+    const flyHud = (mode === 'fly' && fly) ? fly
+      : (mode === 'landmark' && flyResume) ? flyResume
+      : null;
+    if (flyHud) {
       el.district.classList.remove('hidden');
+      const distName = mode === 'landmark' && landmarkVisit
+        ? (landmarkVisit.label || 'LANDMARK')
+        : W.DISTRICTS[flyHud.districtIndex % W.DISTRICTS.length].name;
       el.district.textContent =
-        W.DISTRICTS[fly.districtIndex % W.DISTRICTS.length].name +
-        ' · HULL ' + fly.lives + '/' + fly.maxLives;
+        distName + ' · HULL ' + flyHud.lives + '/' + flyHud.maxLives;
       const thresh = W.MICROPLASTIC_THRESHOLD;
-      const prog = (fly.microplastics | 0) % thresh;
+      const prog = (flyHud.microplastics | 0) % thresh;
       if (el.plastics) el.plastics.textContent = prog + '/' + thresh;
-      if (el.chicken) el.chicken.textContent = String(fly.chicken | 0);
+      if (el.chicken) el.chicken.textContent = String(flyHud.chicken | 0);
       if (el.multLabel && el.multValue) {
-        if (fly.scoreMultTimer > 0) {
+        if (flyHud.scoreMultTimer > 0) {
           el.multLabel.classList.remove('hidden');
-          el.multValue.textContent = '2× ' + Math.ceil(fly.scoreMultTimer / 60) + 's';
+          el.multValue.textContent = '2× ' + Math.ceil(flyHud.scoreMultTimer / 60) + 's';
         } else {
           el.multLabel.classList.add('hidden');
         }
@@ -661,7 +683,8 @@
   /** Beam touch control + fly-only HUD bits — hidden until fly. */
   function syncBeamUi() {
     const flying = mode === 'fly';
-    const inRunHud = flying || mode === 'operate';
+    const visiting = mode === 'landmark';
+    const inRunHud = flying || mode === 'operate' || visiting;
     if (el.btnBeam) el.btnBeam.classList.toggle('hidden', !flying);
     // Keep #btn-destruct / #hud-destruct — visibility only; placement owned elsewhere
     if (el.btnDestruct) el.btnDestruct.classList.toggle('hidden', !flying);
@@ -670,8 +693,8 @@
       const wrap = document.getElementById('beamed-label');
       if (wrap) wrap.classList.toggle('hidden', !inRunHud);
     }
-    if (el.plasticsLabel) el.plasticsLabel.classList.toggle('hidden', !flying);
-    if (el.chickenLabel) el.chickenLabel.classList.toggle('hidden', !flying);
+    if (el.plasticsLabel) el.plasticsLabel.classList.toggle('hidden', !(flying || visiting));
+    if (el.chickenLabel) el.chickenLabel.classList.toggle('hidden', !(flying || visiting));
   }
 
   function hideOperateChoice() {
@@ -858,6 +881,8 @@
     recognizedDone = false;
     operate = null;
     flyResume = null;
+    landmarkVisit = null;
+    prevLandDownHeld = false;
     hideOperateChoice();
     particles = [];
     floaters = [];
@@ -1002,13 +1027,21 @@
       fly.vx = 0;
       fly.vy = 0;
       fly.invuln = Math.max(fly.invuln | 0, 40);
+      if (!fly.visitedLandmarks) fly.visitedLandmarks = {};
       flyResume = null;
+      landmarkVisit = null;
       ensureLandmarks();
       ensureStreetlights();
       showScreen('play');
       syncHud();
-      setPrompt('←→↑↓ fly · Space/USE beam · people+loot good · red=DON\'T · Enter end');
-      showFlash('Back in the cooler — surgery complete. Fly on!', 140);
+      setPrompt('←→↑↓ fly · Space/USE beam · dive near landmark to LAND · Enter end');
+      if (opts.fromLandmark) {
+        fly.ufoY = Math.min(fly.ufoY != null ? fly.ufoY : CH * 0.45, CH * 0.48);
+        fly.legExtend = 0.4;
+        showFlash('Back in the air — Chilliwack awaits', 140);
+      } else {
+        showFlash('Back in the cooler — surgery complete. Fly on!', 140);
+      }
       return;
     }
 
@@ -1044,6 +1077,8 @@
       /** Fly craft draw scale — smaller + snappier feel */
       ufoScale: 0.92,
       cowSpawned: 0,
+      visitedLandmarks: {},
+      forceCowSoon: false,
     };
     ensureLandmarks();
     ensureStreetlights();
@@ -1088,6 +1123,7 @@
     boardSit = null;
     operate = null;
     flyResume = null;
+    landmarkVisit = null;
     hideOperateChoice();
     resetCamino();
     avatar = null;
@@ -1217,10 +1253,12 @@
     // Mix: ~50% people, ~22% loot, ~28% hazards; ~4% Holy Cow Easter egg
     const roll = Math.random();
     let kind;
-    const forceCow = (fly.cowSpawned | 0) === 0 && (fly.scrollX | 0) > 1400 && Math.random() < 0.12;
+    const forceCow = !!fly.forceCowSoon
+      || ((fly.cowSpawned | 0) === 0 && (fly.scrollX | 0) > 1400 && Math.random() < 0.12);
     if (forceCow || Math.random() < 0.04) {
       kind = W.COW_KIND;
       fly.cowSpawned = (fly.cowSpawned | 0) + 1;
+      fly.forceCowSoon = false;
     } else if (roll < 0.5) {
       kind = W.pick(W.PEOPLE_KINDS);
     } else if (roll < 0.72) {
@@ -1376,12 +1414,12 @@
 
     if (k === 'e' || k === 'enter') {
       if (mode === 'fly') {
-        if (k === 'e') beamQueued = true;
-      } else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate') {
+        if (k === 'e') interactQueued = true; // land if near landmark, else beam (updateFly)
+      } else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark') {
         interactQueued = true;
       }
     }
-    if ((k === 'arrowup' || k === 'w') && (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate')) {
+    if ((k === 'arrowup' || k === 'w') && (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark')) {
       // Lit-joint Up → mouth puff (handled in updatePuffInput); keep Up-as-interact otherwise
       if (!(mode === 'shed' && canPuffJoint() && !(nearDoor() && ufoLanded()))) {
         interactQueued = true;
@@ -1390,7 +1428,7 @@
 
     if ((e.code === 'Space' || k === ' ')) {
       if (mode === 'fly') beamQueued = true;
-      else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate') jumpQueued = true;
+      else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark') jumpQueued = true;
     }
 
     if (k === 'b' && mode === 'fly') beamQueued = true;
@@ -1402,7 +1440,9 @@
     }
 
     if (k === 'enter' && mode === 'fly') {
-      endMission();
+      // Prefer landing when hovering a landmark — don't end the run by accident
+      if (nearLandableLandmark()) interactQueued = true;
+      else endMission();
     }
     if ((k === 'x' || k === 'delete' || k === 'backspace') && mode === 'fly') {
       triggerSelfDestruct();
@@ -1415,7 +1455,7 @@
 
   canvas.addEventListener('click', () => {
     if (mode === 'title') insertCassetteAndStart();
-    else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate') interactQueued = true;
+    else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark') interactQueued = true;
   });
 
   function bindTitleInsert(node) {
@@ -1502,18 +1542,19 @@
   el.btnBeam.addEventListener('touchstart', (e) => {
     e.preventDefault();
     if (mode === 'fly') beamQueued = true;
-    else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate') interactQueued = true;
+    else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark') interactQueued = true;
   }, { passive: false });
   el.btnBeam.addEventListener('mousedown', (e) => {
     e.preventDefault();
     if (mode === 'fly') beamQueued = true;
-    else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate') interactQueued = true;
+    else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark') interactQueued = true;
   });
 
   function onInteractPointer(e) {
     e.preventDefault();
     if (mode === 'fly') {
-      beamQueued = true;
+      // LAND when near landmark; otherwise beam
+      interactQueued = true;
       return;
     }
     interactQueued = true;
@@ -1607,6 +1648,10 @@
     }
     if (mode === 'operate' && operate && operate.phase === 'walk' && avatar) {
       return nearOperateTable();
+    }
+    if (mode === 'landmark' && landmarkVisit && landmarkVisit.phase === 'walk' && avatar) {
+      return Math.abs(avatar.x - W.LANDMARK_HOTSPOT_X) < 60
+        || Math.abs(avatar.x - W.LANDMARK_EXIT_X) < 55;
     }
     return false;
   }
@@ -2046,7 +2091,34 @@
       syncHud();
     }
 
-    setPrompt('←→↑↓ fly · Space/USE beam · green/cyan/gold=good · red=DON\'T · Enter end');
+    // Landing gear: extend when diving near the ground
+    const groundBand = CH * 0.72;
+    const targetLegs = Math.max(0, Math.min(1, (fly.ufoY - CH * 0.42) / (groundBand - CH * 0.42)));
+    fly.legExtend += (targetLegs - (fly.legExtend || 0)) * 0.14;
+
+    const landLm = nearLandableLandmark();
+    const downHeld = !!(keys['arrowdown'] || keys['s'] || touchDirs.down);
+    const downEdge = downHeld && !prevLandDownHeld;
+    prevLandDownHeld = downHeld;
+
+    if (landLm) {
+      setPrompt('↓/E LAND — ' + landLm.label);
+      const wantLand = wantsInteract() || downEdge;
+      if (wantLand) {
+        startLandmarkVisit(landLm);
+        syncHud();
+        return;
+      }
+    } else {
+      // E / USE while flying beams (interactQueued from E/USE button)
+      if (interactQueued) {
+        interactQueued = false;
+        beamQueued = true;
+      }
+      setPrompt('←→↑↓ fly · Space/USE beam · dive near landmark to LAND · Enter end');
+      prevInteractHeld = interactHeld();
+    }
+    syncInteractBtn();
     syncHud();
   }
 
@@ -2169,6 +2241,221 @@
     { dur: 65, msg: 'Closing… subject mostly chicken & sparkly trash.', loot: 'plastics' },
   ];
 
+
+  const LANDMARK_USE_PROMPTS = {
+    clockTower: 'ring the tower bell',
+    museum: 'pocket the exhibit',
+    royalHotel: 'order KFC room service',
+    theatre: 'shred a one-bar riff',
+    fireHall: 'slide the pole / hit the bell',
+    vedderBridge: 'toss crumbs to the river',
+  };
+
+  const LANDMARK_DONE_LINERS = {
+    clockTower: 'Bell already rang — ears still ringing.',
+    museum: 'Security already knows your face.',
+    royalHotel: 'One bucket per visit. House rules.',
+    theatre: 'Encore already cashed.',
+    fireHall: 'False alarm already filed.',
+    vedderBridge: 'River took its offering. Come back next run.',
+  };
+
+  function nearLandableLandmark() {
+    if (mode !== 'fly' || !fly) return null;
+    const lowEnough = fly.ufoY >= CH * 0.52 || (fly.legExtend || 0) >= 0.55;
+    if (!lowEnough) return null;
+    const worldX = fly.scrollX + fly.ufoX;
+    for (let i = 0; i < FLY_LANDMARKS.length; i++) {
+      const lm = FLY_LANDMARKS[i];
+      if (Math.abs(worldX - lm.x) < 58) return lm;
+    }
+    return null;
+  }
+
+  function startLandmarkVisit(lm) {
+    if (!fly || !lm) return;
+    flyResume = snapshotFlyForResume();
+    // Park resume scroll so UFO sits over this landmark on takeoff
+    const ufoScreenX = fly.ufoX;
+    flyResume.scrollX = Math.max(0, lm.x - ufoScreenX);
+    flyResume.ufoX = ufoScreenX;
+    flyResume.ufoY = Math.min(fly.ufoY, CH * 0.62);
+    flyResume.legExtend = 1;
+    const visited = !!(fly.visitedLandmarks && fly.visitedLandmarks[lm.kind]);
+    landmarkVisit = {
+      kind: lm.kind,
+      label: lm.label,
+      interacted: visited,
+      alreadyVisited: visited,
+      phase: 'settle',
+      timer: 0,
+      pendingShake: 0,
+    };
+    mode = 'landmark';
+    interactQueued = false;
+    jumpQueued = false;
+    beamQueued = false;
+    prevInteractHeld = true;
+    prevLandDownHeld = true;
+    Audio.play('landing');
+    showFlash('Touching down — ' + lm.label, 100);
+    setPrompt('Landing…');
+    showScreen('play');
+    syncHud();
+    syncInteractBtn();
+  }
+
+  function doLandmarkInteract() {
+    if (!landmarkVisit || !flyResume) return;
+    const kind = landmarkVisit.kind;
+    if (landmarkVisit.alreadyVisited || landmarkVisit.interacted) {
+      showFlash(LANDMARK_DONE_LINERS[kind] || 'Already visited this run.', 90);
+      Audio.play('ui');
+      return;
+    }
+    landmarkVisit.interacted = true;
+    landmarkVisit.alreadyVisited = true;
+    if (!flyResume.visitedLandmarks) flyResume.visitedLandmarks = {};
+    flyResume.visitedLandmarks[kind] = true;
+
+    const hx = W.LANDMARK_HOTSPOT_X - camX;
+    const hy = GROUND - 40;
+
+    if (kind === 'clockTower') {
+      score += 150;
+      landmarkVisit.pendingShake = 36;
+      showFlash("Noon? It's alien o'clock.", 130);
+      Audio.play('score');
+      W.burst(particles, hx, hy, '#ffe066', 18);
+      W.addFloater(floaters, hx, hy - 30, '+150 🔔', '#ffe066');
+    } else if (kind === 'museum') {
+      flyResume.microplastics = (flyResume.microplastics | 0) + 2;
+      score += 80;
+      showFlash('Educational theft.', 120);
+      Audio.play('score');
+      W.burst(particles, hx, hy, '#9ef0ff', 16);
+      W.addFloater(floaters, hx, hy - 30, '+🧪×2', '#9ef0ff');
+    } else if (kind === 'royalHotel') {
+      flyResume.chicken = (flyResume.chicken | 0) + 2;
+      score += 90;
+      showFlash('The Royal still delivers.', 120);
+      Audio.play('power');
+      W.burst(particles, hx, hy, '#ffb84a', 16);
+      W.addFloater(floaters, hx, hy - 30, '+🍗×2', '#ffb84a');
+    } else if (kind === 'theatre') {
+      flyResume.moonJuice = Math.max(flyResume.moonJuice | 0, 240);
+      flyResume.beamWide = true;
+      score += 100;
+      showFlash('Encore for the mothership.', 120);
+      Audio.play('power');
+      W.burst(particles, hx, hy, '#88ffcc', 18);
+      W.addFloater(floaters, hx, hy - 30, 'MOON JUICE', '#88ffcc');
+    } else if (kind === 'fireHall') {
+      if ((flyResume.lives | 0) < (flyResume.maxLives | 0)) {
+        flyResume.lives = (flyResume.lives | 0) + 1;
+        showFlash('False alarm: aliens.', 120);
+        W.addFloater(floaters, hx, hy - 30, '+1 HULL', '#ff8866');
+      } else {
+        score += 60;
+        showFlash('False alarm: aliens. (Hull full)', 110);
+        W.addFloater(floaters, hx, hy - 30, '+60', '#ffcc33');
+      }
+      Audio.play('power');
+      W.burst(particles, hx, hy, '#ffcc33', 16);
+    } else if (kind === 'vedderBridge') {
+      score += 75;
+      flyResume.forceCowSoon = true;
+      showFlash('Vedder takes another offering.', 120);
+      Audio.play('score');
+      W.burst(particles, hx, hy, '#9ef0ff', 14);
+      W.addFloater(floaters, hx, hy - 30, '+75 🐄?', '#c8e8ff');
+    } else {
+      score += 50;
+      showFlash('Chilliwack souvenir acquired.', 100);
+      Audio.play('score');
+    }
+    syncHud();
+  }
+
+  function beginLandmarkLiftoff() {
+    if (!landmarkVisit) return;
+    landmarkVisit.phase = 'liftoff';
+    landmarkVisit.timer = 0;
+    Audio.play('power');
+    showFlash('Back in the air — Chilliwack awaits', 120);
+    setPrompt('Liftoff…');
+  }
+
+  function finishLandmarkTakeoff() {
+    const shake = landmarkVisit ? (landmarkVisit.pendingShake | 0) : 0;
+    landmarkVisit = null;
+    avatar = null;
+    enterFly({ resume: true, fromLandmark: true });
+    if (fly && shake > 0) {
+      fly.shake = Math.max(fly.shake | 0, shake);
+      fly.hitFlash = Math.max(fly.hitFlash | 0, 20);
+    }
+  }
+
+  function updateLandmark() {
+    if (!landmarkVisit) return;
+
+    if (landmarkVisit.phase === 'settle') {
+      landmarkVisit.timer++;
+      if (fly) {
+        fly.legExtend = Math.min(1, (fly.legExtend || 0) + 0.08);
+        fly.ufoY = Math.min(CH * 0.68, fly.ufoY + 1.4);
+        fly.vx = 0;
+        fly.vy = 0;
+        fly.shake = Math.max(fly.shake | 0, 3);
+      }
+      setPrompt('Landing…');
+      if (landmarkVisit.timer > 38) {
+        fly = null;
+        landmarkVisit.phase = 'walk';
+        landmarkVisit.timer = 0;
+        camX = 0;
+        avatar = makeAvatar(160, GROUND);
+        showFlash(landmarkVisit.label, 90);
+        setPrompt('←→ walk · ▲ USE interact · hatch (left) to take off');
+        syncHud();
+      }
+      syncInteractBtn();
+      return;
+    }
+
+    if (landmarkVisit.phase === 'liftoff') {
+      landmarkVisit.timer++;
+      setPrompt('Liftoff…');
+      if (landmarkVisit.timer > 26) {
+        finishLandmarkTakeoff();
+      }
+      return;
+    }
+
+    // walk
+    updateSideScroller(W.LANDMARK_WORLD_W);
+    const nearHot = Math.abs(avatar.x - W.LANDMARK_HOTSPOT_X) < 60;
+    const nearExit = Math.abs(avatar.x - W.LANDMARK_EXIT_X) < 55;
+
+    if (nearHot) {
+      if (landmarkVisit.interacted || landmarkVisit.alreadyVisited) {
+        setPrompt('▲ Already done — ' + (LANDMARK_DONE_LINERS[landmarkVisit.kind] || 'come back next run'));
+      } else {
+        setPrompt('▲ USE — ' + (LANDMARK_USE_PROMPTS[landmarkVisit.kind] || 'interact'));
+      }
+      if (wantsInteract()) doLandmarkInteract();
+    } else if (nearExit) {
+      setPrompt('▲ USE — take off / UFO hatch');
+      if (wantsInteract()) beginLandmarkLiftoff();
+    } else {
+      prevInteractHeld = interactHeld();
+      setPrompt('←→ walk · interact hotspot · hatch (left) to leave');
+    }
+    syncInteractBtn();
+    syncHud();
+  }
+
   function snapshotFlyForResume() {
     if (!fly) return null;
     // Shallow clone + fresh target/prop arrays so resume is safe
@@ -2204,6 +2491,8 @@
       legExtend: 0,
       ufoScale: fly.ufoScale != null ? fly.ufoScale : 0.92,
       cowSpawned: fly.cowSpawned | 0,
+      visitedLandmarks: Object.assign({}, fly.visitedLandmarks || {}),
+      forceCowSoon: !!fly.forceCowSoon,
     };
   }
 
@@ -2355,6 +2644,7 @@
     else if (mode === 'ship') updateShip();
     else if (mode === 'fly') updateFly();
     else if (mode === 'operate') updateOperate();
+    else if (mode === 'landmark') updateLandmark();
 
     W.updateFx(particles, floaters);
     if (flashTimer > 0) flashTimer--;
@@ -2668,8 +2958,62 @@
         ctx.fillRect(CW / 2 - 78, 102, 156 * prog, 8);
         ctx.textAlign = 'left';
       }
+    } else if (mode === 'landmark') {
+      if (landmarkVisit && landmarkVisit.phase === 'settle' && fly) {
+        W.drawFlyScene(ctx, CW, CH, fly, t);
+        ctx.fillStyle = 'rgba(10,30,16,0.35)';
+        ctx.fillRect(0, 0, CW, CH);
+        ctx.fillStyle = '#7dff3a';
+        ctx.font = 'bold 18px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('LANDING — ' + (landmarkVisit.label || ''), CW / 2, 88);
+        ctx.textAlign = 'left';
+      } else if (landmarkVisit) {
+        W.drawLandmarkInterior(ctx, CW, CH, camX, t, {
+          kind: landmarkVisit.kind,
+          label: landmarkVisit.label,
+          interacted: !!landmarkVisit.interacted,
+        });
+        if (avatar && landmarkVisit.phase === 'walk') {
+          W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {});
+          const bob = Math.sin(t * 0.01) * 3;
+          if (Math.abs(avatar.x - W.LANDMARK_HOTSPOT_X) < 60) {
+            ctx.fillStyle = '#7dff3a';
+            ctx.font = 'bold 15px Segoe UI, sans-serif';
+            ctx.textAlign = 'center';
+            const tip = landmarkVisit.interacted ? '▲ DONE' : '▲ USE';
+            ctx.fillText(tip, W.LANDMARK_HOTSPOT_X - camX, GROUND - 110 + bob);
+            ctx.textAlign = 'left';
+          }
+          if (Math.abs(avatar.x - W.LANDMARK_EXIT_X) < 55) {
+            ctx.fillStyle = '#88c8ff';
+            ctx.font = 'bold 15px Segoe UI, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('▲ TAKEOFF', W.LANDMARK_EXIT_X - camX, GROUND - 110 + bob);
+            ctx.textAlign = 'left';
+          }
+        }
+        if (landmarkVisit.phase === 'liftoff') {
+          ctx.fillStyle = 'rgba(10,30,16,0.45)';
+          ctx.fillRect(0, 0, CW, CH);
+          ctx.fillStyle = '#88c8ff';
+          ctx.font = 'bold 18px Segoe UI, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('Legs tucking — back to the sky…', CW / 2, 90);
+          ctx.textAlign = 'left';
+        }
+      }
     } else if (mode === 'fly') {
       W.drawFlyScene(ctx, CW, CH, fly, t);
+      const tipLm = nearLandableLandmark();
+      if (tipLm) {
+        const bob = Math.sin(t * 0.012) * 3;
+        ctx.fillStyle = '#7dff3a';
+        ctx.font = 'bold 14px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('↓/E LAND — ' + tipLm.label, CW / 2, 100 + bob);
+        ctx.textAlign = 'left';
+      }
     }
 
     W.drawFx(ctx, particles, floaters);
