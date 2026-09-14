@@ -1019,12 +1019,13 @@
     boardSit = null;
     landing = null;
     drivingCamino = false;
-    tayler = null;
     Audio.play('ui');
     Audio.play('power');
     camX = 0;
     avatar = makeAvatar(140, GROUND);
-    showFlash('Welcome aboard — walk to the aliens / take the driver\'s seat.', 130);
+    // Tayler boards with Zakk — companion on the mothership
+    tayler = { x: 95, y: GROUND, facing: 1, moving: false };
+    showFlash('Welcome aboard — Zakk & Tayler on the mothership. Walk to the helm.', 130);
     setPrompt("Walk to the aliens — take the driver's seat");
     showScreen('play');
     syncHud();
@@ -1075,7 +1076,7 @@
 
     fly = {
       scrollX: 0,
-      ufoX: CW * 0.35,
+      ufoX: CW * 0.52,
       ufoY: CH * 0.32,
       vx: 0,
       vy: 0,
@@ -1990,6 +1991,26 @@
     syncInteractBtn();
   }
 
+
+  /** Soft-follow companion so Tayler stays aboard with Zakk (ship / bandTour). */
+  function updateTaylerCompanion(worldW) {
+    if (!tayler || !avatar) return;
+    const behind = 44;
+    const target = avatar.x - behind * (avatar.facing >= 0 ? 1 : -1);
+    const dx = target - tayler.x;
+    if (Math.abs(dx) > 10) {
+      const step = Math.min(2.0, Math.max(0.7, Math.abs(dx) * 0.09));
+      tayler.x += Math.sign(dx) * step;
+      tayler.facing = dx > 0 ? 1 : -1;
+      tayler.moving = true;
+    } else {
+      tayler.moving = false;
+      tayler.facing = avatar.facing;
+    }
+    tayler.x = Math.max(40, Math.min((worldW || 900) - 40, tayler.x));
+    tayler.y = GROUND;
+  }
+
   function updateShip() {
     if (boardSit) {
       boardSit.timer++;
@@ -2031,6 +2052,7 @@
     }
 
     updateSideScroller(W.SHIP_WORLD_W);
+    updateTaylerCompanion(W.SHIP_WORLD_W);
 
     if (nearInteract()) {
       setPrompt("↑ / E / USE — take the driver's seat");
@@ -2053,9 +2075,9 @@
     const iy = inputY();
 
     // Independent axes so left/right works while holding up/down (diagonals free)
-    const accel = 0.72;
-    const friction = 0.86;
-    const maxSpd = 8.2;
+    const accel = 0.95;
+    const friction = 0.88;
+    const maxSpd = 11;
     fly.vx += ix * accel;
     fly.vy += iy * accel;
     fly.vx *= friction;
@@ -2066,7 +2088,7 @@
     fly.ufoY += fly.vy;
     // Tight camera band near mid-left: world scrolls almost as soon as you strafe
     // (old edgeL=70 / edgeR=CW-70 forced a long cross-screen crawl first).
-    const preferX = CW * 0.40;
+    const preferX = CW * 0.52;
     const deadHalf = 28; // small deadzone — leave it and the map moves
     const bandL = preferX - deadHalf;
     const bandR = preferX + deadHalf;
@@ -2439,6 +2461,7 @@
     prevInteractHeld = true;
     camX = 0;
     avatar = makeAvatar(140, GROUND);
+    tayler = { x: 95, y: GROUND, facing: 1, moving: false };
     const talked = {};
     bandTour = {
       vehicleKind: vehicle.kind,
@@ -2450,7 +2473,7 @@
     showScreen('play');
     syncHud();
     Audio.play('ui');
-    showFlash('Retrofit aboard — walk the lounge, USE near bandmates', 140);
+    showFlash('Retrofit aboard — Zakk & Tayler walk the lounge', 140);
     setPrompt('←→ walk · ↑/E/USE near bandmates · F fly again · L shed');
     syncInteractBtn();
   }
@@ -2495,6 +2518,7 @@
       return;
     }
     updateSideScroller(W.SHIP_WORLD_W);
+    updateTaylerCompanion(W.SHIP_WORLD_W);
     const mate = nearBandMate();
     const nearHatch = avatar && avatar.x < 120;
     if (mate) {
@@ -3215,6 +3239,9 @@
         alienYield: yieldAmt,
         seatTaken: seatTaken,
       });
+      if (tayler && (!boardSit || boardSit.phase === 'yield')) {
+        W.drawTayler(ctx, tayler.x - camX, tayler.y, tayler.facing != null ? tayler.facing : 1, !!tayler.moving, t, {});
+      }
       if (!boardSit || boardSit.phase === 'yield') {
         W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {});
       }
@@ -3287,6 +3314,9 @@
         seatTaken: false,
       });
       if (avatar && bandTour && bandTour.phase === 'walk') {
+        if (tayler) {
+          W.drawTayler(ctx, tayler.x - camX, tayler.y, tayler.facing != null ? tayler.facing : 1, !!tayler.moving, t, {});
+        }
         W.drawZakk(ctx, avatar.x - camX, avatar.y, avatar.facing, Math.abs(avatar.vx) > 0.4, t, {});
         const mate = nearBandMate();
         const bob = Math.sin(t * 0.01) * 3;
