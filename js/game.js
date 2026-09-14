@@ -1233,7 +1233,7 @@
   /** Fixed Chilliwack landmarks — world X along N→S flight (districts ~900 wide). */
   /** Spread ~700–800 apart across N→S Chilliwack so each reads as its own beat. */
   const FLY_LANDMARKS = [
-    { x: 320, kind: 'homeShed', label: "MOM'S / SHED", home: true },
+    { x: 520, kind: 'homeShed', label: "MOM'S / SHED", home: true },
     { x: 1100, kind: 'clockTower', label: 'CLOCK TOWER' },
     { x: 1900, kind: 'museum', label: 'MUSEUM' },
     { x: 2700, kind: 'royalHotel', label: 'ROYAL HOTEL' },
@@ -2228,27 +2228,38 @@
     fly.vy = Math.max(-maxSpd, Math.min(maxSpd, fly.vy));
 
     fly.ufoY += fly.vy;
-    // Tight camera band near mid-left: world scrolls almost as soon as you strafe
-    // (old edgeL=70 / edgeR=CW-70 forced a long cross-screen crawl first).
+    // Camera band: scroll with strafe, but at world start unlock left so Mom's shed is reachable
     const preferX = CW * 0.52;
-    const deadHalf = 28; // small deadzone — leave it and the map moves
-    const bandL = preferX - deadHalf;
+    const deadHalf = 28;
+    const atWorldStart = fly.scrollX <= 2;
+    // When scrollX can't go lower, let the ship fly left across the screen to hit home
+    const bandL = atWorldStart ? 72 : (preferX - deadHalf);
     const bandR = preferX + deadHalf;
     fly.ufoX += fly.vx;
     let scrollDelta = 0;
     if (fly.ufoX < bandL) {
-      scrollDelta = fly.ufoX - bandL; // negative → scroll west
-      fly.ufoX = bandL;
+      if (atWorldStart) {
+        fly.ufoX = bandL; // already at west edge of world — no more scroll
+      } else {
+        scrollDelta = fly.ufoX - bandL;
+        fly.ufoX = bandL;
+      }
     } else if (fly.ufoX > bandR) {
-      scrollDelta = fly.ufoX - bandR; // positive → scroll east/south
+      scrollDelta = fly.ufoX - bandR;
       fly.ufoX = bandR;
     } else if (Math.abs(fly.vx) > 0.15) {
-      // Still inside band: bleed most motion into scroll so it never feels stuck
-      scrollDelta = fly.vx * 0.85;
-      fly.ufoX -= fly.vx * 0.55; // cancel most on-screen drift
+      if (atWorldStart && fly.vx < 0) {
+        // Stay on-screen when hunting Mom's shed on the left
+        scrollDelta = 0;
+      } else {
+        scrollDelta = fly.vx * 0.85;
+        fly.ufoX -= fly.vx * 0.55;
+      }
     }
-    // Soft spring toward preferX so the ship settles mid-frame
-    fly.ufoX += (preferX - fly.ufoX) * 0.06;
+    // Soft spring toward preferX (skip while at start flying west over home)
+    if (!(atWorldStart && fly.vx < -0.2 && fly.ufoX < preferX)) {
+      fly.ufoX += (preferX - fly.ufoX) * 0.06;
+    }
     fly.ufoX = Math.max(36, Math.min(CW - 36, fly.ufoX));
     // Wider vertical band — free climb/dive while strafing
     fly.ufoY = Math.max(40, Math.min(CH * 0.72, fly.ufoY));
@@ -2725,7 +2736,8 @@
     const worldX = fly.scrollX + fly.ufoX;
     for (let i = 0; i < FLY_LANDMARKS.length; i++) {
       const lm = FLY_LANDMARKS[i];
-      if (Math.abs(worldX - lm.x) < 58) return lm;
+      const reach = (lm.home || lm.kind === 'homeShed') ? 78 : 58;
+      if (Math.abs(worldX - lm.x) < reach) return lm;
     }
     return null;
   }
