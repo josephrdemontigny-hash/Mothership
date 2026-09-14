@@ -74,7 +74,7 @@
   let prevInteractHeld = false;
   let prevBeamHeld = false;
 
-  // title | shed | yard | ship | fly | operate | landmark | results
+  // title | shed | yard | ship | fly | operate | landmark | bandTour | results
   let mode = 'title';
   let t = 0;
   let lastTs = 0;
@@ -93,6 +93,8 @@
   let flyResume = null;
   /** Landmark landing visit: settle → walk → liftoff */
   let landmarkVisit = null;
+  /** Band abduction tour after van/bus beam */
+  let bandTour = null;
   /** Edge-detect ↓ for land confirm while hovering a landmark */
   let prevLandDownHeld = false;
 
@@ -640,10 +642,12 @@
       fly: 'FLY',
       operate: 'OPERATE',
       landmark: 'VISIT',
+      bandTour: 'BAND',
     };
     el.modeLabel.textContent = labels[mode] || '';
     const flyHud = (mode === 'fly' && fly) ? fly
       : (mode === 'landmark' && flyResume) ? flyResume
+      : (mode === 'bandTour' && flyResume) ? flyResume
       : null;
     if (flyHud) {
       el.district.classList.remove('hidden');
@@ -668,6 +672,10 @@
       el.district.classList.remove('hidden');
       el.district.textContent = 'Sickbay · Subject #' + beamed;
       if (el.multLabel) el.multLabel.classList.add('hidden');
+    } else if (mode === 'bandTour') {
+      el.district.classList.remove('hidden');
+      el.district.textContent = 'Mothership · Retrofit aboard';
+      if (el.multLabel) el.multLabel.classList.add('hidden');
     } else {
       el.district.classList.add('hidden');
       if (el.multLabel) el.multLabel.classList.add('hidden');
@@ -683,7 +691,7 @@
   /** Beam touch control + fly-only HUD bits — hidden until fly. */
   function syncBeamUi() {
     const flying = mode === 'fly';
-    const visiting = mode === 'landmark';
+    const visiting = mode === 'landmark' || mode === 'bandTour';
     const inRunHud = flying || mode === 'operate' || visiting;
     if (el.btnBeam) el.btnBeam.classList.toggle('hidden', !flying);
     // Keep #btn-destruct / #hud-destruct — visibility only; placement owned elsewhere
@@ -1034,7 +1042,10 @@
       fly.vy = 0;
       fly.invuln = Math.max(fly.invuln | 0, 40);
       if (!fly.visitedLandmarks) fly.visitedLandmarks = {};
+      if (fly.beamedVan == null) fly.beamedVan = false;
+      if (fly.beamedBus == null) fly.beamedBus = false;
       flyResume = null;
+      bandTour = null;
       landmarkVisit = null;
       ensureLandmarks();
       ensureStreetlights();
@@ -1085,6 +1096,8 @@
       cowSpawned: 0,
       visitedLandmarks: {},
       forceCowSoon: false,
+      beamedVan: false,
+      beamedBus: false,
     };
     ensureLandmarks();
     ensureStreetlights();
@@ -1187,6 +1200,13 @@
     { x: 5000, kind: 'vedderBridge', label: 'VEDDER BRIDGE' },
   ];
 
+  /** Band vehicles — special fly props (not landmark interiors). Spread in gaps. */
+  const FLY_VEHICLES = [
+    { x: 1500, kind: 'retrofitVan', label: 'RETROFIT VAN', flag: 'beamedVan', promptName: 'RETROFIT VAN' },
+    { x: 4600, kind: 'braveBus', label: 'BRAVE TOUR BUS', flag: 'beamedBus', promptName: 'BRAVE TOUR BUS' },
+  ];
+  const BAND_BEAM_POINTS = 520;
+
   const STREETLIGHT_SPACING = 130;
 
   function districtPropKinds() {
@@ -1212,6 +1232,19 @@
         });
       }
     }
+    for (const v of FLY_VEHICLES) {
+      const has = fly.props.some((p) => p.vehicle && p.kind === v.kind);
+      if (!has) {
+        fly.props.push({
+          x: v.x,
+          kind: v.kind,
+          label: v.label,
+          vehicle: true,
+          flag: v.flag,
+          promptName: v.promptName,
+        });
+      }
+    }
   }
 
   /** Keep streetlights on a regular grid along the road (readable via drawStreetlight). */
@@ -1230,6 +1263,7 @@
       const xi = x | 0;
       // keep lamps off landmark footprints
       if (FLY_LANDMARKS.some((lm) => Math.abs(xi - lm.x) < 45)) continue;
+      if (FLY_VEHICLES.some((v) => Math.abs(xi - v.x) < 55)) continue;
       if (!have.has(xi)) {
         fly.props.push({ x: xi, kind: 'streetlight', streetlight: true });
         have.add(xi);
@@ -1245,11 +1279,17 @@
     for (const lm of FLY_LANDMARKS) {
       if (Math.abs(x0 - lm.x) < 55) x0 = lm.x + (x0 < lm.x ? -70 : 70);
     }
+    for (const v of FLY_VEHICLES) {
+      if (Math.abs(x0 - v.x) < 70) x0 = v.x + (x0 < v.x ? -85 : 85);
+    }
     fly.props.push({ x: x0, kind: W.pick(kinds) });
     if (Math.random() < 0.62) {
       let x1 = x0 + W.rand(28, 64);
       for (const lm of FLY_LANDMARKS) {
         if (Math.abs(x1 - lm.x) < 55) x1 = lm.x + 75;
+      }
+      for (const v of FLY_VEHICLES) {
+        if (Math.abs(x1 - v.x) < 70) x1 = v.x + 90;
       }
       fly.props.push({ x: x1, kind: W.pick(kinds) });
     }
@@ -1990,23 +2030,29 @@
     fly.vx = Math.max(-maxSpd, Math.min(maxSpd, fly.vx));
     fly.vy = Math.max(-maxSpd, Math.min(maxSpd, fly.vy));
 
-    fly.ufoX += fly.vx;
     fly.ufoY += fly.vy;
-    // Soft edge push: near screen edge, convert leftover intent into scroll
-    const edgeL = 70;
-    const edgeR = CW - 70;
+    // Tight camera band near mid-left: world scrolls almost as soon as you strafe
+    // (old edgeL=70 / edgeR=CW-70 forced a long cross-screen crawl first).
+    const preferX = CW * 0.40;
+    const deadHalf = 28; // small deadzone — leave it and the map moves
+    const bandL = preferX - deadHalf;
+    const bandR = preferX + deadHalf;
+    fly.ufoX += fly.vx;
     let scrollDelta = 0;
-    if (fly.ufoX < edgeL && fly.vx < 0) {
-      scrollDelta += fly.vx * 1.55;
-      fly.ufoX = edgeL;
-    } else if (fly.ufoX > edgeR && fly.vx > 0) {
-      scrollDelta += fly.vx * 1.55;
-      fly.ufoX = edgeR;
-    } else {
-      // Player-driven world scroll from horizontal flight (no auto-advance)
-      scrollDelta = fly.vx * 1.25;
+    if (fly.ufoX < bandL) {
+      scrollDelta = fly.ufoX - bandL; // negative → scroll west
+      fly.ufoX = bandL;
+    } else if (fly.ufoX > bandR) {
+      scrollDelta = fly.ufoX - bandR; // positive → scroll east/south
+      fly.ufoX = bandR;
+    } else if (Math.abs(fly.vx) > 0.15) {
+      // Still inside band: bleed most motion into scroll so it never feels stuck
+      scrollDelta = fly.vx * 0.85;
+      fly.ufoX -= fly.vx * 0.55; // cancel most on-screen drift
     }
-    fly.ufoX = Math.max(40, Math.min(CW - 40, fly.ufoX));
+    // Soft spring toward preferX so the ship settles mid-frame
+    fly.ufoX += (preferX - fly.ufoX) * 0.06;
+    fly.ufoX = Math.max(36, Math.min(CW - 36, fly.ufoX));
     // Wider vertical band — free climb/dive while strafing
     fly.ufoY = Math.max(40, Math.min(CH * 0.72, fly.ufoY));
 
@@ -2052,7 +2098,7 @@
       fly.propTimer = W.rand(16, 36);
     }
     fly.props = fly.props.filter((p) => {
-      if (p.landmark) return true; // fixed Chilliwack landmarks stay in the world
+      if (p.landmark || p.vehicle) return true; // fixed landmarks + band vehicles stay
       return p.x > fly.scrollX - 220 && p.x < fly.scrollX + CW + 320;
     });
     ensureLandmarks();
@@ -2104,11 +2150,27 @@
     fly.legExtend += (targetLegs - (fly.legExtend || 0)) * 0.14;
 
     const landLm = nearLandableLandmark();
+    const nearVeh = nearBandVehicle();
     const downHeld = !!(keys['arrowdown'] || keys['s'] || touchDirs.down);
     const downEdge = downHeld && !prevLandDownHeld;
     prevLandDownHeld = downHeld;
 
-    if (landLm) {
+    // Prefer band vehicle when overlapping (they sit in landmark gaps)
+    if (nearVeh && nearVeh.lowEnough) {
+      const v = nearVeh.vehicle;
+      if (nearVeh.already) {
+        setPrompt('Already beamed — ' + v.promptName);
+        if (interactQueued) interactQueued = false;
+      } else {
+        setPrompt('↓/E LAND — ' + v.promptName + ' · Space/beam also works');
+        const wantLand = wantsInteract() || downEdge;
+        if (wantLand) {
+          triggerBandBeam(v, true);
+          syncHud();
+          return;
+        }
+      }
+    } else if (landLm) {
       setPrompt('↓/E LAND — ' + landLm.label);
       const wantLand = wantsInteract() || downEdge;
       if (wantLand) {
@@ -2126,7 +2188,7 @@
         interactQueued = false;
         beamQueued = true;
       }
-      setPrompt("←→↑↓ fly · Space/USE beam · dive near landmark / MOM'S SHED to LAND · Enter end");
+      setPrompt("←→↑↓ fly · Space/USE beam · dive near landmark / van / bus / MOM'S SHED to LAND · Enter end");
       prevInteractHeld = interactHeld();
     }
     syncInteractBtn();
@@ -2238,6 +2300,18 @@
         }
       }
     }
+    // Whole-band beam if hovering a van/bus (Space path)
+    if (!hit) {
+      const nv = nearBandVehicle();
+      if (nv && !nv.already) {
+        // Allow beam even if not fully "low" — being over the prop is enough
+        const worldX = fly.scrollX + fly.ufoX;
+        if (Math.abs(worldX - nv.vehicle.x) < 72) {
+          triggerBandBeam(nv.vehicle, false);
+          hit = true;
+        }
+      }
+    }
     if (!hit) {
       W.burst(particles, fly.ufoX, fly.ufoY + 40, '#88ffaa', 3);
     }
@@ -2270,6 +2344,170 @@
     fireHall: 'False alarm already filed.',
     vedderBridge: 'River took its offering. Come back next run.',
   };
+
+
+  function nearBandVehicle() {
+    if (mode !== 'fly' || !fly) return null;
+    const worldX = fly.scrollX + fly.ufoX;
+    const lowEnough = fly.ufoY >= CH * 0.48 || (fly.legExtend || 0) >= 0.4;
+    for (let i = 0; i < FLY_VEHICLES.length; i++) {
+      const v = FLY_VEHICLES[i];
+      if (Math.abs(worldX - v.x) < 72) {
+        return { vehicle: v, lowEnough: lowEnough, already: !!(fly[v.flag]) };
+      }
+    }
+    return null;
+  }
+
+  function triggerBandBeam(vehicle, viaLand) {
+    if (!fly || !vehicle) return false;
+    if (fly[vehicle.flag]) {
+      showFlash('Already beamed that crew this run.', 90);
+      Audio.play('ui');
+      return false;
+    }
+    fly[vehicle.flag] = true;
+    let pts = BAND_BEAM_POINTS;
+    if (fly.scoreMultTimer > 0) pts = (pts * 2) | 0;
+    score += pts;
+    beamed += W.BAND_SIZE | 6;
+    W.burst(particles, fly.ufoX, CH * 0.7, '#ffe066', 28);
+    W.burst(particles, fly.ufoX, fly.ufoY + 10, '#7dff3a', 16);
+    W.addFloater(floaters, fly.ufoX, CH * 0.5, '+' + pts + ' BAND', '#ffe066');
+    Audio.play('power');
+    Audio.play('score');
+    showFlash('WHOLE BAND BEAMED — welcome to the mothership!', 180);
+    syncHud();
+    // Cut to ship tour after a beat
+    const vRef = vehicle;
+    setTimeout(function () {
+      if (mode === 'fly' && fly && fly[vRef.flag]) startBandTour(vRef);
+    }, viaLand ? 400 : 700);
+    return true;
+  }
+
+  function startBandTour(vehicle) {
+    if (!fly) return;
+    flyResume = snapshotFlyForResume();
+    // park resume over the vehicle
+    const ufoScreenX = fly.ufoX;
+    flyResume.scrollX = Math.max(0, vehicle.x - ufoScreenX);
+    flyResume.ufoX = ufoScreenX;
+    flyResume.ufoY = Math.min(fly.ufoY, CH * 0.5);
+    flyResume[vehicle.flag] = true;
+    fly = null;
+    landmarkVisit = null;
+    operate = null;
+    hideOperateChoice();
+    mode = 'bandTour';
+    interactQueued = false;
+    jumpQueued = false;
+    beamQueued = false;
+    prevInteractHeld = true;
+    camX = 0;
+    avatar = makeAvatar(140, GROUND);
+    const talked = {};
+    bandTour = {
+      vehicleKind: vehicle.kind,
+      label: vehicle.label,
+      phase: 'walk', // walk | choice
+      talked: talked,
+      talkCount: 0,
+    };
+    showScreen('play');
+    syncHud();
+    Audio.play('ui');
+    showFlash('Retrofit aboard — walk the lounge, USE near bandmates', 140);
+    setPrompt('←→ walk · ↑/E/USE near bandmates · F fly again · L shed');
+    syncInteractBtn();
+  }
+
+  function nearBandMate() {
+    if (mode !== 'bandTour' || !avatar || !bandTour) return null;
+    const roster = W.BAND_ROSTER || [];
+    for (let i = 0; i < roster.length; i++) {
+      if (Math.abs(avatar.x - roster[i].x) < 48) return roster[i];
+    }
+    return null;
+  }
+
+  function doBandMateTalk(mate) {
+    if (!bandTour || !mate) return;
+    if (bandTour.talked[mate.id]) {
+      showFlash('Already caught that one-liner.', 70);
+      Audio.play('ui');
+      return;
+    }
+    bandTour.talked[mate.id] = true;
+    bandTour.talkCount = (bandTour.talkCount | 0) + 1;
+    score += 25;
+    showFlash(mate.line, 160);
+    Audio.play('score');
+    W.burst(particles, mate.x - camX, GROUND - 50, '#ffe066', 10);
+    W.addFloater(floaters, mate.x - camX, GROUND - 90, '+25', '#ffe066');
+    syncHud();
+    if (bandTour.talkCount >= (W.BAND_SIZE | 6)) {
+      showFlash('Whole tour checked — Fly again or land at shed?', 130);
+      bandTour.phase = 'choice';
+      showOperateChoice();
+      setPrompt('Tour done. F — Fly again · L — Land at shed');
+    }
+  }
+
+  function updateBandTour() {
+    if (!bandTour) return;
+    if (bandTour.phase === 'choice') {
+      setPrompt('F — Fly again · L — Land at shed');
+      syncInteractBtn();
+      return;
+    }
+    updateSideScroller(W.SHIP_WORLD_W);
+    const mate = nearBandMate();
+    if (mate) {
+      if (bandTour.talked[mate.id]) {
+        setPrompt('▲ Already vibed — F fly again · L shed');
+      } else {
+        setPrompt('▲ USE — talk to ' + (mate.id || 'bandmate'));
+      }
+      if (wantsInteract()) doBandMateTalk(mate);
+    } else {
+      prevInteractHeld = interactHeld();
+      setPrompt('←→ walk · USE near bandmates · F fly · L shed');
+    }
+    // Allow early exit to choice
+    if (keys['f']) {
+      // handled in keydown
+    }
+    syncInteractBtn();
+    syncHud();
+  }
+
+  function chooseFlyAgainFromBandTour() {
+    if (mode !== 'bandTour') return;
+    hideOperateChoice();
+    Audio.play('power');
+    bandTour = null;
+    enterFly({ resume: true, fromLandmark: true });
+    showFlash('Back in the cooler — Retrofit secured. Fly on!', 130);
+  }
+
+  function chooseLandShedFromBandTour() {
+    if (mode !== 'bandTour') return;
+    hideOperateChoice();
+    Audio.play('landing');
+    bandTour = null;
+    flyResume = null;
+    smokeDone = true;
+    smoking = false;
+    smokeProgress = 1;
+    windowUfo = 1;
+    ufoLanding = false;
+    jointStage = null;
+    jointPhase = null;
+    returnToShed();
+    showFlash('Landed at the shed. Band + score banked: ' + score, 140);
+    setPrompt('← → walk · EXIT → yard · score kept');
+  }
 
   function nearLandableLandmark() {
     if (mode !== 'fly' || !fly) return null;
@@ -2508,6 +2746,8 @@
       cowSpawned: fly.cowSpawned | 0,
       visitedLandmarks: Object.assign({}, fly.visitedLandmarks || {}),
       forceCowSoon: !!fly.forceCowSoon,
+      beamedVan: !!fly.beamedVan,
+      beamedBus: !!fly.beamedBus,
     };
   }
 
