@@ -129,6 +129,17 @@
   /** Driver's seat / helm interact X */
   const SHIP_HELM_X = 720;
 
+  /** Retrofit band aboard mothership after van/bus beam (stylized via drawCitizen looks) */
+  const BAND_SIZE = 6;
+  const BAND_ROSTER = [
+    { id: 'keys', look: 'blazer', x: 170, line: 'Keys guy nods — that van was paid off in 2009.' },
+    { id: 'drums', look: 'graphic', x: 290, line: 'Drums check the viewport — "is that Yale Road?"' },
+    { id: 'bass', look: 'denim', x: 410, line: 'Bass shrugs — "aliens got better monitors than Paramount."' },
+    { id: 'guitar', look: 'raglan', x: 530, line: 'Guitar: "beam was clean. Keep the van yellow."' },
+    { id: 'vox', look: 'western', x: 650, line: 'Vox: "welcome to the mothership, Chilliwack."' },
+    { id: 'rhythm', look: 'plaid', x: 820, line: 'Rhythm (cap back): "BRAVE bus still smells like Molson."' },
+  ];
+
   /** Landmark visit interiors (side-scroller rooms) */
   const LANDMARK_WORLD_W = 780;
   const LANDMARK_HOTSPOT_X = 420;
@@ -550,101 +561,202 @@
     }
   }
 
-  // ——— Characters (comic / pop-art readable) ———
+  // ——— Characters (Pokémon GO–style soft avatars; no IP) ———
 
-  /** Cheap comic halftone dots in a rect (clipped by caller if needed). */
-  function fillHalftone(ctx, x, y, w, h, rgba, step) {
-    step = step || 3;
-    ctx.fillStyle = rgba;
-    const x1 = x + w;
-    const y1 = y + h;
-    for (let py = y; py < y1; py += step) {
-      const off = ((py / step) | 0) % 2 ? step * 0.5 : 0;
-      for (let px = x + off; px < x1; px += step) {
-        ctx.fillRect(px, py, 1.05, 1.05);
-      }
-    }
-  }
-
-  /** Soft cyan/magenta rim strokes along a vertical silhouette edge. */
-  function rimLightV(ctx, x, y0, y1, facingSign) {
-    // In local +x=forward space after facing flip: near edge is +x-ish chest front
-    const g = ctx.createLinearGradient(x - 2, y0, x + 3, y0);
-    g.addColorStop(0, 'rgba(0,230,255,0)');
-    g.addColorStop(0.45, 'rgba(0,220,255,0.35)');
-    g.addColorStop(0.7, 'rgba(255,40,200,0.22)');
-    g.addColorStop(1, 'rgba(255,40,200,0)');
-    ctx.strokeStyle = g;
-    ctx.lineWidth = 1.6;
+  /** Soft volumetric capsule (sausage limb) from (x0,y0)→(x1,y1). */
+  function goCapsule(ctx, x0, y0, x1, y1, r, hi, mid, lo) {
+    const dx = x1 - x0, dy = y1 - y0;
+    const len = Math.hypot(dx, dy) || 0.001;
+    const ang = Math.atan2(dy, dx);
+    ctx.save();
+    ctx.translate(x0, y0);
+    ctx.rotate(ang);
+    const g = ctx.createLinearGradient(0, -r, 0, r);
+    g.addColorStop(0, hi);
+    g.addColorStop(0.42, mid);
+    g.addColorStop(1, lo);
+    ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.moveTo(x, y0);
-    ctx.lineTo(x + facingSign * 0.5, y1);
-    ctx.stroke();
+    ctx.moveTo(0, -r);
+    ctx.lineTo(len, -r);
+    ctx.arc(len, 0, r, -Math.PI / 2, Math.PI / 2);
+    ctx.lineTo(0, r);
+    ctx.arc(0, 0, r, Math.PI / 2, -Math.PI / 2);
+    ctx.closePath();
+    ctx.fill();
+    // soft specular ridge
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.beginPath();
+    ctx.ellipse(len * 0.32, -r * 0.38, Math.max(2, len * 0.28), r * 0.32, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
-  function drawAviatorLenses(ctx, hx, hy, profile) {
-    // profile: 0 front-ish, 1 strong 3/4 (nose toward +x)
-    const gap = 1.2 - profile * 0.4;
-    const lx = hx - 5.2 + profile * 1.5;
-    const rx = hx + 5.2 + profile * 2.2;
-    // frames
+  /** Rounded soft torso / blob with clay gradient + specular. */
+  function goTorso(ctx, cx, cy, w, h, rad, hi, mid, lo) {
+    const x = cx - w / 2, y = cy - h / 2;
+    const rr = Math.min(rad, w / 2, h / 2);
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, rr);
+    else {
+      ctx.moveTo(x + rr, y);
+      ctx.arcTo(x + w, y, x + w, y + h, rr);
+      ctx.arcTo(x + w, y + h, x, y + h, rr);
+      ctx.arcTo(x, y + h, x, y, rr);
+      ctx.arcTo(x, y, x + w, y, rr);
+      ctx.closePath();
+    }
+    const g = ctx.createLinearGradient(x, y, x + w * 0.85, y + h);
+    g.addColorStop(0, hi);
+    g.addColorStop(0.45, mid);
+    g.addColorStop(1, lo);
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.16)';
+    ctx.beginPath();
+    ctx.ellipse(cx - w * 0.12, cy - h * 0.28, w * 0.28, h * 0.16, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  /** Spherical-ish soft head. */
+  function goHead(ctx, hx, hy, rx, ry, skinHi, skin, skinLo) {
+    const g = ctx.createRadialGradient(hx - rx * 0.25, hy - ry * 0.35, 1.5, hx, hy, rx * 1.15);
+    g.addColorStop(0, skinHi);
+    g.addColorStop(0.5, skin);
+    g.addColorStop(1, skinLo);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(hx, hy, rx, ry, 0.04, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.beginPath();
+    ctx.ellipse(hx - rx * 0.2, hy - ry * 0.35, rx * 0.35, ry * 0.22, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  /** Two-bone limb (thigh+calf or upper+fore) with overlapping joint sockets. */
+  function goJointLimb(ctx, ax, ay, ang1, ang2, len1, len2, r1, r2, c1, c2) {
+    const jx = ax + Math.sin(ang1) * len1;
+    const jy = ay + Math.cos(ang1) * len1;
+    const ex = jx + Math.sin(ang2) * len2;
+    const ey = jy + Math.cos(ang2) * len2;
+    goCapsule(ctx, ax, ay, jx, jy, r1, c1[0], c1[1], c1[2]);
+    // joint ball overlap
+    const jg = ctx.createRadialGradient(jx - 1, jy - 1, 0.5, jx, jy, r1 * 1.05);
+    jg.addColorStop(0, c1[0]);
+    jg.addColorStop(1, c1[2]);
+    ctx.fillStyle = jg;
+    ctx.beginPath();
+    ctx.arc(jx, jy, r1 * 1.05, 0, Math.PI * 2);
+    ctx.fill();
+    goCapsule(ctx, jx, jy, ex, ey, r2, c2[0], c2[1], c2[2]);
+    return { jx, jy, ex, ey };
+  }
+
+  function goWalkPose(moving, seated, t) {
+    if (seated || !moving) {
+      return {
+        bob: 0, sway: 0, lean: seated ? 0.4 : 0.8,
+        nThigh: seated ? 1.15 : 0.06, nKnee: seated ? 1.35 : 0.12,
+        fThigh: seated ? 1.05 : -0.05, fKnee: seated ? 1.25 : 0.1,
+        nArm: seated ? 0.35 : 0.12, nElbow: seated ? 0.55 : 0.35,
+        fArm: seated ? 0.25 : -0.1, fElbow: seated ? 0.45 : 0.3,
+        plantN: true, plantF: true
+      };
+    }
+    const phase = t * 0.028;
+    const s = Math.sin(phase);
+    const c = Math.cos(phase);
+    const liftN = Math.max(0, s);   // near foot airborne when swing forward
+    const liftF = Math.max(0, -s);
+    return {
+      bob: Math.abs(s) * 2.6,
+      sway: s * 2.0,
+      lean: 3.2 + Math.abs(s) * 0.6,
+      // thighs: + = forward (+x in local), 0 = straight down
+      nThigh: s * 0.58,
+      nKnee: 0.18 + liftN * 0.72,          // bend more when lifted
+      fThigh: -s * 0.58,
+      fKnee: 0.18 + liftF * 0.72,
+      // opposite arm swing, elbows soft-bent
+      nArm: -s * 0.52,
+      nElbow: 0.4 + Math.max(0, -s) * 0.35,
+      fArm: s * 0.52,
+      fElbow: 0.4 + Math.max(0, s) * 0.35,
+      plantN: liftN < 0.15,
+      plantF: liftF < 0.15
+    };
+  }
+
+  function goAviator(ctx, hx, hy) {
     ctx.fillStyle = '#0a0a0c';
     ctx.beginPath();
-    ctx.ellipse(lx, hy, 5.2, 3.8, -0.12, 0, Math.PI * 2);
+    ctx.ellipse(hx - 3.2, hy, 3.4, 3.7, -0.18, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(rx, hy, 5.0 - profile * 0.8, 3.7, 0.1, 0, Math.PI * 2);
+    ctx.ellipse(hx + 5.6, hy, 5.5, 4.0, 0.12, 0, Math.PI * 2);
     ctx.fill();
-    // lens gloss (cyan / magenta hints)
-    const g1 = ctx.createLinearGradient(lx - 4, hy - 3, lx + 3, hy + 3);
-    g1.addColorStop(0, 'rgba(80,220,255,0.35)');
-    g1.addColorStop(0.45, 'rgba(10,10,20,0.1)');
-    g1.addColorStop(1, 'rgba(255,40,180,0.18)');
-    ctx.fillStyle = g1;
+    const g = ctx.createLinearGradient(hx + 2, hy - 3.5, hx + 9, hy + 3);
+    g.addColorStop(0, 'rgba(80,220,255,0.42)');
+    g.addColorStop(0.5, 'rgba(10,10,20,0.08)');
+    g.addColorStop(1, 'rgba(255,40,180,0.24)');
+    ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.ellipse(lx, hy, 4.2, 2.9, -0.12, 0, Math.PI * 2);
+    ctx.ellipse(hx + 5.6, hy, 4.4, 3.0, 0.12, 0, Math.PI * 2);
     ctx.fill();
-    const g2 = ctx.createLinearGradient(rx - 3, hy - 3, rx + 3, hy + 3);
-    g2.addColorStop(0, 'rgba(255,60,200,0.22)');
-    g2.addColorStop(1, 'rgba(40,180,255,0.2)');
-    ctx.fillStyle = g2;
+    ctx.strokeStyle = '#3a3a42';
+    ctx.lineWidth = 1.35;
     ctx.beginPath();
-    ctx.ellipse(rx, hy, 3.8 - profile * 0.6, 2.8, 0.1, 0, Math.PI * 2);
-    ctx.fill();
-    // bridge + temples
-    ctx.strokeStyle = '#3a3a40';
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(lx + 4.2, hy);
-    ctx.lineTo(rx - (4.0 - profile * 0.6), hy);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(lx - 5, hy);
-    ctx.lineTo(lx - 8 - profile, hy + 0.5);
-    ctx.moveTo(rx + 4.5 - profile, hy);
-    ctx.lineTo(rx + 7.5, hy + 0.8);
+    ctx.moveTo(hx - 0.2, hy); ctx.lineTo(hx + 1.6, hy);
+    ctx.moveTo(hx - 6.4, hy); ctx.lineTo(hx - 9.2, hy + 0.8);
+    ctx.moveTo(hx + 10.8, hy); ctx.lineTo(hx + 13.2, hy + 0.9);
     ctx.stroke();
   }
 
-  function drawBootLaces(ctx, bx, by, w, h, laceCol) {
-    ctx.strokeStyle = laceCol || '#888';
-    ctx.lineWidth = 0.9;
+  function goBoot(ctx, ax, ay, toeX, cols, laceCol) {
+    // soft rounded boot blob planted at ankle, toe toward +x
+    const w = 11, h = 7;
+    const bx = ax - 3, by = ay - 1;
+    const g = ctx.createLinearGradient(bx, by, bx + w, by + h);
+    g.addColorStop(0, cols[0]);
+    g.addColorStop(0.5, cols[1]);
+    g.addColorStop(1, cols[2]);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(bx, by + 1);
+    ctx.quadraticCurveTo(bx, by - 1, bx + 3, by - 1.2);
+    ctx.lineTo(bx + w - 2, by - 0.8);
+    ctx.quadraticCurveTo(bx + w + 2.5, by + 1.5, bx + w + 1.2, by + 4.2);
+    ctx.quadraticCurveTo(bx + w - 1, by + h, bx + 1, by + h - 0.3);
+    ctx.quadraticCurveTo(bx - 1, by + h - 1, bx, by + 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.beginPath();
+    ctx.ellipse(bx + 4, by + 1, 3.5, 1.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = laceCol || '#666';
+    ctx.lineWidth = 0.85;
     for (let i = 0; i < 3; i++) {
-      const ly = by + 1.5 + i * 1.8;
+      const ly = by + 1.2 + i * 1.5;
       ctx.beginPath();
-      ctx.moveTo(bx + 2, ly);
-      ctx.lineTo(bx + w - 2, ly);
+      ctx.moveTo(bx + 2.5, ly);
+      ctx.lineTo(bx + w - 3, ly);
       ctx.stroke();
     }
-    // sole edge
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    ctx.fillRect(bx, by + h - 1.5, w, 1.2);
+  }
+
+  function goClampFoot(end, plant, groundY) {
+    if (end.ey > groundY) {
+      end.ey = groundY;
+    }
+    if (plant && end.ey > groundY - 0.5) end.ey = groundY;
+    return end;
   }
 
   /**
-   * Zakk — neon-noir card: tan flat/scally cap, thick mustache, black aviators,
-   * all-black short-sleeve w/ embroidered trim + alien chest patches, black pants,
-   * combat boots, neck+forearm tattoos. Strong ¾ walk profile sells facing.
+   * Zakk — GO soft avatar: flat/scally cap, mustache, aviators,
+   * all-black outfit + teal trim/alien patches, black boots.
    * Feet at (x,y). facing: 1 right / -1 left. Local +x = forward after flip.
    */
   function drawZakk(ctx, x, y, facing, moving, t, opts) {
@@ -652,268 +764,210 @@
     const scale = opts.scale != null ? opts.scale : CHAR_SCALE;
     const seated = !!opts.seated;
     const f = facing >= 0 ? 1 : -1;
+    const pose = goWalkPose(moving, seated, t);
+    const skinHi = '#e8c4a4', skin = '#d4a882', skinLo = '#b07a58';
+    const blkHi = '#3a3a44', blk = '#1a1a22', blkLo = '#060608';
+    const pantHi = '#2e2e36', pant = '#16161c', pantLo = '#08080c';
+
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(f * scale, scale);
 
     if (!opts.noShadow) {
-      ctx.fillStyle = 'rgba(0,0,0,0.32)';
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.beginPath();
-      ctx.ellipse(2, 0, seated ? 12 : 16, 4.2, 0, 0, Math.PI * 2);
+      ctx.ellipse(2 + pose.sway * 0.15, 0, seated ? 13 : 15 + Math.abs(pose.sway) * 0.2, 3.8, 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    const stride = (!seated && moving) ? Math.sin(t * 0.024) : 0;
-    const strideB = (!seated && moving) ? Math.sin(t * 0.024 + Math.PI) : 0;
-    const twist = (!seated && moving) ? stride * 2.2 : 0;
-    const lean = (!seated && moving) ? 2.0 : 0.6;
-    const skin = '#d4a882';
-    const skinSh = '#b88868';
-    const bodyTop = seated ? -44 : -51;
-    const headY = seated ? -59 : -66;
+    const bob = pose.bob;
+    const lean = pose.lean;
+    const sway = pose.sway;
+    const hipY = -26 - bob;
+    const hipX = lean * 0.35 + sway * 0.15;
+    const bodyCy = -40 - bob;
+    const bodyCx = lean * 0.55 + sway * 0.08;
+    const ground = 0;
 
-    // Depth: soft far (−x) / near (+x) — facing cue without floating limbs
-    const farX = -3.2 + twist * 0.22;
-    const nearX = 3.2 + lean * 0.55;
-
-    // ——— FAR LEG (hip socket under torso) ———
-    if (seated) {
-      fillBoot(ctx, farX - 6, -4, 11, true);
-      ctx.fillStyle = '#0e0e12';
-      ctx.fillRect(farX - 8, -12, 11, 10);
-    } else {
-      const ly = strideB * 9;
-      const lx = farX + 0.5 + strideB * 2.2;
-      pantLeg(ctx, lx - 4, -28 + ly * 0.12, 8, 24, true);
-      fillBoot(ctx, lx - 5, -6 + ly * 0.18, 11, true);
+    // ——— FAR LEG (behind) ———
+    {
+      const hx = hipX - 3.5 + sway * -0.2;
+      const hy = hipY;
+      let ang1 = pose.fThigh;
+      let ang2 = pose.fThigh - pose.fKnee;
+      if (seated) { ang1 = 1.05; ang2 = 1.55; }
+      const end = goJointLimb(ctx, hx, hy, ang1, ang2, 13, 12, 4.2, 3.6,
+        [pantHi, pant, pantLo], [pant, pantLo, '#040406']);
+      goClampFoot(end, pose.plantF, ground);
+      // redraw calf/boot at clamped y if needed — approximate plant by drawing boot at clamped
+      const footY = Math.min(end.ey, ground);
+      goBoot(ctx, end.ex, footY, end.ex + 6, ['#2a2a30', '#141418', '#050506'], '#555');
     }
 
-    // ——— FAR ARM (shoulder socket overlapping torso) ———
+    // ——— FAR ARM ———
     if (!seated) {
-      const ax = farX - 1;
-      const ay = bodyTop + 4 + stride * 3.5;
-      ctx.fillStyle = '#0e0e12';
-      ctx.fillRect(ax - 2, ay, 8, 11);
-      armSkin(ctx, ax + 0.5, ay + 11, 5, 12, skin, skinSh);
-      tattooMarks(ctx, ax + 1, ay + 13);
-      ctx.strokeStyle = 'rgba(0,220,255,0.3)';
-      ctx.lineWidth = 1.2;
+      const sx = bodyCx - 9;
+      const sy = bodyCy - 10;
+      const a1 = 0.15 + pose.fArm;
+      const a2 = a1 + pose.fElbow;
+      const end = goJointLimb(ctx, sx, sy, a1, a2, 10, 10, 3.8, 3.2,
+        [blkHi, blk, blkLo], [skinHi, skin, skinLo]);
+      // tiny tattoo ticks on forearm
+      ctx.strokeStyle = 'rgba(40,20,40,0.55)';
+      ctx.lineWidth = 0.9;
       ctx.beginPath();
-      ctx.moveTo(ax, ay + 1); ctx.lineTo(ax, ay + 20);
+      ctx.moveTo(end.jx + 1, end.jy + 1); ctx.lineTo(end.ex - 1, end.ey - 2);
       ctx.stroke();
     }
 
-    // ——— TORSO ¾ (parallelogram — chest faces +x) ———
-    const tx = lean + twist * 0.2;
-    ctx.beginPath();
-    // far shoulder back/narrow → near shoulder forward/wide
-    ctx.moveTo(tx + farX * 0.55 - 2, bodyTop + 3);
-    ctx.lineTo(tx - 4, bodyTop);
-    ctx.lineTo(tx + nearX + 4, bodyTop + 2);
-    ctx.lineTo(tx + nearX + 6, bodyTop + 23);
-    ctx.lineTo(tx + farX * 0.4 - 1, bodyTop + 24);
-    ctx.closePath();
-    const tg = ctx.createLinearGradient(tx + farX, bodyTop, tx + nearX + 8, bodyTop + 24);
-    tg.addColorStop(0, '#050508');
-    tg.addColorStop(0.35, '#141418');
-    tg.addColorStop(0.7, '#2a2a32');
-    tg.addColorStop(1, '#0a0a0e');
+    // ——— TORSO ———
+    goTorso(ctx, bodyCx, bodyCy, 20, 24, 9, '#2a2a32', '#141418', '#050508');
+    // teal placket + collar
+    const tg = ctx.createLinearGradient(bodyCx, bodyCy - 10, bodyCx, bodyCy + 10);
+    tg.addColorStop(0, '#2ec4a0');
+    tg.addColorStop(0.5, '#1a8a7a');
+    tg.addColorStop(1, '#c4a35a');
     ctx.fillStyle = tg;
-    ctx.fill();
-    // side panel (depth cue)
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath();
-    ctx.moveTo(tx + farX * 0.55 - 2, bodyTop + 3);
-    ctx.lineTo(tx - 4, bodyTop);
-    ctx.lineTo(tx - 4, bodyTop + 24);
-    ctx.lineTo(tx + farX * 0.4 - 1, bodyTop + 24);
-    ctx.closePath();
+    if (ctx.roundRect) ctx.roundRect(bodyCx - 1.2, bodyCy - 9, 2.6, 18, 1.2);
+    else ctx.fillRect(bodyCx - 1.2, bodyCy - 9, 2.6, 18);
     ctx.fill();
-    // folds
-    ctx.strokeStyle = 'rgba(90,90,100,0.4)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(tx + 2, bodyTop + 6); ctx.lineTo(tx + 4, bodyTop + 20);
-    ctx.moveTo(tx + nearX, bodyTop + 8); ctx.lineTo(tx + nearX + 2, bodyTop + 18);
-    ctx.stroke();
-    // embroidered placket (toward front/near)
-    const trimX = tx + 3;
-    const trimG = ctx.createLinearGradient(trimX, bodyTop, trimX, bodyTop + 22);
-    trimG.addColorStop(0, '#1a8a7a');
-    trimG.addColorStop(0.4, '#2ec4a0');
-    trimG.addColorStop(0.7, '#c4a35a');
-    trimG.addColorStop(1, '#2a9a88');
-    ctx.fillStyle = trimG;
-    ctx.fillRect(trimX - 1, bodyTop + 2, 2.6, 19);
     ctx.fillStyle = '#4dffcc';
-    for (let i = 0; i < 4; i++) ctx.fillRect(trimX - 0.5, bodyTop + 4 + i * 4.5, 1.5, 1.5);
-    // collar
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.arc(bodyCx + 0.1, bodyCy - 6 + i * 4.2, 0.85, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // collar flaps
     ctx.fillStyle = '#2ec4a0';
     ctx.beginPath();
-    ctx.moveTo(tx - 5, bodyTop + 1); ctx.lineTo(tx - 1, bodyTop + 5); ctx.lineTo(tx - 5, bodyTop + 7);
-    ctx.closePath(); ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(tx + nearX + 3, bodyTop + 1); ctx.lineTo(tx + 5, bodyTop + 5); ctx.lineTo(tx + nearX + 3, bodyTop + 7);
-    ctx.closePath(); ctx.fill();
-    // alien patches — near full, far foreshortened
-    alienPatch(ctx, tx - 7, bodyTop + 9, 0.75);
-    alienPatch(ctx, tx + 5, bodyTop + 9, 1);
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(tx - 10, bodyTop, 28, 25);
-    ctx.clip();
-    fillHalftone(ctx, tx - 10, bodyTop, 28, 25, 'rgba(0,0,0,0.2)', 3.1);
-    ctx.restore();
-    // magenta rim on front chest edge
-    ctx.strokeStyle = 'rgba(255,40,180,0.35)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(tx + nearX + 5.5, bodyTop + 3);
-    ctx.lineTo(tx + nearX + 6, bodyTop + 22);
-    ctx.stroke();
-
-    // Hip bridge — solid waist so legs read attached to torso
-    if (!seated) {
-      ctx.fillStyle = '#121218';
-      ctx.fillRect(tx + farX * 0.35 - 1, bodyTop + 20, (nearX - farX) + 7, 9);
-    }
-
-    // ——— NEAR LEG (hip socket under torso) ———
-    if (seated) {
-      ctx.fillStyle = '#1a1a1e';
-      ctx.fillRect(-10, -22, 22, 16);
-      ctx.fillRect(nearX - 2, -10, 12, 8);
-      fillBoot(ctx, nearX - 1, -4, 12, false);
-    } else {
-      const ly = stride * 9;
-      const lx = nearX - 0.5 + stride * 2.5;
-      pantLeg(ctx, lx - 4, -28 + ly * 0.15, 9, 25, false);
-      fillBoot(ctx, lx - 4, -6 + ly * 0.2, 12, false);
-    }
-
-    // ——— NEAR ARM (shoulder socket overlapping torso) ———
-    const nax = nearX + 1;
-    const nay = bodyTop + 3 + strideB * 3.2;
-    ctx.fillStyle = '#1c1c22';
-    ctx.fillRect(nax - 2, nay, 8, 11);
-    ctx.fillStyle = '#08080a';
-    ctx.fillRect(nax - 2, nay + 10, 8, 2);
-    armSkin(ctx, nax, nay + 12, 5.5, 13, skin, skinSh);
-    tattooMarks(ctx, nax + 1, nay + 14);
-    fillHalftone(ctx, nax, nay + 12, 5.5, 13, 'rgba(40,20,30,0.16)', 2.7);
-    if (opts.smoking) {
-      ctx.strokeStyle = skin;
-      ctx.lineWidth = 3.2;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(nax + 4, nay + 22);
-      ctx.lineTo(nax + 11, nay + 31);
-      ctx.stroke();
-    }
-    ctx.strokeStyle = 'rgba(255,40,180,0.32)';
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    ctx.moveTo(nax + 5.8, nay + 1);
-    ctx.lineTo(nax + 5.8, nay + 24);
-    ctx.stroke();
-
-    // ——— NECK ———
-    const nx = tx + 2.5;
-    ctx.fillStyle = skin;
-    ctx.fillRect(nx - 3.5, bodyTop - 7, 8, 9);
-    tattooMarks(ctx, nx - 2.5, bodyTop - 5);
-    fillHalftone(ctx, nx - 3.5, bodyTop - 7, 8, 9, 'rgba(40,20,30,0.22)', 2.4);
-
-    // ——— HEAD ¾ ———
-    const hx = tx + 3.5 + lean * 0.25;
-    const hy = headY;
-    // far ear first
-    ctx.fillStyle = skinSh;
-    ctx.beginPath();
-    ctx.ellipse(hx - 10, hy + 1.5, 2.6, 3.4, -0.25, 0, Math.PI * 2);
-    ctx.fill();
-    // skull
-    const hg = ctx.createRadialGradient(hx - 1, hy - 3, 2, hx, hy, 12);
-    hg.addColorStop(0, '#e2ba9a');
-    hg.addColorStop(0.55, skin);
-    hg.addColorStop(1, skinSh);
-    ctx.fillStyle = hg;
-    ctx.beginPath();
-    ctx.ellipse(hx, hy, 9.5, 11.2, 0.05, 0, Math.PI * 2);
-    ctx.fill();
-    // nose wedge (strong facing cue)
-    ctx.fillStyle = skinSh;
-    ctx.beginPath();
-    ctx.moveTo(hx + 5.5, hy);
-    ctx.lineTo(hx + 13, hy + 3.2);
-    ctx.lineTo(hx + 6, hy + 6);
+    ctx.moveTo(bodyCx - 7, bodyCy - 11);
+    ctx.quadraticCurveTo(bodyCx - 2, bodyCy - 6, bodyCx - 6, bodyCy - 4);
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = 'rgba(90,55,40,0.45)';
-    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(hx + 6.5, hy + 0.5);
-    ctx.lineTo(hx + 12, hy + 3.2);
-    ctx.stroke();
-    // jaw
-    ctx.fillStyle = 'rgba(80,50,40,0.2)';
-    ctx.beginPath();
-    ctx.ellipse(hx + 1, hy + 6.5, 7, 4.2, 0.1, 0, Math.PI);
+    ctx.moveTo(bodyCx + 7, bodyCy - 11);
+    ctx.quadraticCurveTo(bodyCx + 2, bodyCy - 6, bodyCx + 6, bodyCy - 4);
+    ctx.closePath();
     ctx.fill();
-    fillHalftone(ctx, hx - 9, hy - 9, 22, 20, 'rgba(40,20,30,0.14)', 2.5);
+    // alien patches
+    zakkAlienPatch(ctx, bodyCx - 7.5, bodyCy - 1, 0.85);
+    zakkAlienPatch(ctx, bodyCx + 3.5, bodyCy - 1, 1);
+    // magenta rim on front
+    ctx.strokeStyle = 'rgba(255,40,180,0.28)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(bodyCx + 9, bodyCy - 8);
+    ctx.quadraticCurveTo(bodyCx + 10.5, bodyCy, bodyCx + 9, bodyCy + 9);
+    ctx.stroke();
 
-    // walrus mustache — hangs under nose toward +x
+    // hip socket bridge
+    goTorso(ctx, hipX, hipY - 2, 16, 10, 5, pantHi, pant, pantLo);
+
+    // ——— NEAR LEG ———
+    {
+      const hx = hipX + 3.2 + sway * 0.25;
+      const hy = hipY;
+      let ang1 = pose.nThigh;
+      let ang2 = pose.nThigh - pose.nKnee;
+      if (seated) { ang1 = 1.2; ang2 = 1.65; }
+      const end = goJointLimb(ctx, hx, hy, ang1, ang2, 13.5, 12.5, 4.5, 3.8,
+        [pantHi, pant, pantLo], [pantHi, pant, pantLo]);
+      const footY = Math.min(end.ey, ground);
+      goBoot(ctx, end.ex, footY, end.ex + 6, ['#3a3a42', '#1a1a20', '#060608'], '#666');
+    }
+
+    // ——— NEAR ARM ———
+    {
+      const sx = bodyCx + 9;
+      const sy = bodyCy - 10;
+      let a1 = 0.1 + pose.nArm;
+      let a2 = a1 + pose.nElbow;
+      if (seated) { a1 = 0.4; a2 = 0.95; }
+      if (opts.smoking) { a1 = 0.55; a2 = 1.15; }
+      const end = goJointLimb(ctx, sx, sy, a1, a2, 10.5, 10.5, 4.0, 3.3,
+        [blkHi, blk, blkLo], [skinHi, skin, skinLo]);
+      ctx.strokeStyle = 'rgba(40,20,40,0.55)';
+      ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(end.jx + 1, end.jy + 1); ctx.lineTo(end.ex - 1, end.ey - 2);
+      ctx.stroke();
+      if (opts.smoking) {
+        ctx.strokeStyle = skin;
+        ctx.lineWidth = 3.0;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(end.ex, end.ey);
+        ctx.lineTo(end.ex + 7, end.ey + 8);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(255,40,180,0.28)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(sx + 3, sy);
+      ctx.lineTo(end.ex + 2, end.ey - 2);
+      ctx.stroke();
+    }
+
+    // ——— NECK + HEAD ———
+    const nx = bodyCx + 1.5;
+    const ny = bodyCy - 14;
+    goCapsule(ctx, nx, ny + 4, nx, ny - 2, 3.4, skinHi, skin, skinLo);
+    // neck tattoo
+    ctx.strokeStyle = 'rgba(40,20,40,0.5)';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(nx - 1.5, ny); ctx.lineTo(nx + 1, ny + 3);
+    ctx.stroke();
+
+    const hx = bodyCx + 2.5 + lean * 0.12;
+    const hy = -62 - bob;
+    // far ear
+    ctx.fillStyle = skinLo;
+    ctx.beginPath();
+    ctx.ellipse(hx - 9.5, hy + 1, 2.5, 3.2, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    goHead(ctx, hx, hy, 9.6, 11.0, skinHi, skin, skinLo);
+    // nose cue
+    ctx.fillStyle = skinLo;
+    ctx.beginPath();
+    ctx.moveTo(hx + 5, hy);
+    ctx.quadraticCurveTo(hx + 12.5, hy + 2.5, hx + 5.5, hy + 5.5);
+    ctx.closePath();
+    ctx.fill();
+    // mustache
     ctx.fillStyle = '#1a1210';
     ctx.beginPath();
-    ctx.ellipse(hx - 2, hy + 6.5, 4.8, 2.3, -0.35, 0, Math.PI * 2);
-    ctx.ellipse(hx + 6.5, hy + 7.2, 5.8, 2.6, 0.35, 0, Math.PI * 2);
+    ctx.ellipse(hx - 1.5, hy + 6.2, 4.6, 2.2, -0.35, 0, Math.PI * 2);
+    ctx.ellipse(hx + 6.2, hy + 6.8, 5.5, 2.5, 0.32, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillRect(hx, hy + 5.5, 6, 2.6);
+    goAviator(ctx, hx, hy - 0.8);
 
-    // aviators — far lens edge-on-ish, near lens full
-    aviatorsProfile(ctx, hx, hy - 1);
-
-    // flat/scally cap — brim strongly FORWARD (+x)
-    const capY = hy - 8.5;
+    // flat / scally cap — brim forward (+x)
+    const capY = hy - 8.2;
     const capG = ctx.createLinearGradient(hx - 10, capY - 6, hx + 14, capY + 4);
     capG.addColorStop(0, '#3a2a1c');
-    capG.addColorStop(0.35, '#7a6a54');
-    capG.addColorStop(0.7, '#6a5a48');
+    capG.addColorStop(0.4, '#7a6a54');
     capG.addColorStop(1, '#4a3a2a');
     ctx.fillStyle = capG;
     ctx.beginPath();
-    ctx.ellipse(hx + 1.5, capY, 11.5, 6.0, 0.08, Math.PI, 0);
+    ctx.ellipse(hx + 1.2, capY, 11.2, 5.8, 0.06, Math.PI, 0);
     ctx.fill();
-    // panels
-    ctx.strokeStyle = 'rgba(40,30,20,0.4)';
-    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(hx + 1.5, capY - 5.5); ctx.lineTo(hx + 1.5, capY + 1);
-    ctx.moveTo(hx - 4, capY - 4); ctx.lineTo(hx - 1, capY + 1);
-    ctx.moveTo(hx + 7, capY - 4); ctx.lineTo(hx + 4, capY + 1);
-    ctx.stroke();
-    // brim forward
+    ctx.ellipse(hx + 1.2, capY + 1.5, 11, 3.2, 0.06, 0, Math.PI);
+    ctx.fill();
     ctx.fillStyle = '#5a4a38';
     ctx.beginPath();
-    ctx.ellipse(hx + 10, capY + 2.8, 10, 3.3, 0.15, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#3a2a1c';
-    ctx.beginPath();
-    ctx.ellipse(hx + 10, capY + 3.6, 9, 2.2, 0.15, 0, Math.PI);
+    ctx.ellipse(hx + 10, capY + 2.6, 9.5, 3.1, 0.14, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#2a1a10';
     ctx.beginPath();
-    ctx.arc(hx + 1.5, capY - 5.2, 1.7, 0, Math.PI * 2);
+    ctx.arc(hx + 1.2, capY - 5, 1.6, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = 'rgba(255,200,100,0.2)';
+    ctx.fillStyle = 'rgba(255,200,100,0.18)';
     ctx.beginPath();
-    ctx.ellipse(hx + 1.5, capY - 4, 6.5, 2.2, 0, 0, Math.PI * 2);
+    ctx.ellipse(hx + 1.2, capY - 3.5, 6, 2, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(0,220,255,0.35)';
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    ctx.arc(hx + 1.5, capY, 11, Math.PI * 0.9, Math.PI * 1.2);
-    ctx.stroke();
 
     ctx.restore();
 
@@ -948,65 +1002,18 @@
       ctx.textAlign = 'left';
     }
 
-    function pantLeg(ctx, x0, y0, w, h, far) {
-      const g = ctx.createLinearGradient(x0, y0, x0 + w, y0 + h);
-      if (far) {
-        g.addColorStop(0, '#1a1a20'); g.addColorStop(1, '#08080a');
-      } else {
-        g.addColorStop(0, '#2e2e36'); g.addColorStop(0.5, '#1a1a1e'); g.addColorStop(1, '#0a0a0c');
-      }
-      ctx.fillStyle = g;
-      ctx.fillRect(x0, y0, w, h);
-      ctx.strokeStyle = far ? 'rgba(60,60,70,0.3)' : 'rgba(100,100,110,0.4)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x0 + 2, y0 + 6); ctx.lineTo(x0 + w - 2, y0 + 14);
-      ctx.stroke();
-    }
-    function fillBoot(ctx, bx, by, w, far) {
-      const g = ctx.createLinearGradient(bx, by, bx + w, by + 7);
-      g.addColorStop(0, far ? '#1a1a1e' : '#2a2a30');
-      g.addColorStop(0.5, '#121214');
-      g.addColorStop(1, '#050506');
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.moveTo(bx, by);
-      ctx.lineTo(bx + w - 3, by - 0.5);
-      ctx.lineTo(bx + w + 1.5, by + 3.5); // toe +x
-      ctx.lineTo(bx + w - 1, by + 6.5);
-      ctx.lineTo(bx - 0.5, by + 6.5);
-      ctx.closePath();
-      ctx.fill();
-      drawBootLaces(ctx, bx + 1, by + 1, w - 3, 5, '#555');
-      ctx.strokeStyle = 'rgba(255,40,180,0.18)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(bx, by + 6); ctx.lineTo(bx + w, by + 6);
-      ctx.stroke();
-    }
-    function armSkin(ctx, x0, y0, w, h, a, b) {
-      const g = ctx.createLinearGradient(x0, y0, x0 + w, y0 + h);
-      g.addColorStop(0, a); g.addColorStop(1, b);
-      ctx.fillStyle = g;
-      ctx.fillRect(x0, y0, w, h);
-    }
-    function tattooMarks(ctx, x0, y0) {
-      ctx.strokeStyle = '#2a1a30';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x0, y0); ctx.lineTo(x0 + 3, y0 + 5); ctx.lineTo(x0, y0 + 9);
-      ctx.moveTo(x0 + 4, y0 + 1); ctx.lineTo(x0 + 5.5, y0 + 6);
-      ctx.stroke();
-    }
-    function alienPatch(ctx, px, py, s) {
+    function zakkAlienPatch(ctx, px, py, s) {
       ctx.save();
       ctx.translate(px, py);
       ctx.scale(s, s);
       ctx.fillStyle = '#1a3a28';
-      ctx.fillRect(0, 0, 7, 7);
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(0, 0, 7, 7, 1.5);
+      else ctx.rect(0, 0, 7, 7);
+      ctx.fill();
       ctx.strokeStyle = '#c4a35a';
       ctx.lineWidth = 0.8;
-      ctx.strokeRect(0, 0, 7, 7);
+      ctx.stroke();
       ctx.fillStyle = '#4dff6a';
       ctx.beginPath();
       ctx.arc(3.5, 3.5, 2.1, 0, Math.PI * 2);
@@ -1018,302 +1025,235 @@
       ctx.fill();
       ctx.restore();
     }
-    function aviatorsProfile(ctx, hx, hy) {
-      // far lens (smaller / edge)
-      ctx.fillStyle = '#0a0a0c';
-      ctx.beginPath();
-      ctx.ellipse(hx - 3.5, hy, 3.2, 3.6, -0.2, 0, Math.PI * 2);
-      ctx.fill();
-      // near lens (full)
-      ctx.beginPath();
-      ctx.ellipse(hx + 5.5, hy, 5.4, 3.9, 0.12, 0, Math.PI * 2);
-      ctx.fill();
-      const g = ctx.createLinearGradient(hx + 2, hy - 3, hx + 9, hy + 3);
-      g.addColorStop(0, 'rgba(80,220,255,0.4)');
-      g.addColorStop(0.5, 'rgba(10,10,20,0.1)');
-      g.addColorStop(1, 'rgba(255,40,180,0.22)');
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.ellipse(hx + 5.5, hy, 4.3, 2.9, 0.12, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#3a3a42';
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.moveTo(hx - 0.5, hy);
-      ctx.lineTo(hx + 1.5, hy);
-      ctx.moveTo(hx - 6.5, hy);
-      ctx.lineTo(hx - 9, hy + 1);
-      ctx.moveTo(hx + 10.5, hy);
-      ctx.lineTo(hx + 13, hy + 1);
-      ctx.stroke();
-    }
   }
 
   /**
-   * Tayler — neon-noir: maroon/purple cap BACKWARDS, black aviators,
-   * blue/yellow/white plaid, dark jeans, brown boots, light stubble.
-   * Strong ¾ walk profile.
+   * Tayler — GO soft avatar: backwards maroon/purple cap, aviators,
+   * yellow/teal/white plaid, jeans, brown boots.
    */
   function drawTayler(ctx, x, y, facing, moving, t, opts) {
     opts = opts || {};
     const scale = opts.scale != null ? opts.scale : CHAR_SCALE;
     const seated = !!opts.seated;
     const f = facing >= 0 ? 1 : -1;
+    const pose = goWalkPose(moving, seated, t);
+    const skinHi = '#ecc8ac', skin = '#d8b090', skinLo = '#b88868';
+    const denHi = '#4a6288', den = '#2a3a5a', denLo = '#1a2838';
+    const plaidBase = '#3a5a78';
+
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(f * scale, scale);
 
-    ctx.fillStyle = 'rgba(0,0,0,0.32)';
-    ctx.beginPath();
-    ctx.ellipse(2, 0, seated ? 12 : 15, 4.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    const stride = (!seated && moving) ? Math.sin(t * 0.024) : 0;
-    const strideB = (!seated && moving) ? Math.sin(t * 0.024 + Math.PI) : 0;
-    const twist = (!seated && moving) ? stride * 2.0 : 0;
-    const lean = (!seated && moving) ? 1.8 : 0.5;
-    const skin = '#d8b090';
-    const skinSh = '#c09878';
-    const denim = '#2a3a5a';
-    const denimHi = '#3a4e72';
-    const denimLo = '#1a2838';
-    const bodyTop = seated ? -44 : -51;
-    // Soft far/near split — cohesive silhouette, still sells walk facing
-    const farX = -3.2 + twist * 0.22;
-    const nearX = 3.2 + lean * 0.55;
-
-    // FAR leg — hip under torso
-    if (seated) {
-      ctx.fillStyle = denimLo;
-      ctx.fillRect(farX - 8, -12, 11, 10);
-      brownBoot(ctx, farX - 6, -4, 11, true);
-    } else {
-      const ly = strideB * 9;
-      const lx = farX + 0.5 + strideB * 2.2;
-      jeanLeg(ctx, lx - 4, -28 + ly * 0.12, 8, 24, true);
-      brownBoot(ctx, lx - 5, -6 + ly * 0.18, 11, true);
+    if (!opts.noShadow) {
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath();
+      ctx.ellipse(2 + pose.sway * 0.15, 0, seated ? 13 : 14.5, 3.8, 0, 0, Math.PI * 2);
+      ctx.fill();
     }
 
-    // FAR arm — shoulder socket overlapping torso
+    const bob = pose.bob;
+    const lean = pose.lean;
+    const sway = pose.sway;
+    const hipY = -26 - bob;
+    const hipX = lean * 0.35 + sway * 0.15;
+    const bodyCy = -40 - bob;
+    const bodyCx = lean * 0.55 + sway * 0.08;
+    const ground = 0;
+
+    // FAR LEG
+    {
+      const hx = hipX - 3.5;
+      const hy = hipY;
+      let ang1 = pose.fThigh, ang2 = pose.fThigh - pose.fKnee;
+      if (seated) { ang1 = 1.05; ang2 = 1.55; }
+      const end = goJointLimb(ctx, hx, hy, ang1, ang2, 13, 12, 4.2, 3.6,
+        [den, denLo, '#121c28'], [den, denLo, '#0e1620']);
+      goBoot(ctx, end.ex, Math.min(end.ey, ground), end.ex + 6,
+        ['#6a3a20', '#5a2e18', '#3a1a10'], '#2a1808');
+    }
+
+    // FAR ARM
     if (!seated) {
-      const ax = farX - 1;
-      const ay = bodyTop + 4 + stride * 3.3;
-      plaidFill(ctx, ax - 2, ay, 8, 11);
+      const sx = bodyCx - 9;
+      const sy = bodyCy - 10;
+      const a1 = 0.15 + pose.fArm;
+      const a2 = a1 + pose.fElbow;
+      // plaid upper via capsule colors approximating plaid mid
+      goJointLimb(ctx, sx, sy, a1, a2, 10, 10, 3.8, 3.2,
+        ['#4a6a88', plaidBase, '#2a4058'], [skinHi, skin, skinLo]);
+    }
+
+    // TORSO plaid soft body
+    {
+      const tw = 20, th = 24, rad = 9;
+      const tx = bodyCx - tw / 2, ty = bodyCy - th / 2;
+      ctx.save();
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(tx, ty, tw, th, rad);
+      else {
+        ctx.moveTo(tx + rad, ty);
+        ctx.arcTo(tx + tw, ty, tx + tw, ty + th, rad);
+        ctx.arcTo(tx + tw, ty + th, tx, ty + th, rad);
+        ctx.arcTo(tx, ty + th, tx, ty, rad);
+        ctx.arcTo(tx, ty, tx + tw, ty, rad);
+        ctx.closePath();
+      }
+      ctx.clip();
+      ctx.fillStyle = plaidBase;
+      ctx.fillRect(tx, ty, tw, th);
+      ctx.strokeStyle = 'rgba(230,200,60,0.78)';
+      ctx.lineWidth = 1.15;
+      for (let i = 0; i < 6; i++) {
+        ctx.beginPath();
+        ctx.moveTo(tx, ty + 3 + i * 5);
+        ctx.lineTo(tx + tw, ty + 3 + i * 5);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(230,240,255,0.55)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath();
+        ctx.moveTo(tx + 2 + i * 5, ty);
+        ctx.lineTo(tx + 2 + i * 5, ty + th);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(40,180,160,0.35)';
+      ctx.lineWidth = 0.8;
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(tx + 4 + i * 10, ty);
+        ctx.lineTo(tx + 4 + i * 10, ty + th);
+        ctx.stroke();
+      }
+      const shade = ctx.createLinearGradient(tx, ty, tx + tw, ty + th);
+      shade.addColorStop(0, 'rgba(0,0,0,0.28)');
+      shade.addColorStop(0.4, 'rgba(0,0,0,0)');
+      shade.addColorStop(1, 'rgba(255,255,255,0.1)');
+      ctx.fillStyle = shade;
+      ctx.fillRect(tx, ty, tw, th);
+      ctx.fillStyle = 'rgba(255,255,255,0.14)';
+      ctx.beginPath();
+      ctx.ellipse(bodyCx - 3, bodyCy - 6, 5, 3, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      // open collar skin V
       ctx.fillStyle = skin;
-      ctx.fillRect(ax + 0.5, ay + 11, 5, 12);
-      ctx.strokeStyle = 'rgba(0,220,255,0.28)';
-      ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.moveTo(ax, ay + 1); ctx.lineTo(ax, ay + 20);
+      ctx.moveTo(bodyCx - 2.5, bodyCy - 12);
+      ctx.lineTo(bodyCx + 0.5, bodyCy - 5);
+      ctx.lineTo(bodyCx + 3.5, bodyCy - 12);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,40,180,0.28)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(bodyCx + 9, bodyCy - 8);
+      ctx.quadraticCurveTo(bodyCx + 10.5, bodyCy, bodyCx + 9, bodyCy + 9);
       ctx.stroke();
     }
 
-    // TORSO plaid ¾
-    const tx = lean + twist * 0.2;
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(tx + farX * 0.55 - 2, bodyTop + 3);
-    ctx.lineTo(tx - 4, bodyTop);
-    ctx.lineTo(tx + nearX + 4, bodyTop + 2);
-    ctx.lineTo(tx + nearX + 6, bodyTop + 23);
-    ctx.lineTo(tx + farX * 0.4 - 1, bodyTop + 24);
-    ctx.closePath();
-    ctx.clip();
-    plaidFill(ctx, tx - 12, bodyTop, 30, 26);
-    const shade = ctx.createLinearGradient(tx + farX, bodyTop, tx + nearX + 8, bodyTop);
-    shade.addColorStop(0, 'rgba(0,0,0,0.4)');
-    shade.addColorStop(0.5, 'rgba(0,0,0,0)');
-    shade.addColorStop(1, 'rgba(255,255,255,0.08)');
-    ctx.fillStyle = shade;
-    ctx.fillRect(tx - 12, bodyTop, 30, 26);
-    fillHalftone(ctx, tx - 12, bodyTop, 30, 26, 'rgba(0,20,40,0.12)', 3.1);
-    ctx.restore();
-    // side depth panel
-    ctx.fillStyle = 'rgba(0,0,0,0.22)';
-    ctx.beginPath();
-    ctx.moveTo(tx + farX * 0.55 - 2, bodyTop + 3);
-    ctx.lineTo(tx - 4, bodyTop);
-    ctx.lineTo(tx - 4, bodyTop + 24);
-    ctx.lineTo(tx + farX * 0.4 - 1, bodyTop + 24);
-    ctx.closePath();
-    ctx.fill();
-    // pockets
-    ctx.strokeStyle = '#2a4058';
-    ctx.lineWidth = 1.2;
-    ctx.strokeRect(tx - 8, bodyTop + 8, 6.5, 8);
-    ctx.strokeRect(tx + 5, bodyTop + 8, 7, 8);
-    // collar open
-    ctx.fillStyle = skin;
-    ctx.beginPath();
-    ctx.moveTo(tx - 2, bodyTop);
-    ctx.lineTo(tx + 2, bodyTop + 5);
-    ctx.lineTo(tx + 6, bodyTop);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,40,180,0.32)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(tx + nearX + 5.5, bodyTop + 3);
-    ctx.lineTo(tx + nearX + 6, bodyTop + 22);
-    ctx.stroke();
+    goTorso(ctx, hipX, hipY - 2, 16, 10, 5, denHi, den, denLo);
 
-    // Hip bridge — solid jeans waist under torso
-    if (!seated) {
-      ctx.fillStyle = denimLo;
-      ctx.fillRect(tx + farX * 0.35 - 1, bodyTop + 20, (nearX - farX) + 7, 9);
+    // NEAR LEG
+    {
+      const hx = hipX + 3.2;
+      const hy = hipY;
+      let ang1 = pose.nThigh, ang2 = pose.nThigh - pose.nKnee;
+      if (seated) { ang1 = 1.2; ang2 = 1.65; }
+      const end = goJointLimb(ctx, hx, hy, ang1, ang2, 13.5, 12.5, 4.5, 3.8,
+        [denHi, den, denLo], [den, denLo, '#121c28']);
+      goBoot(ctx, end.ex, Math.min(end.ey, ground), end.ex + 6,
+        ['#9a6040', '#6a3a20', '#3a1a10'], '#2a1808');
     }
 
-    // NEAR leg — hip under torso
-    if (seated) {
-      ctx.fillStyle = denim;
-      ctx.fillRect(-10, -22, 22, 16);
-      ctx.fillRect(nearX - 2, -10, 12, 8);
-      brownBoot(ctx, nearX - 1, -4, 12, false);
-    } else {
-      const ly = stride * 9;
-      const lx = nearX - 0.5 + stride * 2.5;
-      jeanLeg(ctx, lx - 4, -28 + ly * 0.15, 9, 25, false);
-      // ankle stack
-      ctx.fillStyle = denimLo;
-      ctx.fillRect(lx - 4, -8 + ly * 0.15, 9, 3);
-      brownBoot(ctx, lx - 4, -6 + ly * 0.2, 12, false);
+    // NEAR ARM
+    {
+      const sx = bodyCx + 9;
+      const sy = bodyCy - 10;
+      let a1 = 0.1 + pose.nArm;
+      let a2 = a1 + pose.nElbow;
+      if (seated) { a1 = 0.4; a2 = 0.95; }
+      if (opts.smoking) { a1 = 0.55; a2 = 1.15; }
+      const end = goJointLimb(ctx, sx, sy, a1, a2, 10.5, 10.5, 4.0, 3.3,
+        ['#4a6a88', plaidBase, '#2a4058'], [skinHi, skin, skinLo]);
+      if (opts.smoking) {
+        ctx.strokeStyle = skin;
+        ctx.lineWidth = 3.0;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(end.ex, end.ey);
+        ctx.lineTo(end.ex + 7, end.ey + 8);
+        ctx.stroke();
+      }
     }
 
-    // NEAR arm — shoulder socket overlapping torso
-    const nax = nearX + 1;
-    const nay = bodyTop + 3 + strideB * 3.0;
-    plaidFill(ctx, nax - 2, nay, 8, 11);
-    ctx.fillStyle = '#2a4058';
-    ctx.fillRect(nax - 2, nay + 10, 8, 2);
-    ctx.fillStyle = skin;
-    ctx.fillRect(nax, nay + 12, 5.5, 12);
-    fillHalftone(ctx, nax, nay + 12, 5.5, 12, 'rgba(40,20,30,0.12)', 2.7);
-    if (opts.smoking) {
-      ctx.strokeStyle = skin;
-      ctx.lineWidth = 3.2;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(nax + 4, nay + 20);
-      ctx.lineTo(nax + 11, nay + 29);
-      ctx.stroke();
-    }
-    ctx.strokeStyle = 'rgba(255,40,180,0.3)';
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    ctx.moveTo(nax + 5.8, nay + 1);
-    ctx.lineTo(nax + 5.8, nay + 22);
-    ctx.stroke();
+    // neck + head
+    const nx = bodyCx + 1.5;
+    const ny = bodyCy - 14;
+    goCapsule(ctx, nx, ny + 4, nx, ny - 2, 3.4, skinHi, skin, skinLo);
 
-    // neck
-    const nx = tx + 2.5;
-    ctx.fillStyle = skin;
-    ctx.fillRect(nx - 3.5, bodyTop - 7, 8, 9);
-
-    // head ¾
-    const hx = tx + 3.2 + lean * 0.25;
-    const hy = bodyTop - 15;
-    ctx.fillStyle = skinSh;
+    const hx = bodyCx + 2.2 + lean * 0.12;
+    const hy = -62 - bob;
+    ctx.fillStyle = skinLo;
     ctx.beginPath();
-    ctx.ellipse(hx - 10, hy + 1.5, 2.6, 3.4, -0.25, 0, Math.PI * 2);
+    ctx.ellipse(hx - 9.5, hy + 1, 2.5, 3.2, -0.2, 0, Math.PI * 2);
     ctx.fill();
-    const hg = ctx.createRadialGradient(hx - 1, hy - 3, 2, hx, hy, 12);
-    hg.addColorStop(0, '#e8c4a8');
-    hg.addColorStop(0.55, skin);
-    hg.addColorStop(1, skinSh);
-    ctx.fillStyle = hg;
+    goHead(ctx, hx, hy, 9.6, 11.0, skinHi, skin, skinLo);
+    ctx.fillStyle = skinLo;
     ctx.beginPath();
-    ctx.ellipse(hx, hy, 9.5, 11.2, 0.05, 0, Math.PI * 2);
-    ctx.fill();
-    // nose
-    ctx.fillStyle = skinSh;
-    ctx.beginPath();
-    ctx.moveTo(hx + 5.5, hy);
-    ctx.lineTo(hx + 12.8, hy + 3);
-    ctx.lineTo(hx + 6, hy + 5.8);
+    ctx.moveTo(hx + 5, hy);
+    ctx.quadraticCurveTo(hx + 12.2, hy + 2.4, hx + 5.5, hy + 5.2);
     ctx.closePath();
     ctx.fill();
-    // stubble
-    ctx.fillStyle = 'rgba(60,40,30,0.4)';
+    // light stubble
+    ctx.fillStyle = 'rgba(60,40,30,0.38)';
     ctx.beginPath();
-    ctx.ellipse(hx + 1.5, hy + 7, 7.5, 4.8, 0.1, 0, Math.PI);
+    ctx.ellipse(hx + 1.2, hy + 6.8, 7.2, 4.5, 0.08, 0, Math.PI);
     ctx.fill();
-    fillHalftone(ctx, hx - 5, hy + 2, 14, 11, 'rgba(40,25,15,0.22)', 2.1);
-    ctx.fillStyle = 'rgba(50,35,25,0.32)';
-    ctx.fillRect(hx - 1, hy + 4.5, 8, 2);
+    goAviator(ctx, hx, hy - 0.8);
 
-    // aviators
-    ctx.fillStyle = '#0a0a0c';
-    ctx.beginPath();
-    ctx.ellipse(hx - 3.5, hy - 1, 3.2, 3.6, -0.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(hx + 5.5, hy - 1, 5.4, 3.9, 0.12, 0, Math.PI * 2);
-    ctx.fill();
-    const lg = ctx.createLinearGradient(hx + 2, hy - 4, hx + 9, hy + 2);
-    lg.addColorStop(0, 'rgba(80,220,255,0.38)');
-    lg.addColorStop(1, 'rgba(255,40,180,0.2)');
-    ctx.fillStyle = lg;
-    ctx.beginPath();
-    ctx.ellipse(hx + 5.5, hy - 1, 4.3, 2.9, 0.12, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#aaa';
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    ctx.moveTo(hx - 0.5, hy - 1); ctx.lineTo(hx + 1.5, hy - 1);
-    ctx.moveTo(hx - 6.5, hy - 1); ctx.lineTo(hx - 9, hy);
-    ctx.moveTo(hx + 10.5, hy - 1); ctx.lineTo(hx + 13, hy);
-    ctx.stroke();
-
-    // BACKWARDS maroon cap — brim to −x (back), strap at forehead (+x)
-    const capY = hy - 8.5;
+    // BACKWARDS maroon/purple cap — brim to −x
+    const capY = hy - 8.2;
     const capG = ctx.createLinearGradient(hx - 14, capY - 5, hx + 10, capY + 4);
     capG.addColorStop(0, '#4a1028');
     capG.addColorStop(0.45, '#7a2848');
     capG.addColorStop(1, '#3a0c1c');
     ctx.fillStyle = capG;
     ctx.beginPath();
-    ctx.ellipse(hx, capY, 11.8, 5.8, 0, Math.PI, 0);
+    ctx.ellipse(hx, capY, 11.5, 5.6, 0, Math.PI, 0);
     ctx.fill();
     ctx.fillStyle = '#5a1830';
     ctx.beginPath();
-    ctx.ellipse(hx, capY + 2, 12, 3.8, 0, 0, Math.PI);
+    ctx.ellipse(hx, capY + 1.8, 11.5, 3.5, 0, 0, Math.PI);
     ctx.fill();
-    // BRIM BACK
     const brimG = ctx.createLinearGradient(hx - 20, capY, hx - 4, capY + 6);
     brimG.addColorStop(0, '#8a3050');
-    brimG.addColorStop(0.5, '#6a2038');
     brimG.addColorStop(1, '#4a1028');
     ctx.fillStyle = brimG;
     ctx.beginPath();
-    ctx.ellipse(hx - 12, capY + 2.8, 11, 3.6, -0.25, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#2a0814';
-    ctx.beginPath();
-    ctx.ellipse(hx - 12, capY + 3.8, 9.5, 2.2, -0.25, 0, Math.PI);
+    ctx.ellipse(hx - 11.5, capY + 2.6, 10.5, 3.4, -0.22, 0, Math.PI * 2);
     ctx.fill();
     // forehead strap + buckle
     ctx.strokeStyle = '#9a4860';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(hx + 3, capY + 2.2);
-    ctx.lineTo(hx + 11, capY + 2.4);
+    ctx.moveTo(hx + 3, capY + 2);
+    ctx.lineTo(hx + 10.5, capY + 2.2);
     ctx.stroke();
     ctx.fillStyle = '#c4a35a';
-    ctx.fillRect(hx + 9, capY + 1.1, 3.4, 2.6);
-    // opening over forehead
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(hx + 8.5, capY + 0.9, 3.4, 2.6, 0.6);
+    else ctx.fillRect(hx + 8.5, capY + 0.9, 3.4, 2.6);
+    ctx.fill();
     ctx.fillStyle = skin;
     ctx.beginPath();
-    ctx.ellipse(hx + 5, capY + 1.8, 3.8, 2.4, 0, Math.PI, 0);
+    ctx.ellipse(hx + 5, capY + 1.6, 3.6, 2.2, 0, Math.PI, 0);
     ctx.fill();
-    ctx.fillStyle = 'rgba(255,180,90,0.18)';
+    ctx.fillStyle = 'rgba(255,180,90,0.16)';
     ctx.beginPath();
-    ctx.ellipse(hx, capY - 3, 6, 2.2, 0, 0, Math.PI * 2);
+    ctx.ellipse(hx, capY - 3, 5.5, 2, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(0,220,255,0.32)';
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    ctx.arc(hx, capY, 11.2, Math.PI * 0.9, Math.PI * 1.25);
-    ctx.stroke();
 
     ctx.restore();
 
@@ -1334,81 +1274,6 @@
       ctx.textAlign = 'center';
       ctx.fillText('Tayler', x, y + 14);
       ctx.textAlign = 'left';
-    }
-
-    function jeanLeg(ctx, x0, y0, w, h, far) {
-      const g = ctx.createLinearGradient(x0, y0, x0 + w, y0 + h);
-      if (far) {
-        g.addColorStop(0, denim); g.addColorStop(1, denimLo);
-      } else {
-        g.addColorStop(0, denimHi); g.addColorStop(0.5, denim); g.addColorStop(1, denimLo);
-      }
-      ctx.fillStyle = g;
-      ctx.fillRect(x0, y0, w, h);
-      ctx.strokeStyle = 'rgba(180,200,230,0.22)';
-      ctx.lineWidth = 0.8;
-      ctx.beginPath();
-      ctx.moveTo(x0 + 1.5, y0 + 2); ctx.lineTo(x0 + 1.5, y0 + h - 2);
-      ctx.stroke();
-      if (!far) {
-        ctx.strokeStyle = 'rgba(200,210,230,0.2)';
-        for (let i = 0; i < 3; i++) {
-          ctx.beginPath();
-          ctx.moveTo(x0 + 2 + i, y0 + 4);
-          ctx.lineTo(x0 + 4 + i * 0.4, y0 + 12);
-          ctx.stroke();
-        }
-      }
-    }
-    function brownBoot(ctx, bx, by, w, far) {
-      const g = ctx.createLinearGradient(bx, by, bx + w, by + 7);
-      g.addColorStop(0, far ? '#6a3a20' : '#9a6040');
-      g.addColorStop(0.45, '#6a3a20');
-      g.addColorStop(1, '#3a1a10');
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.moveTo(bx, by);
-      ctx.lineTo(bx + w - 3, by - 0.5);
-      ctx.lineTo(bx + w + 1.5, by + 3.5);
-      ctx.lineTo(bx + w - 1, by + 6.5);
-      ctx.lineTo(bx - 0.5, by + 6.5);
-      ctx.closePath();
-      ctx.fill();
-      drawBootLaces(ctx, bx + 1, by + 1, w - 3, 5, '#2a1808');
-      ctx.strokeStyle = 'rgba(40,20,10,0.45)';
-      ctx.lineWidth = 0.8;
-      ctx.beginPath();
-      ctx.moveTo(bx + w - 4, by + 1);
-      ctx.lineTo(bx + w, by + 3.5);
-      ctx.stroke();
-    }
-    function plaidFill(ctx, x0, y0, w, h) {
-      ctx.fillStyle = '#3a5a78';
-      ctx.fillRect(x0, y0, w, h);
-      ctx.strokeStyle = 'rgba(230, 200, 60, 0.78)';
-      ctx.lineWidth = 1.15;
-      for (let i = 0; i < Math.ceil(h / 5); i++) {
-        ctx.beginPath();
-        ctx.moveTo(x0, y0 + 3 + i * 5);
-        ctx.lineTo(x0 + w, y0 + 3 + i * 5);
-        ctx.stroke();
-      }
-      ctx.strokeStyle = 'rgba(230, 240, 255, 0.55)';
-      ctx.lineWidth = 1;
-      for (let i = 0; i < Math.ceil(w / 5); i++) {
-        ctx.beginPath();
-        ctx.moveTo(x0 + 2 + i * 5, y0);
-        ctx.lineTo(x0 + 2 + i * 5, y0 + h);
-        ctx.stroke();
-      }
-      ctx.strokeStyle = 'rgba(40, 180, 160, 0.35)';
-      ctx.lineWidth = 0.8;
-      for (let i = 0; i < Math.ceil(w / 10); i++) {
-        ctx.beginPath();
-        ctx.moveTo(x0 + 4 + i * 10, y0);
-        ctx.lineTo(x0 + 4 + i * 10, y0 + h);
-        ctx.stroke();
-      }
     }
   }
 
@@ -3832,12 +3697,31 @@
       ctx.textAlign = 'left';
     }
 
+
+    // Retrofit band tour — members hanging on the bridge after abduction bit
+    if (opts.bandTour && typeof BAND_ROSTER !== 'undefined') {
+      const talked = opts.bandTalked || {};
+      for (let bi = 0; bi < BAND_ROSTER.length; bi++) {
+        const bm = BAND_ROSTER[bi];
+        const bx = bm.x - camX;
+        drawCitizen(ctx, bx, groundY, bm.look, t);
+        // name plate / talked cue
+        ctx.fillStyle = talked[bm.id] ? 'rgba(125,255,58,0.45)' : 'rgba(255,220,100,0.7)';
+        ctx.font = 'bold 8px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(talked[bm.id] ? '✓' : '▲', bx, groundY - 78);
+        ctx.textAlign = 'left';
+      }
+    }
+
     // Caption
     ctx.fillStyle = 'rgba(200,230,210,0.55)';
     ctx.font = '11px Segoe UI, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(
-      opts.operate
+      opts.bandTour
+        ? 'Mothership lounge — Retrofit aboard · USE near bandmates'
+        : opts.operate
         ? 'Mothership sickbay — "son of a bitch you recognize" protocol'
         : 'Mothership bridge — Chilliwack below · crew watching',
       w / 2,
@@ -4634,6 +4518,144 @@
     drawLandmarkLabel(ctx, x + 40, groundY + 14, label || "MOM'S / SHED");
   }
 
+
+  /** Canary-yellow 70s high-top conversion van — Retrofit tour rig */
+  function drawRetrofitVan(ctx, x, groundY, label) {
+    const cx = x + 48;
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath();
+    ctx.ellipse(cx, groundY - 2, 52, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // body
+    ctx.fillStyle = '#f5d420';
+    ctx.fillRect(x + 4, groundY - 42, 88, 36);
+    // nose
+    ctx.fillStyle = '#e8c818';
+    ctx.fillRect(x + 84, groundY - 36, 18, 30);
+    // high-top white roof
+    ctx.fillStyle = '#f4f4f0';
+    ctx.beginPath();
+    ctx.moveTo(x + 10, groundY - 42);
+    ctx.lineTo(x + 14, groundY - 62);
+    ctx.lineTo(x + 72, groundY - 62);
+    ctx.lineTo(x + 78, groundY - 42);
+    ctx.closePath();
+    ctx.fill();
+    // roof side window
+    ctx.fillStyle = '#6a98b8';
+    ctx.fillRect(x + 28, groundY - 58, 22, 8);
+    ctx.strokeStyle = '#c8c8c0';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 28, groundY - 58, 22, 8);
+    // teal stripe
+    ctx.fillStyle = '#2a9aaa';
+    ctx.fillRect(x + 4, groundY - 28, 98, 8);
+    ctx.fillStyle = '#1a7a88';
+    ctx.fillRect(x + 4, groundY - 21, 98, 2);
+    // windows
+    ctx.fillStyle = 'rgba(120,180,210,0.55)';
+    ctx.fillRect(x + 12, groundY - 40, 18, 12);
+    ctx.fillRect(x + 34, groundY - 40, 22, 12);
+    ctx.fillRect(x + 60, groundY - 40, 16, 12);
+    ctx.fillRect(x + 88, groundY - 34, 10, 10);
+    // door seam
+    ctx.strokeStyle = 'rgba(80,60,10,0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + 48, groundY - 42);
+    ctx.lineTo(x + 48, groundY - 6);
+    ctx.stroke();
+    // wheels
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.arc(x + 22, groundY - 4, 8, 0, Math.PI * 2);
+    ctx.arc(x + 82, groundY - 4, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#888';
+    ctx.beginPath();
+    ctx.arc(x + 22, groundY - 4, 3.5, 0, Math.PI * 2);
+    ctx.arc(x + 82, groundY - 4, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    // bumper
+    ctx.fillStyle = '#c8c8c0';
+    ctx.fillRect(x + 88, groundY - 10, 16, 5);
+    drawLandmarkLabel(ctx, cx, groundY + 14, label || 'RETROFIT VAN');
+  }
+
+  /** Cream Winnebago-style Class A — BRAVE tour bus */
+  function drawBraveTourBus(ctx, x, groundY, label) {
+    const cx = x + 62;
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath();
+    ctx.ellipse(cx, groundY - 2, 68, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // body cream
+    ctx.fillStyle = '#e8e0d0';
+    ctx.fillRect(x + 2, groundY - 58, 120, 52);
+    // cab front
+    ctx.fillStyle = '#ddd5c4';
+    ctx.fillRect(x + 110, groundY - 52, 22, 46);
+    // white roof + A/C
+    ctx.fillStyle = '#f8f8f4';
+    ctx.fillRect(x + 6, groundY - 66, 112, 10);
+    ctx.fillStyle = '#c8c8c8';
+    ctx.fillRect(x + 48, groundY - 72, 28, 8);
+    // awning roll
+    ctx.fillStyle = '#f0f0ec';
+    ctx.fillRect(x + 8, groundY - 60, 100, 4);
+    // maroon twin stripes
+    ctx.fillStyle = '#7a2038';
+    ctx.fillRect(x + 2, groundY - 32, 130, 5);
+    ctx.fillRect(x + 2, groundY - 24, 130, 5);
+    // stripe kick near front
+    ctx.beginPath();
+    ctx.moveTo(x + 100, groundY - 32);
+    ctx.lineTo(x + 118, groundY - 40);
+    ctx.lineTo(x + 124, groundY - 40);
+    ctx.lineTo(x + 108, groundY - 32);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + 100, groundY - 24);
+    ctx.lineTo(x + 116, groundY - 30);
+    ctx.lineTo(x + 122, groundY - 30);
+    ctx.lineTo(x + 108, groundY - 24);
+    ctx.closePath();
+    ctx.fill();
+    // W logo
+    ctx.fillStyle = '#7a2038';
+    ctx.font = 'bold 16px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('W', x + 55, groundY - 40);
+    // BRAVE lettering
+    ctx.font = 'bold 11px Segoe UI, sans-serif';
+    ctx.fillText('BRAVE', x + 28, groundY - 10);
+    ctx.textAlign = 'left';
+    // windows
+    ctx.fillStyle = 'rgba(100,150,190,0.5)';
+    ctx.fillRect(x + 14, groundY - 54, 36, 18);
+    ctx.fillRect(x + 56, groundY - 54, 22, 18);
+    ctx.fillRect(x + 84, groundY - 54, 18, 16);
+    ctx.fillRect(x + 114, groundY - 48, 14, 14);
+    // door
+    ctx.strokeStyle = 'rgba(60,40,30,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x + 84, groundY - 54, 18, 40);
+    // wheels + hubcaps
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.arc(x + 28, groundY - 4, 9, 0, Math.PI * 2);
+    ctx.arc(x + 108, groundY - 4, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#c8c8d0';
+    ctx.beginPath();
+    ctx.arc(x + 28, groundY - 4, 4, 0, Math.PI * 2);
+    ctx.arc(x + 108, groundY - 4, 4, 0, Math.PI * 2);
+    ctx.fill();
+    drawLandmarkLabel(ctx, cx, groundY + 14, label || 'BRAVE TOUR BUS');
+  }
+
   function drawBuilding(ctx, x, groundY, kind, label) {
     if (kind === 'streetlight') { drawStreetlight(ctx, x, groundY); return; }
     if (kind === 'homeShed') { drawHomeShed(ctx, x, groundY, label); return; }
@@ -4643,6 +4665,8 @@
     if (kind === 'royalHotel') { drawRoyalHotel(ctx, x, groundY, label); return; }
     if (kind === 'fireHall') { drawFireHall(ctx, x, groundY, label); return; }
     if (kind === 'theatre') { drawTheatre(ctx, x, groundY, label); return; }
+    if (kind === 'retrofitVan') { drawRetrofitVan(ctx, x, groundY, label); return; }
+    if (kind === 'braveBus') { drawBraveTourBus(ctx, x, groundY, label); return; }
     if (kind === 'car') {
       const cols = ['#446688', '#884444', '#555', '#c4a35a', '#2a5a3a'];
       drawParkedCar(ctx, x, groundY, cols[(Math.abs(x | 0) % cols.length)]);
@@ -5596,6 +5620,8 @@
     YARD_SHED_DOOR_X,
     SHIP_WORLD_W,
     SHIP_HELM_X,
+    BAND_SIZE,
+    BAND_ROSTER,
     LANDMARK_WORLD_W,
     LANDMARK_HOTSPOT_X,
     LANDMARK_EXIT_X,
