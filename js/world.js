@@ -141,11 +141,11 @@
   /** Gold '67 El Camino (side view) center X — walk path in FRONT of the car */
   const SHED_CAMINO_X = 360;
   /** Driver door / seat offset from car center (local, nose-left space) */
-  const CAMINO_DOOR_DX = -58;
-  /** Approx half-length for exit / bounds checks (canvas car ~500px wide) */
-  const CAMINO_HALF_W = 250;
+  const CAMINO_DOOR_DX = -42;
+  /** Approx half-length for exit / bounds checks (canvas car ~380px wide) */
+  const CAMINO_HALF_W = 190;
   /** Side-window rect in local nose-left space — driver is clipped here */
-  const CAMINO_WIN = { x: -128, y: -108, w: 102, h: 34 };
+  const CAMINO_WIN = { x: -98, y: -118, w: 88, h: 40 };
   /** Large framed backyard window on back wall (world X of glass left edge) */
   const SHED_WINDOW_X = 720;
   const SHED_WINDOW_W = 380;
@@ -1220,47 +1220,49 @@
       return g;
     }
 
-    const wfX = -132; // front wheel center
-    const wrX = 118;  // rear wheel center
-    const wR = 27;    // tire outer radius
-    const archR = 33; // body arch cutout
-    const bodyBot = -30;
+    // Balanced classic coupe proportions (~380px overall, not long-hood ute)
+    // Nose ~-190 → rear ~+190. Hood / cabin / trunk roughly even.
+    const wfX = -112; // front wheel center
+    const wrX = 108;  // rear wheel center  (wheelbase ~220 ≈ 58% of length)
+    const wR = 26;    // tire outer radius
+    const archR = 32; // body arch cutout
+    const bodyBot = -28;
 
     // Ground shadow
     ctx.fillStyle = 'rgba(0,0,0,0.38)';
     ctx.beginPath();
-    ctx.ellipse(0, 5, 228, 12, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 5, 178, 11, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // —— Main body silhouette (long hood → compact cab → long bed) with arch cutouts ——
-    // Nose-left local space. Proportions: hood ~30%, cabin ~22%, bed ~48%.
+    // —— Main body silhouette (standard coupe: hood → tall cabin → short trunk) ——
+    // Nose-left local space.
     function bodyOutline() {
       ctx.beginPath();
-      // rear bumper corner → up tailgate → bed rail → cab rear → roof → windshield → hood → nose
-      ctx.moveTo(228, -18);
-      ctx.lineTo(228, -36);
-      ctx.lineTo(212, -38);
-      ctx.lineTo(208, -78);          // top of tailgate / bed rail rear
-      ctx.lineTo(12, -80);           // long open bed rail
-      ctx.lineTo(6, -82);            // cab rear kink
-      ctx.lineTo(-8, -108);          // C-pillar up to roof
-      ctx.lineTo(-138, -110);        // short flat roof
-      ctx.lineTo(-158, -82);         // windshield rake down to hood
-      ctx.lineTo(-232, -76);         // long hood top
-      ctx.lineTo(-248, -62);         // nose drop
-      ctx.lineTo(-252, -34);         // grille face bottom
-      ctx.lineTo(-246, -18);         // front bumper bottom
-      // rocker with front wheel arch cutout
+      // rear bumper → trunk → C-pillar → roof → windshield → hood → nose → rocker/arches
+      ctx.moveTo(186, -16);
+      ctx.lineTo(186, -34);
+      ctx.lineTo(178, -38);
+      ctx.lineTo(172, -72);          // trunk rear / decklid corner
+      ctx.lineTo(48, -76);           // short trunk top
+      ctx.lineTo(38, -78);           // C-pillar base kink
+      ctx.lineTo(28, -118);          // C-pillar up to roof (taller cabin)
+      ctx.lineTo(-92, -120);         // flat roof
+      ctx.lineTo(-118, -82);         // windshield rake down to hood
+      ctx.lineTo(-168, -74);         // balanced hood top
+      ctx.lineTo(-182, -58);         // nose drop
+      ctx.lineTo(-188, -32);         // grille face bottom
+      ctx.lineTo(-182, -16);         // front bumper bottom
+      // rocker with wheel arch cutouts
       ctx.lineTo(wfX - archR - 4, bodyBot + 12);
       ctx.lineTo(wfX - archR, bodyBot + 12);
       ctx.arc(wfX, bodyBot + 12, archR, Math.PI, 0, true);
       ctx.lineTo(wrX - archR, bodyBot + 12);
       ctx.arc(wrX, bodyBot + 12, archR, Math.PI, 0, true);
-      ctx.lineTo(228, bodyBot + 12);
+      ctx.lineTo(186, bodyBot + 12);
       ctx.closePath();
     }
 
-    ctx.fillStyle = paint(-250, -110, 230, -10);
+    ctx.fillStyle = paint(-190, -120, 190, -10);
     bodyOutline();
     ctx.fill();
 
@@ -1268,104 +1270,81 @@
     ctx.save();
     bodyOutline();
     ctx.clip();
-    // lower panel shade
-    const loShade = ctx.createLinearGradient(0, -78, 0, -18);
+    const loShade = ctx.createLinearGradient(0, -80, 0, -16);
     loShade.addColorStop(0, 'rgba(0,0,0,0)');
     loShade.addColorStop(0.55, 'rgba(0,0,0,0.06)');
     loShade.addColorStop(1, 'rgba(0,0,0,0.28)');
     ctx.fillStyle = loShade;
-    ctx.fillRect(-260, -120, 520, 140);
+    ctx.fillRect(-200, -130, 400, 140);
     // beltline highlight
     ctx.fillStyle = dusty ? 'rgba(255,240,200,0.1)' : 'rgba(255,250,220,0.22)';
-    ctx.fillRect(-240, -78, 440, 5);
+    ctx.fillRect(-175, -76, 340, 5);
     // hood power-bulge highlight
     ctx.fillStyle = dusty ? 'rgba(255,245,210,0.1)' : 'rgba(255,250,230,0.2)';
     ctx.beginPath();
-    ctx.moveTo(-228, -74);
-    ctx.lineTo(-168, -78);
-    ctx.lineTo(-168, -58);
-    ctx.lineTo(-228, -54);
+    ctx.moveTo(-170, -72);
+    ctx.lineTo(-122, -76);
+    ctx.lineTo(-122, -56);
+    ctx.lineTo(-170, -52);
     ctx.closePath();
     ctx.fill();
-    // door crease
+    // door crease (front of rear quarter)
     ctx.strokeStyle = 'rgba(40,24,8,0.35)';
     ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.moveTo(-12, -80);
-    ctx.lineTo(-12, -34);
+    ctx.moveTo(22, -78);
+    ctx.lineTo(22, -32);
     ctx.stroke();
     ctx.strokeStyle = dusty ? 'rgba(255,230,170,0.18)' : 'rgba(255,240,200,0.28)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(-10, -80);
-    ctx.lineTo(-10, -34);
+    ctx.moveTo(24, -78);
+    ctx.lineTo(24, -32);
     ctx.stroke();
     // fender / door character line
     ctx.strokeStyle = dusty ? 'rgba(255,230,170,0.12)' : 'rgba(255,245,210,0.2)';
     ctx.beginPath();
-    ctx.moveTo(-230, -58);
-    ctx.lineTo(-160, -62);
-    ctx.lineTo(-14, -64);
-    ctx.lineTo(200, -62);
+    ctx.moveTo(-172, -56);
+    ctx.lineTo(-120, -60);
+    ctx.lineTo(20, -62);
+    ctx.lineTo(160, -60);
     ctx.stroke();
     ctx.restore();
 
     // Chrome rocker strip between arches
-    ctx.fillStyle = chrome(wfX + archR + 2, -34, wrX - archR - 2, -28);
-    ctx.fillRect(wfX + archR + 2, -34, (wrX - archR) - (wfX + archR) - 4, 4);
-    // thin chrome lip above rocker
+    ctx.fillStyle = chrome(wfX + archR + 2, -32, wrX - archR - 2, -26);
+    ctx.fillRect(wfX + archR + 2, -32, (wrX - archR) - (wfX + archR) - 4, 4);
     ctx.fillStyle = dusty ? 'rgba(200,200,210,0.55)' : 'rgba(240,240,248,0.75)';
-    ctx.fillRect(wfX + archR + 2, -35, (wrX - archR) - (wfX + archR) - 4, 1.5);
+    ctx.fillRect(wfX + archR + 2, -33, (wrX - archR) - (wfX + archR) - 4, 1.5);
 
-    // —— Open cargo bed (cut into body): dark floor, rails, wheel-well bulge ——
-    ctx.fillStyle = dusty ? '#2e2010' : '#1a1208';
+    // —— Short trunk / decklid (standard coupe rear, not open bed) ——
+    ctx.fillStyle = dusty ? 'rgba(40,28,12,0.18)' : 'rgba(30,20,8,0.2)';
     ctx.beginPath();
-    ctx.moveTo(16, -78);
-    ctx.lineTo(198, -76);
-    ctx.lineTo(198, -44);
-    ctx.lineTo(18, -46);
+    ctx.moveTo(42, -74);
+    ctx.lineTo(168, -72);
+    ctx.lineTo(166, -48);
+    ctx.lineTo(44, -50);
     ctx.closePath();
     ctx.fill();
-    // floor ribs
-    ctx.strokeStyle = dusty ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.45)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 8; i++) {
-      const bx = 28 + i * 20;
-      ctx.beginPath();
-      ctx.moveTo(bx, -74);
-      ctx.lineTo(bx, -48);
-      ctx.stroke();
-    }
-    // rear wheel-well bulge in bed
-    ctx.fillStyle = goldLo;
+    // decklid seam
+    ctx.strokeStyle = 'rgba(40,24,8,0.3)';
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.ellipse(wrX, -50, 36, 15, 0, Math.PI, 0, true);
-    ctx.fill();
-    ctx.fillStyle = goldDeep;
-    ctx.beginPath();
-    ctx.ellipse(wrX, -50, 30, 11, 0, Math.PI, 0, true);
-    ctx.fill();
-    // thin near-side bed wall lip (gold strip under rail)
-    ctx.fillStyle = goldMid;
-    ctx.fillRect(14, -78, 186, 5);
-    // chrome bed rail
-    ctx.fillStyle = chrome(10, -82, 206, -76);
-    ctx.fillRect(12, -81, 194, 3.5);
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    ctx.fillRect(14, -81, 190, 1);
-
-    // Tailgate face
-    ctx.fillStyle = paint(198, -78, 220, -20);
-    ctx.fillRect(200, -76, 10, 40);
-    ctx.fillStyle = chrome(200, -78, 212, -72);
-    ctx.fillRect(200, -78, 10, 3);
+    ctx.moveTo(50, -62);
+    ctx.lineTo(160, -60);
+    ctx.stroke();
+    // subtle chrome trunk lip
+    ctx.fillStyle = chrome(40, -78, 170, -72);
+    ctx.fillRect(42, -77, 128, 2.5);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillRect(44, -77, 124, 1);
 
     // —— Cabin glass + black vinyl roof ——
     // Bench seat (behind glass)
     ctx.fillStyle = dusty ? 'rgba(140,100,60,0.55)' : 'rgba(180,130,75,0.65)';
-    ctx.fillRect(-120, -76, 95, 14);
+    ctx.fillRect(-90, -80, 100, 16);
     ctx.fillStyle = 'rgba(60,40,20,0.4)';
-    ctx.fillRect(-118, -74, 91, 3);
+    ctx.fillRect(-88, -78, 96, 3);
 
     // Driver — clipped to side-window glass only (head-in-window)
     const w = CAMINO_WIN;
@@ -1378,80 +1357,79 @@
       ctx.restore();
     }
 
-    // Cabin interior darken behind glass (not vinyl)
+    // Cabin interior darken behind glass
     ctx.fillStyle = dusty ? 'rgba(30,24,16,0.35)' : 'rgba(20,16,10,0.4)';
     ctx.beginPath();
-    ctx.moveTo(-132, -82);
-    ctx.lineTo(-126, -106);
-    ctx.lineTo(-18, -105);
-    ctx.lineTo(-12, -82);
+    ctx.moveTo(-104, -82);
+    ctx.lineTo(-96, -116);
+    ctx.lineTo(-8, -115);
+    ctx.lineTo(0, -82);
     ctx.closePath();
     ctx.fill();
 
-    // Black vinyl roof ONLY above drip rail (3/4 front ref) — leave glass open
+    // Black vinyl roof ONLY above drip rail — leave glass open
     ctx.fillStyle = vinyl;
     ctx.beginPath();
-    ctx.moveTo(-148, -110);
-    ctx.lineTo(-12, -108);
-    ctx.lineTo(-16, -100);
-    ctx.lineTo(-144, -102);
+    ctx.moveTo(-110, -120);
+    ctx.lineTo(20, -118);
+    ctx.lineTo(16, -110);
+    ctx.lineTo(-106, -112);
     ctx.closePath();
     ctx.fill();
-    // vinyl wraps slightly onto C-pillar top
+    // vinyl wraps onto C-pillar top
     ctx.beginPath();
-    ctx.moveTo(-16, -108);
-    ctx.lineTo(-4, -84);
-    ctx.lineTo(-10, -84);
-    ctx.lineTo(-18, -106);
+    ctx.moveTo(16, -118);
+    ctx.lineTo(30, -82);
+    ctx.lineTo(24, -82);
+    ctx.lineTo(12, -116);
     ctx.closePath();
     ctx.fill();
     // A-pillar vinyl tip
     ctx.beginPath();
-    ctx.moveTo(-148, -110);
-    ctx.lineTo(-156, -84);
-    ctx.lineTo(-150, -84);
-    ctx.lineTo(-144, -108);
+    ctx.moveTo(-110, -120);
+    ctx.lineTo(-122, -84);
+    ctx.lineTo(-116, -84);
+    ctx.lineTo(-106, -118);
     ctx.closePath();
     ctx.fill();
     // subtle vinyl texture bands
     ctx.strokeStyle = dusty ? 'rgba(55,55,60,0.55)' : 'rgba(45,45,50,0.6)';
     ctx.lineWidth = 0.8;
     for (let i = 0; i < 3; i++) {
-      const ry = -108 + i * 2.5;
+      const ry = -118 + i * 2.5;
       ctx.beginPath();
-      ctx.moveTo(-142 + i, ry);
-      ctx.lineTo(-18 - i, ry + 0.5);
+      ctx.moveTo(-104 + i, ry);
+      ctx.lineTo(14 - i, ry + 0.5);
       ctx.stroke();
     }
-    // roof highlight edge
     ctx.fillStyle = vinylHi;
-    ctx.fillRect(-146, -110, 130, 1.8);
+    ctx.fillRect(-108, -120, 124, 1.8);
 
     // Windshield (raked)
-    const windG = ctx.createLinearGradient(-158, -110, -140, -82);
+    const windG = ctx.createLinearGradient(-122, -120, -100, -82);
     windG.addColorStop(0, dusty ? 'rgba(100,130,150,0.55)' : 'rgba(150,190,220,0.5)');
     windG.addColorStop(0.5, 'rgba(220,235,245,0.28)');
     windG.addColorStop(1, dusty ? 'rgba(70,100,120,0.5)' : 'rgba(60,100,130,0.48)');
     ctx.fillStyle = windG;
     ctx.beginPath();
-    ctx.moveTo(-156, -82);
-    ctx.lineTo(-140, -108);
-    ctx.lineTo(-128, -108);
-    ctx.lineTo(-132, -82);
+    ctx.moveTo(-120, -82);
+    ctx.lineTo(-100, -118);
+    ctx.lineTo(-90, -118);
+    ctx.lineTo(-100, -82);
     ctx.closePath();
     ctx.fill();
 
-    // Side window glass (over driver) — light enough to read cabin/driver
+    // Side window glass (over driver) — taller, normal-car size
     const glassG = ctx.createLinearGradient(w.x, w.y, w.x + w.w, w.y + w.h);
     glassG.addColorStop(0, dusty ? 'rgba(140,170,190,0.38)' : 'rgba(170,205,230,0.36)');
     glassG.addColorStop(0.4, 'rgba(240,248,255,0.14)');
     glassG.addColorStop(1, dusty ? 'rgba(90,120,140,0.34)' : 'rgba(70,110,140,0.32)');
     ctx.fillStyle = glassG;
     ctx.beginPath();
-    ctx.moveTo(-130, -82);
-    ctx.lineTo(-126, -106);
-    ctx.lineTo(-18, -105);
-    ctx.lineTo(-12, -82);
+    ctx.moveTo(-98, -82);
+    ctx.lineTo(-94, -116);
+    ctx.lineTo(-10, -115);
+    ctx.lineTo(-2, -82);
     ctx.closePath();
     ctx.fill();
 
@@ -1459,17 +1437,17 @@
     ctx.strokeStyle = dusty ? '#b0b0b8' : '#e4e4ec';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(-112, -106);
-    ctx.lineTo(-114, -82);
+    ctx.moveTo(-82, -116);
+    ctx.lineTo(-84, -82);
     ctx.stroke();
 
-    // Rear cab glass (backlight)
+    // Rear cab glass (backlight / rear window)
     ctx.fillStyle = dusty ? 'rgba(90,120,140,0.4)' : 'rgba(130,170,200,0.45)';
     ctx.beginPath();
-    ctx.moveTo(-10, -104);
-    ctx.lineTo(2, -82);
-    ctx.lineTo(8, -82);
-    ctx.lineTo(-6, -104);
+    ctx.moveTo(-4, -114);
+    ctx.lineTo(14, -82);
+    ctx.lineTo(22, -82);
+    ctx.lineTo(8, -114);
     ctx.closePath();
     ctx.fill();
 
@@ -1477,82 +1455,80 @@
     ctx.strokeStyle = dusty ? '#b8b8c0' : '#f0f0f6';
     ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.moveTo(-156, -82);
-    ctx.lineTo(-140, -108);
-    ctx.lineTo(-18, -105);
-    ctx.lineTo(-12, -82);
+    ctx.moveTo(-120, -82);
+    ctx.lineTo(-100, -118);
+    ctx.lineTo(-8, -115);
+    ctx.lineTo(0, -82);
     ctx.closePath();
     ctx.stroke();
     // B-pillar chrome
     ctx.lineWidth = 2.4;
     ctx.beginPath();
-    ctx.moveTo(-14, -105);
-    ctx.lineTo(-10, -82);
+    ctx.moveTo(-6, -114);
+    ctx.lineTo(0, -82);
     ctx.stroke();
     // chrome belt under glass
-    ctx.fillStyle = chrome(-150, -84, 6, -80);
-    ctx.fillRect(-152, -83, 158, 2.5);
+    ctx.fillStyle = chrome(-118, -84, 14, -80);
+    ctx.fillRect(-118, -83, 130, 2.5);
 
     // Door handle
-    ctx.fillStyle = chrome(-48, -58, -28, -50);
-    ctx.fillRect(-46, -56, 16, 4);
+    ctx.fillStyle = chrome(-36, -58, -16, -50);
+    ctx.fillRect(-34, -56, 16, 4);
 
     // Side mirror (chrome)
-    ctx.fillStyle = chrome(-148, -90, -132, -78);
+    ctx.fillStyle = chrome(-118, -96, -102, -84);
     ctx.beginPath();
-    ctx.ellipse(-142, -86, 7, 5, -0.2, 0, Math.PI * 2);
+    ctx.ellipse(-112, -92, 7, 5, -0.2, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = dusty ? '#4a5560' : '#6a8090';
     ctx.beginPath();
-    ctx.ellipse(-141, -86, 4, 3, -0.2, 0, Math.PI * 2);
+    ctx.ellipse(-111, -92, 4, 3, -0.2, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = dusty ? '#909098' : '#d0d0d8';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(-136, -84);
-    ctx.lineTo(-128, -80);
+    ctx.moveTo(-106, -90);
+    ctx.lineTo(-98, -84);
     ctx.stroke();
 
     // —— Front end: bumper, grille, stacked headlights ——
-    // Front bumper
-    ctx.fillStyle = chrome(-254, -38, -220, -12);
+    ctx.fillStyle = chrome(-190, -36, -158, -12);
     ctx.beginPath();
-    ctx.moveTo(-252, -36);
-    ctx.lineTo(-222, -38);
-    ctx.lineTo(-218, -14);
-    ctx.lineTo(-254, -16);
+    ctx.moveTo(-188, -34);
+    ctx.lineTo(-160, -36);
+    ctx.lineTo(-156, -14);
+    ctx.lineTo(-190, -16);
     ctx.closePath();
     ctx.fill();
-    // bumper highlight
     ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.fillRect(-250, -34, 28, 2);
+    ctx.fillRect(-186, -32, 26, 2);
     // turn signal amber
     ctx.fillStyle = dusty ? '#c88820' : '#ffaa28';
-    ctx.fillRect(-248, -24, 12, 4);
+    ctx.fillRect(-184, -24, 12, 4);
 
     // Grille (horizontal chrome slats)
     ctx.fillStyle = '#121214';
-    ctx.fillRect(-230, -68, 28, 28);
-    ctx.fillStyle = chrome(-230, -68, -202, -40);
+    ctx.fillRect(-172, -66, 26, 28);
+    ctx.fillStyle = chrome(-172, -66, -146, -38);
     ctx.strokeStyle = dusty ? '#a8a8b0' : '#e8e8f0';
     ctx.lineWidth = 1.1;
     for (let i = 0; i < 7; i++) {
       ctx.beginPath();
-      ctx.moveTo(-228, -66 + i * 3.8);
-      ctx.lineTo(-204, -66 + i * 3.8);
+      ctx.moveTo(-170, -64 + i * 3.8);
+      ctx.lineTo(-148, -64 + i * 3.8);
       ctx.stroke();
     }
     // tiny Chevy bowtie hint
     ctx.fillStyle = dusty ? '#8a2020' : '#c02828';
     ctx.beginPath();
-    ctx.moveTo(-217, -54);
-    ctx.lineTo(-213, -56);
-    ctx.lineTo(-209, -54);
-    ctx.lineTo(-213, -52);
+    ctx.moveTo(-161, -52);
+    ctx.lineTo(-157, -54);
+    ctx.lineTo(-153, -52);
+    ctx.lineTo(-157, -50);
     ctx.closePath();
     ctx.fill();
 
-    // Stacked dual headlights (side view shows one vertical stack)
+    // Stacked dual headlights
     function lamp(hx, hy, r) {
       ctx.fillStyle = dusty ? '#9898a0' : '#d8d8e0';
       ctx.beginPath();
@@ -1571,44 +1547,43 @@
       ctx.arc(hx, hy, r, 0, Math.PI * 2);
       ctx.fill();
     }
-    // chrome headlight bezel plate
-    ctx.fillStyle = chrome(-242, -72, -228, -36);
-    ctx.fillRect(-240, -72, 10, 36);
-    lamp(-235, -64, 7);
-    lamp(-235, -44, 7);
+    ctx.fillStyle = chrome(-182, -70, -168, -34);
+    ctx.fillRect(-180, -70, 10, 36);
+    lamp(-175, -62, 7);
+    lamp(-175, -42, 7);
 
     // —— Rear bumper + taillight ——
-    ctx.fillStyle = chrome(204, -38, 232, -12);
+    ctx.fillStyle = chrome(164, -36, 190, -12);
     ctx.beginPath();
-    ctx.moveTo(206, -36);
-    ctx.lineTo(228, -34);
-    ctx.lineTo(230, -14);
-    ctx.lineTo(204, -16);
+    ctx.moveTo(166, -34);
+    ctx.lineTo(186, -32);
+    ctx.lineTo(188, -14);
+    ctx.lineTo(164, -16);
     ctx.closePath();
     ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.fillRect(208, -32, 18, 2);
+    ctx.fillRect(168, -30, 16, 2);
     // vertical segmented taillight
     ctx.fillStyle = dusty ? '#901818' : '#d02020';
-    ctx.fillRect(208, -72, 8, 28);
+    ctx.fillRect(168, -70, 8, 28);
     ctx.fillStyle = dusty ? '#c03030' : '#ff4040';
-    ctx.fillRect(209, -70, 6, 7);
-    ctx.fillRect(209, -60, 6, 7);
-    ctx.fillRect(209, -50, 6, 7);
+    ctx.fillRect(169, -68, 6, 7);
+    ctx.fillRect(169, -58, 6, 7);
+    ctx.fillRect(169, -48, 6, 7);
     ctx.strokeStyle = dusty ? '#c0c0c8' : '#f0f0f6';
     ctx.lineWidth = 1.2;
-    ctx.strokeRect(208, -72, 8, 28);
+    ctx.strokeRect(168, -70, 8, 28);
     // exhaust tip
-    ctx.fillStyle = chrome(214, -18, 226, -10);
-    ctx.fillRect(216, -16, 10, 4);
+    ctx.fillStyle = chrome(172, -18, 184, -10);
+    ctx.fillRect(174, -16, 10, 4);
 
     // SS / 396 fender badge
-    ctx.fillStyle = chrome(-96, -70, -64, -56);
-    ctx.fillRect(-94, -68, 28, 10);
+    ctx.fillStyle = chrome(-78, -70, -46, -56);
+    ctx.fillRect(-76, -68, 28, 10);
     ctx.fillStyle = '#1a1a20';
     ctx.font = 'bold 7px Segoe UI, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('396', -80, -60);
+    ctx.fillText('396', -62, -60);
 
     // Chrome wheel-arch rings
     ctx.strokeStyle = dusty ? '#a8a8b0' : '#e0e0e8';
@@ -1622,10 +1597,6 @@
 
     // —— Wheels (sit IN the arches) ——
     function wheel(wx) {
-      const wy = -2; // tire bottom ~ y+25 ≈ ground; arch center at bodyBot+12=-18, wheel center slightly lower
-      // Actually: bodyBot=-30, arch center y = -18. Wheel should sit with top inside arch.
-      // Tire radius 27 → center at y ≈ -2 means top at -29 (inside arch) and bottom at +25... too low.
-      // Ground contact: center y should be about - (near 0). Current old used -24 with r=24 → bottom at 0.
       const cy = -wR + 2; // bottom ≈ +2, slight ground contact
       ctx.fillStyle = '#0a0a0c';
       ctx.beginPath();
@@ -1650,20 +1621,19 @@
       // chrome multi-spoke rally rim
       ctx.fillStyle = dusty ? '#3a3a42' : '#2a2a32';
       ctx.beginPath();
-      ctx.arc(0, 0, 16, 0, Math.PI * 2);
+      ctx.arc(0, 0, 15, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = dusty ? '#c8c8d0' : '#f2f2f8';
       ctx.lineWidth = 2.2;
       ctx.beginPath();
-      ctx.arc(0, 0, 16, 0, Math.PI * 2);
+      ctx.arc(0, 0, 15, 0, Math.PI * 2);
       ctx.stroke();
-      // spokes
       ctx.lineWidth = 2;
       for (let a = 0; a < 8; a++) {
         const ang = a * (Math.PI / 4);
         ctx.beginPath();
         ctx.moveTo(Math.cos(ang) * 3.5, Math.sin(ang) * 3.5);
-        ctx.lineTo(Math.cos(ang) * 14, Math.sin(ang) * 14);
+        ctx.lineTo(Math.cos(ang) * 13, Math.sin(ang) * 13);
         ctx.stroke();
       }
       const hub = ctx.createRadialGradient(-2, -2, 1, 0, 0, 7);
@@ -1686,16 +1656,16 @@
     // Soft AO under rocker / arches
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
     ctx.beginPath();
-    ctx.ellipse(0, 1, 200, 6, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 1, 160, 6, 0, 0, Math.PI * 2);
     ctx.fill();
 
     if (dusty) {
       ctx.fillStyle = 'rgba(160,140,100,0.07)';
-      ctx.fillRect(-250, -90, 470, 55);
+      ctx.fillRect(-185, -95, 360, 55);
       ctx.fillStyle = 'rgba(120,100,70,0.12)';
-      for (let i = 0; i < 28; i++) {
-        const dx = -230 + (i * 97) % 450;
-        const dy = -85 + (i * 53) % 60;
+      for (let i = 0; i < 24; i++) {
+        const dx = -175 + (i * 97) % 340;
+        const dy = -90 + (i * 53) % 58;
         ctx.fillRect(dx, dy, 3, 2);
       }
     }
