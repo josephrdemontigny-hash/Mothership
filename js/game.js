@@ -85,7 +85,7 @@
 
   let score = 0;
   let beamed = 0;
-  /** 20th-person surgery Easter egg — once per run */
+  /** 15th-person surgery Easter egg — once per run */
   let recognizedDone = false;
   /** Operate-mode state: walk → surgery stages → choice */
   let operate = null;
@@ -2051,7 +2051,7 @@
           W.burst(particles, fly.ufoX, CH * 0.7, '#7dff3a', 14);
           W.addFloater(floaters, fly.ufoX, CH * 0.55, '+' + pts, '#7dff3a');
           Audio.play('score');
-          if (!recognizedDone && beamed >= 20) {
+          if (!recognizedDone && beamed >= 15) {
             recognizedDone = true; // lock immediately — once per run
             showFlash('SON OF A BITCH — you recognize that guy!', 160);
             // Defer cutaway so flash + score sync land first
