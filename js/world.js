@@ -689,27 +689,50 @@
   }
 
   function goAviator(ctx, hx, hy) {
-    ctx.fillStyle = '#0a0a0c';
+    // Thin real aviators — translucent lenses (NOT solid black eye patches)
+    // Soft eye hint under glass
+    ctx.fillStyle = 'rgba(40,28,24,0.35)';
     ctx.beginPath();
-    ctx.ellipse(hx - 3.2, hy, 3.4, 3.7, -0.18, 0, Math.PI * 2);
+    ctx.ellipse(hx - 2.8, hy + 0.4, 1.3, 1.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(hx + 5.0, hy + 0.5, 1.5, 1.6, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    function lens(lx, ly, rx, ry, rot) {
+      const g = ctx.createLinearGradient(lx - rx, ly - ry, lx + rx, ly + ry);
+      g.addColorStop(0, 'rgba(180,230,255,0.28)');
+      g.addColorStop(0.35, 'rgba(40,60,90,0.18)');
+      g.addColorStop(0.7, 'rgba(255,120,200,0.12)');
+      g.addColorStop(1, 'rgba(20,30,50,0.22)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(lx, ly, rx, ry, rot, 0, Math.PI * 2);
+      ctx.fill();
+      // thin metal rim
+      ctx.strokeStyle = 'rgba(210,215,225,0.95)';
+      ctx.lineWidth = 1.05;
+      ctx.beginPath();
+      ctx.ellipse(lx, ly, rx, ry, rot, 0, Math.PI * 2);
+      ctx.stroke();
+      // specular dash
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.ellipse(lx - rx * 0.25, ly - ry * 0.35, rx * 0.45, ry * 0.25, rot, Math.PI * 1.1, Math.PI * 1.85);
+      ctx.stroke();
+    }
+    // teardrop aviator shapes (far smaller / foreshortened)
+    lens(hx - 3.0, hy, 3.2, 2.6, -0.22);
+    lens(hx + 5.4, hy, 4.6, 3.0, 0.1);
+    // bridge + thin temples
+    ctx.strokeStyle = 'rgba(200,205,215,0.9)';
+    ctx.lineWidth = 1.0;
     ctx.beginPath();
-    ctx.ellipse(hx + 5.6, hy, 5.5, 4.0, 0.12, 0, Math.PI * 2);
-    ctx.fill();
-    const g = ctx.createLinearGradient(hx + 2, hy - 3.5, hx + 9, hy + 3);
-    g.addColorStop(0, 'rgba(80,220,255,0.42)');
-    g.addColorStop(0.5, 'rgba(10,10,20,0.08)');
-    g.addColorStop(1, 'rgba(255,40,180,0.24)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.ellipse(hx + 5.6, hy, 4.4, 3.0, 0.12, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#3a3a42';
-    ctx.lineWidth = 1.35;
-    ctx.beginPath();
-    ctx.moveTo(hx - 0.2, hy); ctx.lineTo(hx + 1.6, hy);
-    ctx.moveTo(hx - 6.4, hy); ctx.lineTo(hx - 9.2, hy + 0.8);
-    ctx.moveTo(hx + 10.8, hy); ctx.lineTo(hx + 13.2, hy + 0.9);
+    ctx.moveTo(hx - 0.1, hy - 0.2);
+    ctx.lineTo(hx + 1.2, hy - 0.2);
+    ctx.moveTo(hx - 6.0, hy);
+    ctx.lineTo(hx - 9.5, hy + 1.0);
+    ctx.moveTo(hx + 9.8, hy);
+    ctx.lineTo(hx + 13.0, hy + 1.1);
     ctx.stroke();
   }
 
@@ -3067,101 +3090,143 @@
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(scale, scale);
-    const pulse = 0.62 + Math.sin(t * 0.008) * 0.18;
-    const spin = t * 0.003;
+    const pulse = 0.7 + Math.sin(t * 0.008) * 0.15;
+    const spin = t * 0.0025;
+
     if (lightsOn) {
-      const halo = ctx.createRadialGradient(0, 2, 14, 0, 8, 118);
-      halo.addColorStop(0, 'rgba(170,220,255,' + (0.16 * pulse) + ')');
-      halo.addColorStop(0.5, 'rgba(80,180,220,0.06)');
+      const halo = ctx.createRadialGradient(0, 6, 20, 0, 10, 130);
+      halo.addColorStop(0, 'rgba(160,220,255,' + (0.14 * pulse) + ')');
+      halo.addColorStop(0.55, 'rgba(100,180,220,0.05)');
       halo.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = halo;
-      ctx.beginPath(); ctx.arc(0, 4, 118, 0, Math.PI * 2); ctx.fill();
-      const wash = ctx.createLinearGradient(0, 20, 0, 108);
-      wash.addColorStop(0, 'rgba(140,230,255,' + (0.2 * pulse) + ')');
-      wash.addColorStop(0.55, 'rgba(80,200,180,0.06)');
-      wash.addColorStop(1, 'rgba(80,200,180,0)');
-      ctx.fillStyle = wash;
       ctx.beginPath();
-      ctx.moveTo(-20, 18); ctx.lineTo(20, 18); ctx.lineTo(62, 108); ctx.lineTo(-62, 108);
-      ctx.closePath(); ctx.fill();
+      ctx.arc(0, 8, 130, 0, Math.PI * 2);
+      ctx.fill();
     }
-    ctx.fillStyle = 'rgba(0,0,0,0.34)';
-    ctx.beginPath(); ctx.ellipse(3, 40, 86, 10, 0, 0, Math.PI * 2); ctx.fill();
-    const lower = ctx.createLinearGradient(-96, 10, 96, 30);
-    lower.addColorStop(0, '#1a2228'); lower.addColorStop(0.35, '#4a5864');
-    lower.addColorStop(0.5, '#6a7884'); lower.addColorStop(0.72, '#3a4850'); lower.addColorStop(1, '#141a20');
-    ctx.fillStyle = lower;
-    ctx.beginPath(); ctx.ellipse(0, 16, 90, 16, 0, 0, Math.PI * 2); ctx.fill();
-    const body = ctx.createLinearGradient(-102, -16, 102, 22);
-    body.addColorStop(0, '#2a3238'); body.addColorStop(0.18, '#8a96a0');
-    body.addColorStop(0.38, '#d8e0e8'); body.addColorStop(0.5, '#f4f7fa');
-    body.addColorStop(0.62, '#a8b4be'); body.addColorStop(0.82, '#4a545c'); body.addColorStop(1, '#1c2428');
-    ctx.fillStyle = body;
-    ctx.beginPath(); ctx.ellipse(0, 2, 96, 20, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.ellipse(0, -2, 90, 14, 0, Math.PI * 1.08, Math.PI * 1.92); ctx.stroke();
-    ctx.strokeStyle = 'rgba(20,28,32,0.32)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.ellipse(0, 3, 76, 14, 0, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(0, 4, 56, 10, 0, 0, Math.PI * 2); ctx.stroke();
-    const band = ctx.createLinearGradient(-84, 0, 84, 14);
-    band.addColorStop(0, '#2a3038'); band.addColorStop(0.25, '#c8d4de');
-    band.addColorStop(0.5, '#ffffff'); band.addColorStop(0.75, '#90a0ac'); band.addColorStop(1, '#222830');
-    ctx.fillStyle = band;
-    ctx.beginPath(); ctx.ellipse(0, 7, 82, 7, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = lightsOn ? 'rgba(80,220,140,0.5)' : 'rgba(60,120,80,0.3)'; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.ellipse(0, 7, 82, 7, 0, 0, Math.PI * 2); ctx.stroke();
-    const deck = ctx.createLinearGradient(-52, -14, 52, 6);
-    deck.addColorStop(0, '#3a444c'); deck.addColorStop(0.45, '#b8c4cc'); deck.addColorStop(1, '#3a444c');
+
+    // Soft ground shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.32)';
+    ctx.beginPath();
+    ctx.ellipse(2, 38, 78, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ——— Classic smooth flying saucer ———
+    // Underside dish (gentle bowl)
+    const under = ctx.createLinearGradient(0, 8, 0, 28);
+    under.addColorStop(0, '#6a7884');
+    under.addColorStop(0.5, '#3a4854');
+    under.addColorStop(1, '#1a2228');
+    ctx.fillStyle = under;
+    ctx.beginPath();
+    ctx.ellipse(0, 14, 88, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Main disc — wide, thin, chrome-smooth rim
+    const disc = ctx.createLinearGradient(-100, -8, 100, 18);
+    disc.addColorStop(0, '#2a323a');
+    disc.addColorStop(0.15, '#8a969e');
+    disc.addColorStop(0.35, '#e8eef2');
+    disc.addColorStop(0.5, '#ffffff');
+    disc.addColorStop(0.65, '#c8d2da');
+    disc.addColorStop(0.85, '#5a646c');
+    disc.addColorStop(1, '#1c242c');
+    ctx.fillStyle = disc;
+    ctx.beginPath();
+    ctx.ellipse(0, 2, 98, 18, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Smooth rim highlight (no hard panels)
+    ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.ellipse(0, -1, 92, 12, 0, Math.PI * 1.05, Math.PI * 1.95);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(20,28,36,0.25)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.ellipse(0, 4, 86, 12, 0, 0.1, Math.PI - 0.1);
+    ctx.stroke();
+
+    // Slim equatorial light ring
+    ctx.strokeStyle = lightsOn ? 'rgba(140,230,255,0.55)' : 'rgba(80,120,140,0.35)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(0, 5, 90, 6.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Upper deck — soft step into dome (smooth, not boxy)
+    const deck = ctx.createLinearGradient(-48, -14, 48, 4);
+    deck.addColorStop(0, '#4a545c');
+    deck.addColorStop(0.5, '#d0d8e0');
+    deck.addColorStop(1, '#3a444c');
     ctx.fillStyle = deck;
-    ctx.beginPath(); ctx.ellipse(0, -4, 52, 12, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#2a3238';
-    ctx.beginPath(); ctx.ellipse(0, -8, 33, 7, 0, 0, Math.PI * 2); ctx.fill();
-    const dome = ctx.createRadialGradient(-8, -28, 3, 0, -10, 32);
-    dome.addColorStop(0, 'rgba(240,252,255,0.95)');
-    dome.addColorStop(0.3, 'rgba(160,210,230,0.72)');
-    dome.addColorStop(0.7, 'rgba(50,90,120,0.7)');
-    dome.addColorStop(1, 'rgba(20,40,60,0.88)');
+    ctx.beginPath();
+    ctx.ellipse(0, -2, 48, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Classic bubble dome — smooth glass hemisphere
+    const dome = ctx.createRadialGradient(-10, -26, 2, 0, -8, 34);
+    dome.addColorStop(0, 'rgba(245,252,255,0.92)');
+    dome.addColorStop(0.35, 'rgba(150,210,235,0.55)');
+    dome.addColorStop(0.75, 'rgba(40,80,120,0.55)');
+    dome.addColorStop(1, 'rgba(15,35,55,0.85)');
     ctx.fillStyle = dome;
-    ctx.beginPath(); ctx.ellipse(0, -12, 30, 24, 0, Math.PI, 0); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.8;
-    ctx.beginPath(); ctx.ellipse(-9, -24, 8, 6, -0.45, 0, Math.PI * 1.1); ctx.stroke();
-    ctx.strokeStyle = '#9aa8b4'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(0, -36); ctx.lineTo(0, -50); ctx.stroke();
-    ctx.fillStyle = lightsOn ? '#ff3355' : '#661822';
-    ctx.shadowColor = '#ff3355'; ctx.shadowBlur = lightsOn ? 10 : 0;
-    ctx.beginPath(); ctx.arc(0, -52, 3, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
-    for (let i = 0; i < 14; i++) {
-      const a = (i / 14) * Math.PI * 2 + spin;
-      const on = lightsOn && ((Math.floor(t / 110 + i) % 4) !== 3);
-      ctx.fillStyle = on ? '#e8ffff' : '#3a6070';
-      ctx.shadowColor = '#66e8ff'; ctx.shadowBlur = on ? 10 : 0;
-      ctx.beginPath(); ctx.arc(Math.cos(a) * 88, Math.sin(a) * 15 + 4, 3.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(0, -6, 28, 26, 0, Math.PI, 0);
+    ctx.fill();
+    // dome specular
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(-8, -22, 7, 5, -0.5, 0, Math.PI * 1.15);
+    ctx.stroke();
+    // dome rim seal
+    ctx.strokeStyle = 'rgba(180,190,200,0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(0, -6, 28, 4, 0, 0, Math.PI);
+    ctx.stroke();
+
+    // Rim porthole lights — evenly spaced on disc edge
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2 + spin;
+      const on = lightsOn && ((Math.floor(t / 140 + i) % 3) !== 2);
+      const lx = Math.cos(a) * 86;
+      const ly = Math.sin(a) * 13 + 3;
+      ctx.fillStyle = on ? '#e8ffff' : '#3a5060';
+      ctx.shadowColor = '#88e8ff';
+      ctx.shadowBlur = on ? 8 : 0;
+      ctx.beginPath();
+      ctx.arc(lx, ly, 2.6, 0, Math.PI * 2);
+      ctx.fill();
     }
     ctx.shadowBlur = 0;
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2 - spin * 0.6;
-      ctx.fillStyle = lightsOn ? 'rgba(120,255,220,0.85)' : '#3a5550';
-      ctx.beginPath(); ctx.arc(Math.cos(a) * 60, Math.sin(a) * 9 + 5, 2, 0, Math.PI * 2); ctx.fill();
-    }
+
+    // Underside bay / beam port
     ctx.fillStyle = '#0c1014';
-    ctx.beginPath(); ctx.moveTo(-14, 16); ctx.lineTo(14, 16); ctx.lineTo(10, 24); ctx.lineTo(-10, 24); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = lightsOn ? 'rgba(80,255,180,' + (0.4 + pulse * 0.3) + ')' : '#1a3a2a';
-    ctx.shadowColor = '#66ffaa'; ctx.shadowBlur = lightsOn ? 8 : 0;
-    ctx.fillRect(-7, 17, 14, 4); ctx.shadowBlur = 0;
-    // Landing legs: legExtend 0 = tucked in hull, 1 = fully down (ground)
+    ctx.beginPath();
+    ctx.ellipse(0, 18, 12, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = lightsOn ? 'rgba(80,255,180,' + (0.35 + pulse * 0.35) + ')' : '#1a3a2a';
+    ctx.shadowColor = '#66ffaa';
+    ctx.shadowBlur = lightsOn ? 8 : 0;
+    ctx.beginPath();
+    ctx.ellipse(0, 18, 7, 2.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Landing legs: legExtend 0 = tucked, 1 = down
     const legExt = opts.legExtend != null ? Math.max(0, Math.min(1, opts.legExtend)) : 1;
     if (legExt > 0.02) {
-      const strut = 4 + legExt * 12; // length below bay
+      const strut = 4 + legExt * 12;
       const footY = 18 + strut;
       const bayOpen = 0.35 + legExt * 0.65;
       ctx.fillStyle = '#1a2024';
       for (const px of [-42, 0, 42]) {
-        // bay / hinge recess
         ctx.fillRect(px - 3.5 * bayOpen, 16, 7 * bayOpen, 4);
       }
       ctx.fillStyle = '#2a3238';
       for (const px of [-42, 0, 42]) {
-        // angled strut tucks sideways as legExt→0
         const tuck = (1 - legExt) * 10;
         const lean = px === 0 ? 0 : (px < 0 ? tuck : -tuck);
         ctx.beginPath();
@@ -3171,7 +3236,6 @@
         ctx.lineTo(px - 2.2 + lean * 0.3, footY);
         ctx.closePath();
         ctx.fill();
-        // foot pad (shrinks when tucking)
         const footW = 3 + legExt * 5;
         ctx.beginPath();
         ctx.ellipse(px + lean * 0.35, footY + 1, footW, 1.5 + legExt * 1.5, 0, 0, Math.PI * 2);
@@ -3184,63 +3248,37 @@
           ctx.fillStyle = '#2a3238';
         }
       }
-      // tiny hydraulic gleam when mid-retract
-      if (legExt > 0.15 && legExt < 0.9) {
-        ctx.strokeStyle = 'rgba(160,200,220,' + (0.25 + (1 - Math.abs(legExt - 0.5) * 2) * 0.35) + ')';
-        ctx.lineWidth = 1;
-        for (const px of [-42, 0, 42]) {
-          ctx.beginPath();
-          ctx.moveTo(px, 19);
-          ctx.lineTo(px, 18 + strut * 0.7);
-          ctx.stroke();
-        }
-      }
     } else {
-      // fully retracted — sealed bay doors under hull
       ctx.fillStyle = '#3a444c';
       for (const px of [-42, 0, 42]) {
-        ctx.fillRect(px - 5, 17, 10, 3);
-        ctx.strokeStyle = 'rgba(20,28,32,0.5)';
-        ctx.lineWidth = 0.8;
-        ctx.strokeRect(px - 5, 17, 10, 3);
+        ctx.beginPath();
+        ctx.ellipse(px, 17.5, 5, 1.8, 0, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
+
     if (opts.showPilots) {
-      // Menacing dome pilots — sickly green, slanted black eyes (not cute)
-      for (const px of [-9, 9]) {
+      for (const px of [-8, 8]) {
         ctx.fillStyle = '#2a6a32';
         ctx.beginPath();
-        ctx.ellipse(px, -15, 6.5, 7.5, 0, 0, Math.PI * 2);
+        ctx.ellipse(px, -14, 5.5, 6.5, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = '#0a0c10';
         ctx.beginPath();
-        ctx.ellipse(px - 2.2, -16, 2.4, 3.6, -0.35, 0, Math.PI * 2);
-        ctx.ellipse(px + 2.2, -16, 2.4, 3.6, 0.35, 0, Math.PI * 2);
+        ctx.ellipse(px - 1.8, -15, 2.0, 3.0, -0.3, 0, Math.PI * 2);
+        ctx.ellipse(px + 1.8, -15, 2.0, 3.0, 0.3, 0, Math.PI * 2);
         ctx.fill();
-        // cold red pinpricks
         ctx.fillStyle = '#ff2244';
         ctx.beginPath();
-        ctx.arc(px - 1.6, -16.5, 0.7, 0, Math.PI * 2);
-        ctx.arc(px + 2.8, -16.5, 0.7, 0, Math.PI * 2);
+        ctx.arc(px - 1.3, -15.4, 0.55, 0, Math.PI * 2);
+        ctx.arc(px + 2.2, -15.4, 0.55, 0, Math.PI * 2);
         ctx.fill();
-        // thin frown
-        ctx.strokeStyle = '#143818';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(px - 2.5, -10.5);
-        ctx.lineTo(px + 2.5, -10.5);
-        ctx.stroke();
       }
     }
     ctx.restore();
   }
 
 
-  /**
-   * Menacing greys/greens — gaunt, slanted eyes, no cute smile.
-   * Feet at (x,y). facing: 1 right / -1 left.
-   * opts: seated, yield (stepped aside), scale, bob
-   */
   function drawClayAlien(ctx, x, y, facing, t, opts) {
     opts = opts || {};
     const scale = opts.scale != null ? opts.scale : 1.15;
