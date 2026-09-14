@@ -26,6 +26,9 @@
     plasticsLabel: document.getElementById('plastics-label'),
     chicken: document.getElementById('chicken'),
     chickenLabel: document.getElementById('chicken-label'),
+    boostFuel: document.getElementById('boost-fuel'),
+    boostFuelLabel: document.getElementById('boost-fuel-label'),
+    boostFuelFill: document.getElementById('boost-fuel-fill'),
     multLabel: document.getElementById('mult-label'),
     multValue: document.getElementById('mult'),
     operateChoice: document.getElementById('screen-operate-choice'),
@@ -47,6 +50,7 @@
     btnAgain: document.getElementById('btn-again'),
     btnTitle: document.getElementById('btn-title'),
     btnBeam: document.getElementById('btn-beam'),
+    btnBoost: document.getElementById('btn-boost'),
     btnDestruct: document.getElementById('btn-destruct'),
     hudDestruct: document.getElementById('hud-destruct'),
     btnInteract: document.getElementById('btn-interact'),
@@ -68,6 +72,9 @@
 
   const keys = Object.create(null);
   const touchDirs = Object.create(null);
+  /** Touch hold for fly boost (Shift on keyboard) */
+  let touchBoostHeld = false;
+  let outOfJuiceFlashCd = 0;
   let interactQueued = false;
   let beamQueued = false;
   let jumpQueued = false;
@@ -673,6 +680,14 @@
       const prog = (flyHud.microplastics | 0) % thresh;
       if (el.plastics) el.plastics.textContent = prog + '/' + thresh;
       if (el.chicken) el.chicken.textContent = String(flyHud.chicken | 0);
+      if (el.boostFuel) {
+        const bfMax = Math.max(1, flyHud.boostFuelMax | 0 || 100);
+        const bf = Math.max(0, Math.min(bfMax, flyHud.boostFuel != null ? flyHud.boostFuel : bfMax));
+        el.boostFuel.textContent = String(Math.round(bf));
+        if (el.boostFuelFill) {
+          el.boostFuelFill.style.width = ((bf / bfMax) * 100).toFixed(1) + '%';
+        }
+      }
       if (el.multLabel && el.multValue) {
         if (flyHud.scoreMultTimer > 0) {
           el.multLabel.classList.remove('hidden');
@@ -716,6 +731,9 @@
     }
     if (el.plasticsLabel) el.plasticsLabel.classList.toggle('hidden', !(flying || visiting));
     if (el.chickenLabel) el.chickenLabel.classList.toggle('hidden', !(flying || visiting));
+    if (el.boostFuelLabel) el.boostFuelLabel.classList.toggle('hidden', !flying);
+    if (el.btnBoost) el.btnBoost.classList.toggle('hidden', !flying);
+    if (!flying) touchBoostHeld = false;
   }
 
   function hideOperateChoice() {
@@ -1061,6 +1079,8 @@
       if (!fly.visitedLandmarks) fly.visitedLandmarks = {};
       if (fly.beamedVan == null) fly.beamedVan = false;
       if (fly.beamedBus == null) fly.beamedBus = false;
+      if (fly.boostFuelMax == null) fly.boostFuelMax = 100;
+      if (fly.boostFuel == null) fly.boostFuel = 60;
       flyResume = null;
       bandTour = null;
       landmarkVisit = null;
@@ -1068,7 +1088,7 @@
       ensureStreetlights();
       showScreen('play');
       syncHud();
-      setPrompt("←→↑↓ fly · Space/USE beam · dive near landmark / MOM'S SHED to LAND · Enter end");
+      setPrompt("←→↑↓ fly · Shift/⚡ boost · Space/USE beam · dive near landmark / MOM'S SHED to LAND · Enter end");
       if (opts.fromLandmark) {
         fly.ufoY = Math.min(fly.ufoY != null ? fly.ufoY : CH * 0.45, CH * 0.48);
         fly.legExtend = 0.4;
@@ -1115,6 +1135,8 @@
       forceCowSoon: false,
       beamedVan: false,
       beamedBus: false,
+      boostFuelMax: 100,
+      boostFuel: 70,
     };
     ensureLandmarks();
     ensureStreetlights();
@@ -1122,8 +1144,8 @@
     for (let i = 0; i < 5; i++) spawnFlyTarget(300 + i * 200);
     showScreen('play');
     syncHud();
-    setPrompt('←→↑↓ fly · Space/USE beam · people+loot good · red=DON\'T · Enter end');
-    showFlash('Beam people, microplastics & KFC — not pets!', 140);
+    setPrompt('←→↑↓ fly · Shift/⚡ boost · Space/USE beam · people+loot good · red=DON\'T · Enter end');
+    showFlash('Hold Shift to boost — beam KFC to refuel!', 140);
   }
 
   function endMission() {
@@ -1469,6 +1491,7 @@
     const k = e.key.toLowerCase();
     const typingName = isTypingScoreName();
     keys[k] = true;
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys['shift'] = true;
     // Never steal Space/arrows while the name field is focused
     if (!typingName && (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k) || e.code === 'Space')) {
       e.preventDefault();
@@ -1536,6 +1559,7 @@
 
   window.addEventListener('keyup', (e) => {
     keys[e.key.toLowerCase()] = false;
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys['shift'] = false;
   });
 
   canvas.addEventListener('click', () => {
@@ -1636,6 +1660,17 @@
     if (mode === 'fly') beamQueued = true;
     else if (mode === 'shed' || mode === 'yard' || mode === 'ship' || mode === 'operate' || mode === 'landmark' || mode === 'bandTour') interactQueued = true;
   });
+
+  if (el.btnBoost) {
+    const boostOn = (e) => { e.preventDefault(); touchBoostHeld = true; };
+    const boostOff = (e) => { e.preventDefault(); touchBoostHeld = false; };
+    el.btnBoost.addEventListener('touchstart', boostOn, { passive: false });
+    el.btnBoost.addEventListener('touchend', boostOff, { passive: false });
+    el.btnBoost.addEventListener('touchcancel', boostOff, { passive: false });
+    el.btnBoost.addEventListener('mousedown', boostOn);
+    el.btnBoost.addEventListener('mouseup', boostOff);
+    el.btnBoost.addEventListener('mouseleave', boostOff);
+  }
 
   function onInteractPointer(e) {
     e.preventDefault();
@@ -2166,9 +2201,25 @@
     const iy = inputY();
 
     // Independent axes so left/right works while holding up/down (diagonals free)
-    const accel = 0.95;
+    if (fly.boostFuelMax == null) fly.boostFuelMax = 100;
+    if (fly.boostFuel == null) fly.boostFuel = 70;
+    const moving = Math.abs(ix) > 0.01 || Math.abs(iy) > 0.01;
+    const wantBoost = !!(keys['shift'] || touchBoostHeld);
+    let boosting = false;
+    if (wantBoost && moving && fly.boostFuel > 0) {
+      boosting = true;
+      fly.boostFuel = Math.max(0, fly.boostFuel - 0.22);
+    } else if (wantBoost && moving && fly.boostFuel <= 0) {
+      if (outOfJuiceFlashCd <= 0) {
+        showFlash('OUT OF JUICE — beam more KFC!', 90);
+        outOfJuiceFlashCd = 110;
+      }
+    }
+    if (outOfJuiceFlashCd > 0) outOfJuiceFlashCd--;
+    const boostMul = boosting ? 1.68 : 1;
+    const accel = 0.95 * boostMul;
     const friction = 0.88;
-    const maxSpd = 11;
+    const maxSpd = 11 * boostMul;
     fly.vx += ix * accel;
     fly.vy += iy * accel;
     fly.vx *= friction;
@@ -2334,7 +2385,7 @@
         interactQueued = false;
         beamQueued = true;
       }
-      setPrompt("←→↑↓ fly · Space/USE beam · dive near landmark / van / bus / MOM'S SHED to LAND · Enter end");
+      setPrompt("←→↑↓ fly · Shift boost · Space/USE beam · dive near landmark / van / bus / MOM'S SHED to LAND · Enter end");
       prevInteractHeld = interactHeld();
     }
     syncInteractBtn();
@@ -2391,10 +2442,15 @@
           fly.moonJuice = Math.max(fly.moonJuice, 160);
           fly.beamWide = true;
           fly.scoreMultTimer = Math.max(fly.scoreMultTimer, 220);
+          // KFC tops up boost juice
+          if (fly.boostFuelMax == null) fly.boostFuelMax = 100;
+          const fuelGain = 40 + (Math.random() * 10 | 0); // +40–49
+          fly.boostFuel = Math.min(fly.boostFuelMax, (fly.boostFuel || 0) + fuelGain);
           W.burst(particles, fly.ufoX, CH * 0.7, '#ffb84a', 16);
           W.addFloater(floaters, fly.ufoX, CH * 0.55, '+' + pts + ' 🍗', '#ffcc66');
+          W.addFloater(floaters, fly.ufoX + 18, CH * 0.48, 'FUEL +KFC', '#ffdd66');
           Audio.play('power');
-          showFlash(W.pick(W.CHICKEN_LINERS), 120);
+          showFlash('FUEL +KFC', 90);
         } else if (tg.kind.cow) {
           let pts = tg.kind.points + (fly.beamWide ? 40 : 0);
           // Cow itself isn't multiplied (grants the buff); still a big score pop
@@ -2901,6 +2957,8 @@
       forceCowSoon: !!fly.forceCowSoon,
       beamedVan: !!fly.beamedVan,
       beamedBus: !!fly.beamedBus,
+      boostFuelMax: fly.boostFuelMax != null ? fly.boostFuelMax : 100,
+      boostFuel: fly.boostFuel != null ? fly.boostFuel : 60,
     };
   }
 

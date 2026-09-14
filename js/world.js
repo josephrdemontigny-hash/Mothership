@@ -2744,100 +2744,16 @@
     ctx.rect(glassX, glassY, glassW, glassH);
     ctx.clip();
 
-    // Misty Chilliwack haze (match drawSky / drawMountains — no bright blue, no snow)
-    const skyG = ctx.createLinearGradient(0, glassY, 0, glassY + glassH);
-    skyG.addColorStop(0, '#e8eef2');
-    skyG.addColorStop(0.4, '#d5dde4');
-    skyG.addColorStop(0.75, '#c5ced6');
-    skyG.addColorStop(1, '#b8c4cc');
-    ctx.fillStyle = skyG;
-    ctx.fillRect(glassX, glassY, glassW, glassH);
+    // Fly sunset skyline (same Cheam/sunset as flight) clipped into glass
+    ctx.save();
+    ctx.translate(glassX, glassY);
+    drawFlySkylineBackdrop(ctx, glassW, glassH, glassH - 8, camX);
+    ctx.restore();
 
-    const fog = ctx.createRadialGradient(glassX + glassW * 0.45, glassY + glassH * 0.3, 4, glassX + glassW * 0.45, glassY + glassH * 0.35, glassW * 0.55);
-    fog.addColorStop(0, 'rgba(255,255,255,0.45)');
-    fog.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = fog;
-    ctx.fillRect(glassX, glassY, glassW, glassH * 0.7);
+    // Landing pad line near glass bottom (skyline groundY = glassH - 8)
+    const groundLine = glassY + glassH - 8;
 
-    const groundLine = glassY + glassH - 34;
-    const cheamX = glassX + glassW * 0.32;
-
-    // Layer 1 — pale distant peaks
-    ctx.fillStyle = '#cfd6dd';
-    ctx.beginPath();
-    ctx.moveTo(glassX - 4, groundLine);
-    ctx.lineTo(cheamX - 90, groundLine - 28);
-    ctx.lineTo(cheamX - 50, groundLine - 52);
-    ctx.lineTo(cheamX - 10, groundLine - 34);
-    ctx.lineTo(cheamX + 20, groundLine - 70);
-    ctx.lineTo(cheamX + 55, groundLine - 38);
-    ctx.lineTo(glassX + glassW + 4, groundLine - 18);
-    ctx.lineTo(glassX + glassW + 4, groundLine);
-    ctx.closePath();
-    ctx.fill();
-
-    // Layer 2 — mid grey ridges; Cheam left/east, flat, unlabeled, no snow
-    ctx.fillStyle = '#7a8896';
-    ctx.beginPath();
-    ctx.moveTo(glassX - 4, groundLine);
-    ctx.lineTo(cheamX - 70, groundLine - 22);
-    ctx.lineTo(cheamX - 48, groundLine - 48);
-    ctx.lineTo(cheamX - 22, groundLine - 28);
-    ctx.lineTo(cheamX - 8, groundLine - 72);
-    ctx.lineTo(cheamX + 8, groundLine - 95); // Cheam pyramid tip
-    ctx.lineTo(cheamX + 28, groundLine - 68);
-    ctx.lineTo(cheamX + 70, groundLine - 24);
-    ctx.lineTo(glassX + glassW + 4, groundLine - 12);
-    ctx.lineTo(glassX + glassW + 4, groundLine);
-    ctx.closePath();
-    ctx.fill();
-
-    // Valley mist wash
-    const mist = ctx.createLinearGradient(0, glassY + 20, 0, groundLine);
-    mist.addColorStop(0, 'rgba(243,244,246,0.1)');
-    mist.addColorStop(0.55, 'rgba(243,244,246,0.45)');
-    mist.addColorStop(1, 'rgba(209,213,219,0.55)');
-    ctx.fillStyle = mist;
-    ctx.fillRect(glassX, glassY, glassW, groundLine - glassY);
-
-    // Layer 3 — dark tree slope
-    ctx.fillStyle = '#3d4654';
-    ctx.beginPath();
-    ctx.moveTo(glassX - 4, groundLine);
-    for (let i = 0; i <= 12; i++) {
-      const tx = glassX + i * (glassW / 11);
-      const ridge = groundLine - 10 - (i % 3) * 4 - ((i * 5) % 7);
-      const tree = 10 + (i % 4) * 3;
-      ctx.lineTo(tx, ridge - tree);
-      ctx.lineTo(tx + glassW / 22, ridge - tree * 0.3);
-    }
-    ctx.lineTo(glassX + glassW + 4, groundLine);
-    ctx.closePath();
-    ctx.fill();
-
-    // Near charcoal edge
-    ctx.fillStyle = '#0a0c10';
-    ctx.beginPath();
-    ctx.moveTo(glassX - 4, groundLine + 2);
-    ctx.lineTo(glassX - 4, groundLine - 4);
-    for (let i = 0; i <= 8; i++) {
-      const x = glassX + i * (glassW / 7);
-      ctx.lineTo(x, groundLine - 2 - ((i * 3) % 5));
-    }
-    ctx.lineTo(glassX + glassW + 4, groundLine + 2);
-    ctx.closePath();
-    ctx.fill();
-
-    // lawn / yard (muted)
-    const lawn = ctx.createLinearGradient(0, groundLine, 0, glassY + glassH);
-    lawn.addColorStop(0, '#4a6a48');
-    lawn.addColorStop(1, '#3a5a38');
-    ctx.fillStyle = lawn;
-    ctx.fillRect(glassX, groundLine, glassW, glassY + glassH - groundLine);
-    ctx.fillStyle = 'rgba(200,210,190,0.08)';
-    ctx.fillRect(glassX, groundLine, glassW, 6);
-
-    // UFO landing (clipped inside glass)
+    // UFO landing (clipped inside glass, drawn on top of skyline)
     if (ufoProg > 0.01) {
       const ufoX = glassX + 55 + ufoProg * (glassW * 0.38);
       const ufoY = glassY + 14 + Math.min(1, ufoProg) * (glassH - 62);
@@ -2848,7 +2764,7 @@
       if (ufoProg > 0.45) {
         ctx.fillStyle = 'rgba(200,220,230,' + (0.12 + ufoProg * 0.28) + ')';
         ctx.beginPath();
-        ctx.ellipse(ufoX, groundLine + 4, 28 + ufoProg * 16, 5, 0, 0, Math.PI * 2);
+        ctx.ellipse(ufoX, groundLine + 2, 28 + ufoProg * 16, 5, 0, 0, Math.PI * 2);
         ctx.fill();
       }
     }

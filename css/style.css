@@ -346,11 +346,52 @@ html, body {
   display: none !important;
 }
 #plastics-label.hidden,
-#chicken-label.hidden {
+#chicken-label.hidden,
+#boost-fuel-label.hidden {
   display: none !important;
 }
 #plastics-label strong { color: #9ef0ff; }
 #chicken-label strong { color: #ffcc66; }
+#boost-fuel-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #ffcc88;
+}
+#boost-fuel-label strong { color: #ffdd66; font-variant-numeric: tabular-nums; }
+#boost-fuel-bar {
+  display: inline-block;
+  width: 58px;
+  height: 9px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 180, 80, 0.55);
+  border-radius: 3px;
+  overflow: hidden;
+  vertical-align: middle;
+}
+#boost-fuel-fill {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #ff5a00, #ffb020 55%, #ffe066);
+  box-shadow: 0 0 6px rgba(255, 160, 40, 0.55);
+}
+#btn-boost {
+  min-width: 72px !important;
+  min-height: 48px !important;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  font-size: 13px !important;
+  background: rgba(255, 140, 40, 0.28) !important;
+  border-color: #ffb84a !important;
+  color: #ffe0a0 !important;
+}
+#btn-boost.hidden {
+  display: none !important;
+}
+#btn-boost:active {
+  background: rgba(255, 180, 60, 0.45) !important;
+}
 
 @media (min-width: 900px) and (pointer: fine) {
   #touch { display: none !important; }
