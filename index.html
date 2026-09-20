@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>Mothership — Retrofit</title>
   <link rel="stylesheet" href="css/style.css" />
-  <link rel="stylesheet" href="css/neon.css?v=4" />
+  <link rel="stylesheet" href="css/neon.css?v=5" />
 </head>
 <body>
   <div id="game-wrap">
@@ -36,23 +36,15 @@
     <div id="screen-title" class="screen">
       <div class="stereo-wrap">
         <div class="dash-panel" aria-hidden="true"></div>
-        <div class="car-stereo" id="car-stereo" aria-label="Restomod car stereo">
+        <div class="car-stereo" id="car-stereo">
           <div class="stereo-face">
-            <div class="stereo-knob stereo-knob-l" aria-hidden="true">
-              <span class="knob-wing knob-wing-l"></span><span class="knob-wing knob-wing-r"></span><span class="knob-face"></span><span class="knob-mark"></span>
-            </div>
+            <div class="stereo-knob stereo-knob-l" aria-hidden="true"><span class="knob-wing knob-wing-l"></span><span class="knob-wing knob-wing-r"></span><span class="knob-face"></span><span class="knob-mark"></span></div>
             <div class="stereo-chrome">
-              <div class="cassette-slot" id="cassette-slot" title="Insert cassette">
-                <div class="slot-lip"></div><div class="slot-dark"></div><div class="slot-hint" id="slot-hint">INSERT TAPE</div>
-              </div>
-              <div class="stereo-display" id="stereo-display">
-                <span class="stereo-eq" aria-hidden="true"></span><span class="stereo-lcd">INSERT TAPE</span>
-              </div>
+              <div class="cassette-slot" id="cassette-slot"><div class="slot-lip"></div><div class="slot-dark"></div><div class="slot-hint" id="slot-hint">INSERT TAPE</div></div>
+              <div class="stereo-display" id="stereo-display"><span class="stereo-eq"></span><span class="stereo-lcd">INSERT TAPE</span></div>
               <div class="stereo-buttons" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
             </div>
-            <div class="stereo-knob stereo-knob-r" aria-hidden="true">
-              <span class="knob-wing knob-wing-l"></span><span class="knob-wing knob-wing-r"></span><span class="knob-face"></span><span class="knob-mark"></span>
-            </div>
+            <div class="stereo-knob stereo-knob-r" aria-hidden="true"><span class="knob-wing knob-wing-l"></span><span class="knob-wing knob-wing-r"></span><span class="knob-face"></span><span class="knob-mark"></span></div>
           </div>
           <button type="button" id="menu-cassette" class="menu-cassette" aria-label="Insert cassette">
             <span class="tape-shell tape-shell--photo">
@@ -60,25 +52,17 @@
             </span>
           </button>
         </div>
-        <p class="stereo-stats">
-          <span class="highscore" id="title-high">High Score: 0</span>
-          <span class="play-count" id="play-count">Plays: …</span>
-        </p>
-        <div class="leaderboard" id="title-leaderboard" aria-label="Leaderboard">
-          <h3 class="lb-title">LEADERBOARD</h3>
-          <ol class="lb-list" id="title-lb-list"></ol>
-          <p class="lb-empty" id="title-lb-empty">No scores yet — insert tape & fly!</p>
-        </div>
+        <p class="stereo-stats"><span class="highscore" id="title-high">High Score: 0</span> <span class="play-count" id="play-count">Plays: …</span></p>
+        <div class="leaderboard" id="title-leaderboard"><h3 class="lb-title">LEADERBOARD</h3><ol class="lb-list" id="title-lb-list"></ol><p class="lb-empty" id="title-lb-empty">No scores yet — insert tape & fly!</p></div>
       </div>
     </div>
-    <div id="screen-operate-choice" class="screen operate-choice hidden" aria-label="After surgery">
+    <div id="screen-operate-choice" class="screen operate-choice hidden">
       <div class="panel operate-panel">
         <h2>OPEN HIM UP</h2>
         <p class="results-line">Findings: <strong>KFC</strong> & <strong>microplastics</strong>.</p>
         <p class="one-liner">Wait a minute — I know him.</p>
         <button type="button" id="btn-land-shed" class="btn primary">LAND AT SHED</button>
         <button type="button" id="btn-fly-again-op" class="btn">FLY AGAIN</button>
-        <p class="operate-keys">or press <kbd>L</kbd> / <kbd>F</kbd></p>
       </div>
     </div>
     <div id="screen-results" class="screen hidden">
@@ -88,17 +72,6 @@
         <p class="results-line">Score: <strong id="res-score">0</strong></p>
         <p class="results-line high" id="res-high-wrap">High Score: <strong id="res-high">0</strong></p>
         <p class="one-liner" id="res-liner">This is a night I know that I'm gonna forget.</p>
-        <div class="save-score hidden" id="save-score-wrap">
-          <p class="save-score-label" id="save-score-label">SAVE SCORE</p>
-          <div class="save-score-row">
-            <input type="text" id="score-name" maxlength="12" minlength="1" placeholder="YOUR NAME" autocomplete="nickname" spellcheck="false" inputmode="text" />
-            <button type="button" id="btn-save-score" class="btn primary">SUBMIT</button>
-          </div>
-        </div>
-        <div class="leaderboard results-lb" id="results-leaderboard">
-          <h3 class="lb-title">LEADERBOARD</h3>
-          <ol class="lb-list" id="results-lb-list"></ol>
-        </div>
         <button type="button" id="btn-again" class="btn primary">FLY AGAIN</button>
         <button type="button" id="btn-title" class="btn">TITLE</button>
       </div>
@@ -106,10 +79,7 @@
     <div id="touch" class="hidden">
       <div class="pad" id="pad-left">
         <button type="button" data-dir="left">◀</button>
-        <div class="pad-mid">
-          <button type="button" data-dir="up">▲</button>
-          <button type="button" data-dir="down">▼</button>
-        </div>
+        <div class="pad-mid"><button type="button" data-dir="up">▲</button><button type="button" data-dir="down">▼</button></div>
         <button type="button" data-dir="right">▶</button>
       </div>
       <div class="touch-actions">
@@ -123,10 +93,10 @@
   <audio id="theme-audio" src="assets/mothership-theme.mp3" playsinline webkit-playsinline loop preload="auto"></audio>
   <script src="js/audio.js"></script>
   <script src="js/world.js"></script>
-  <script src="js/photo-sprites.js?v=4"></script>
-  <script src="js/sossys.js?v=4"></script>
-  <script src="js/neon-look.js?v=4"></script>
+  <script src="js/photo-sprites.js?v=5"></script>
+  <script src="js/sossys.js?v=5"></script>
+  <script src="js/neon-look.js?v=5"></script>
   <script src="js/game.js"></script>
-  <script src="js/song-cues.js?v=4"></script>
+  <script src="js/song-cues.js?v=5"></script>
 </body>
 </html>
