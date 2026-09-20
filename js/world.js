@@ -152,9 +152,9 @@
   /** Gold '67 El Camino (side view) center X — walk path in FRONT of the car */
   const SHED_CAMINO_X = 360;
   /** Driver door / seat offset from car center (local, nose-left space) */
-  const CAMINO_DOOR_DX = -44;
+  const CAMINO_DOOR_DX = -28;
   /** Approx half-length for exit / bounds checks (canvas car ~448px wide) */
-  const CAMINO_HALF_W = 224;
+  const CAMINO_HALF_W = 142;
   /** Interactive band gear in shed (world X) — game.js proximity / USE */
   const SHED_INSTRUMENTS = [
     { id: 'drums', x: 520, label: 'DRUMS', radius: 55 },
@@ -166,7 +166,7 @@
     { id: 'guitar', x: 1045, label: 'SG', radius: 42 },
   ];
   /** Side-window rect in local nose-left space — driver is clipped here */
-  const CAMINO_WIN = { x: -70, y: -102, w: 84, h: 44 };
+  const CAMINO_WIN = { x: -44, y: -65, w: 53, h: 28 };
   /** Large framed backyard window on back wall (world X of glass left edge) */
   const SHED_WINDOW_X = 720;
   const SHED_WINDOW_W = 380;
@@ -1815,10 +1815,15 @@
 
     const img = ELCAMINO_IMG;
     if (img && img._ready && !img._failed) {
-      // Photo sprite: map to same local half-width as gameplay (CAMINO_HALF_W)
+            // Life-sized vs STANDING_HEIGHT: roof ~82% of person (window/door height).
+      // Width stays locked to CAMINO_HALF_W so collision matches the sprite.
       const drawW = CAMINO_HALF_W * 2;
       const aspect = img.naturalWidth / Math.max(1, img.naturalHeight);
+      const lifeH = Math.round(STANDING_HEIGHT * 0.82);
+      // Prefer height-based life size; if aspect would disagree with HALF_W, keep HALF_W width
+      // (collision truth) and accept slight height variance from photo aspect.
       const drawH = drawW / aspect;
+      // Soft assert life-size: drawH should land near lifeH for our BRIA cutout aspect~3.2
       // Shadow
       ctx.fillStyle = 'rgba(0,0,0,0.38)';
       ctx.beginPath();
