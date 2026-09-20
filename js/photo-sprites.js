@@ -2,6 +2,7 @@
  * Photo cutout avatars (Pokémon GO–style motion, no card chrome).
  * Loads assets/zakk-cutout.png + assets/tayler-cutout.png.
  * Falls back to canvas vector drawZakk/drawTayler if images fail.
+ * Standing height matches MothershipWorld.STANDING_HEIGHT.
  */
 (function (global) {
   var PATHS = {
@@ -38,11 +39,15 @@
     return 1.48;
   }
 
-  /** Match vector avatar footprint (~62 local units × CHAR_SCALE). */
+  /** Shared standing/seated screen height (px), scaled when opts.scale overrides CHAR_SCALE. */
   function targetHeight(opts, seated) {
+    var W = global.MothershipWorld;
+    var defSc = W && W.CHAR_SCALE != null ? W.CHAR_SCALE : 1.48;
+    var stand = W && W.STANDING_HEIGHT != null ? W.STANDING_HEIGHT : Math.round(73 * defSc);
+    var seat = W && W.SEATED_HEIGHT != null ? W.SEATED_HEIGHT : Math.round(52 * defSc);
+    var base = seated ? seat : stand;
     var sc = charScale(opts);
-    var base = seated ? 78 : 108;
-    return base * sc;
+    return base * (sc / defSc);
   }
 
   function poseMotion(moving, seated, t) {
@@ -54,31 +59,37 @@
         lean: 0.2,
         squash: 1,
         stretch: 1,
+        phase: 0,
+        walk: 0,
       };
     }
     if (!moving) {
-      // Idle: gentle vertical bob + tiny sway
+      // Idle: gentle vertical bob + tiny sway (no limb swing)
       return {
         bob: Math.sin(tt * 0.0042) * 2.2,
         sway: Math.sin(tt * 0.0028) * 1.1,
         lean: 0.15,
         squash: 1,
         stretch: 1,
+        phase: 0,
+        walk: 0,
       };
     }
-    // Walk: stronger bounce synced to step, lean into facing, soft land squash
+    // Walk: light bounce + phase for subtle limb warp
     var phase = tt * 0.028;
     var s = Math.sin(phase);
     var absS = Math.abs(s);
-    var land = Math.max(0, Math.cos(phase * 2)); // peaks when feet plant
-    var squash = 1 - land * 0.045;
-    var stretch = 1 + absS * 0.035;
+    var land = Math.max(0, Math.cos(phase * 2));
+    var squash = 1 - land * 0.03;
+    var stretch = 1 + absS * 0.02;
     return {
-      bob: absS * 5.5,
-      sway: s * 2.4,
-      lean: 3.2 + absS * 0.6,
+      bob: absS * 3.2,
+      sway: s * 1.6,
+      lean: 2.0 + absS * 0.4,
       squash: squash,
       stretch: stretch,
+      phase: phase,
+      walk: s,
     };
   }
 
@@ -93,6 +104,68 @@
     ctx.restore();
   }
 
+  /**
+   * Subtle limb motion for photo cutouts: layered soft warps of arm/leg
+   * regions (no stick limbs). Legs shear opposite to arms.
+   */
+  function drawCutoutBody(ctx, img, srcX, srcY, srcW, srcH, drawW, drawH, motion) {
+    var walk = motion.walk || 0;
+    if (!motion.walk) {
+      ctx.drawImage(img, srcX, srcY, srcW, srcH, -drawW / 2, -drawH, drawW, drawH);
+      return;
+    }
+
+    // Region splits as fractions of draw height (feet at 0, head at -drawH)
+    var legTop = 0.42; // from bottom
+    var armBandTop = 0.58;
+    var armBandBot = 0.30;
+    var s = walk;
+    var legShear = s * 0.055;
+    var armShear = -s * 0.04;
+    var legLift = Math.abs(s) * 1.4;
+    var armSwing = s * 1.8;
+
+    function blitFrac(y0Frac, y1Frac, shear, dx, dy, pivotYFrac) {
+      var top = -drawH * y1Frac;
+      var bot = -drawH * y0Frac;
+      var h = bot - top;
+      if (h <= 0.5) return;
+      var srcTop = srcY + srcH * (1 - y1Frac);
+      var srcBot = srcY + srcH * (1 - y0Frac);
+      var srcSliceH = Math.max(1, srcBot - srcTop);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(-drawW / 2 - 4, top - 1, drawW + 8, h + 2);
+      ctx.clip();
+      var pivotY = -drawH * (pivotYFrac != null ? pivotYFrac : (y0Frac + y1Frac) * 0.5);
+      ctx.translate(dx || 0, dy || 0);
+      ctx.translate(0, pivotY);
+      ctx.transform(1, 0, shear, 1, 0, 0);
+      ctx.translate(0, -pivotY);
+      ctx.drawImage(
+        img,
+        srcX,
+        srcTop,
+        srcW,
+        srcSliceH,
+        -drawW / 2,
+        top,
+        drawW,
+        h
+      );
+      ctx.restore();
+    }
+
+    // Far/back leg (slight opposite lift)
+    blitFrac(0, legTop, -legShear * 0.7, -s * 0.6, s > 0 ? 0 : legLift * 0.35, 0.2);
+    // Near leg
+    blitFrac(0, legTop, legShear, s * 0.6, s < 0 ? 0 : legLift * 0.35, 0.2);
+    // Torso + head (stable, tiny counter-sway)
+    blitFrac(legTop, 1, -s * 0.008, s * 0.25, 0, 0.72);
+    // Arm band soft opposite swing
+    blitFrac(armBandBot, armBandTop, armShear, armSwing * 0.15, -Math.abs(s) * 0.4, 0.5);
+  }
+
   function attachJoint(ctx, key, x, y, facing, drawH, bob, opts) {
     var W = global.MothershipWorld;
     if (!opts || !opts.smoking || !W || typeof W.drawJoint !== "function") return;
@@ -103,7 +176,6 @@
     var puffing = !!opts.puffing && jointLit;
     var puffProg = opts.puffProg != null ? opts.puffProg : puffing ? 1 : 0;
 
-    // Approximate near-hand tip on cutout silhouette
     var hx = x + f * (seated ? 16 : 20) * Math.max(0.85, sc * 0.72);
     var hy = y - drawH * (seated ? 0.4 : 0.46) - bob;
     var jx = hx;
@@ -140,9 +212,8 @@
     var f = facing >= 0 ? 1 : -1;
     var bob = motion.bob;
     var sway = motion.sway;
-    var leanDeg = motion.lean * 0.018 * f; // small lean into facing while walking
+    var leanDeg = motion.lean * 0.018 * f;
 
-    // Seated: crop bottom slightly (shorter draw) — hide lower legs a bit
     var srcX = 0;
     var srcY = 0;
     var srcW = img.naturalWidth;
@@ -163,8 +234,7 @@
     ctx.translate(x + sway * 0.35, y - bob);
     ctx.rotate(leanDeg);
     ctx.scale(f * motion.stretch, motion.squash);
-    // Feet anchored at (0,0); image drawn upward
-    ctx.drawImage(img, srcX, srcY, srcW, srcH, -drawW / 2, -drawH, drawW, drawH);
+    drawCutoutBody(ctx, img, srcX, srcY, srcW, srcH, drawW, drawH, motion);
     ctx.restore();
 
     opts._t = t;

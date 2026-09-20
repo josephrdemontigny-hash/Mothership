@@ -174,6 +174,10 @@
   const SHED_WINDOW_H = 168;
   /** Default human sprite scale — taller vs shed interior (~1.48×). */
   const CHAR_SCALE = 1.48;
+  /** Shared on-screen standing height (px, feet→crown). All standing humans match this. */
+  const VECTOR_LOCAL_H = 73; // go avatar feet→head-top in local units
+  const STANDING_HEIGHT = Math.round(VECTOR_LOCAL_H * CHAR_SCALE); // ~108
+  const SEATED_HEIGHT = Math.round(52 * CHAR_SCALE); // seated ok shorter
   /** Slightly shrink shed furniture so characters dominate room height. */
   const PROP_SCALE = 0.88;
 
@@ -774,35 +778,49 @@
   }
 
   function goWalkPose(moving, seated, t) {
-    if (seated || !moving) {
+    const tt = t || 0;
+    if (seated) {
       return {
-        bob: 0, sway: 0, lean: seated ? 0.25 : 0.55,
-        nThigh: seated ? 1.32 : 0.05, nKnee: seated ? 1.05 : 0.14,
-        fThigh: seated ? 1.18 : -0.04, fKnee: seated ? 0.95 : 0.12,
-        nArm: seated ? 0.35 : 0.12, nElbow: seated ? 0.55 : 0.35,
-        fArm: seated ? 0.25 : -0.1, fElbow: seated ? 0.45 : 0.3,
+        bob: Math.sin(tt * 0.0035) * 0.55,
+        sway: Math.sin(tt * 0.0022) * 0.3,
+        lean: 0.25,
+        nThigh: 1.32, nKnee: 1.05,
+        fThigh: 1.18, fKnee: 0.95,
+        nArm: 0.35, nElbow: 0.55,
+        fArm: 0.25, fElbow: 0.45,
         plantN: true, plantF: true
       };
     }
-    const phase = t * 0.028;
+    if (!moving) {
+      // Idle keeps soft bob (no big limb swing)
+      return {
+        bob: Math.sin(tt * 0.0042) * 1.6,
+        sway: Math.sin(tt * 0.0028) * 0.75,
+        lean: 0.45,
+        nThigh: 0.05, nKnee: 0.14,
+        fThigh: -0.04, fKnee: 0.12,
+        nArm: 0.12, nElbow: 0.35,
+        fArm: -0.1, fElbow: 0.3,
+        plantN: true, plantF: true
+      };
+    }
+    // Light walk cycle — slight arm/leg motion only
+    const phase = tt * 0.028;
     const s = Math.sin(phase);
-    const c = Math.cos(phase);
-    const liftN = Math.max(0, s);   // near foot airborne when swing forward
+    const liftN = Math.max(0, s);
     const liftF = Math.max(0, -s);
     return {
-      bob: Math.abs(s) * 1.8,
-      sway: s * 1.35,
-      lean: 2.2 + Math.abs(s) * 0.35,
-      // thighs: + = forward (+x in local), 0 = straight down
-      nThigh: s * 0.48,
-      nKnee: 0.16 + liftN * 0.62,          // bend more when lifted
-      fThigh: -s * 0.48,
-      fKnee: 0.16 + liftF * 0.62,
-      // opposite arm swing, elbows soft-bent
-      nArm: -s * 0.42,
-      nElbow: 0.38 + Math.max(0, -s) * 0.28,
-      fArm: s * 0.42,
-      fElbow: 0.38 + Math.max(0, s) * 0.28,
+      bob: Math.abs(s) * 1.35,
+      sway: s * 1.0,
+      lean: 1.8 + Math.abs(s) * 0.3,
+      nThigh: s * 0.32,
+      nKnee: 0.14 + liftN * 0.45,
+      fThigh: -s * 0.32,
+      fKnee: 0.14 + liftF * 0.45,
+      nArm: -s * 0.28,
+      nElbow: 0.34 + Math.max(0, -s) * 0.2,
+      fArm: s * 0.28,
+      fElbow: 0.34 + Math.max(0, s) * 0.2,
       plantN: liftN < 0.15,
       plantF: liftF < 0.15
     };
@@ -1616,54 +1634,73 @@
     ctx.textAlign = 'left';
   }
 
+  /** Loaded neon trading-card band posters (refs/band → assets/posters). */
+  const BAND_POSTER_IMGS = [1, 2, 3, 4].map(function (n) {
+    const img = new Image();
+    img._ready = false;
+    img._failed = false;
+    img.onload = function () { img._ready = !!(img.naturalWidth && img.naturalHeight); };
+    img.onerror = function () { img._failed = true; img._ready = false; };
+    img.src = 'assets/posters/band-' + n + '.jpeg';
+    return img;
+  });
+
   /**
-   * Mature Retrofit gig flyer / band card — neon alley pop-art collage tile.
-   * opts: { w, h, skin, hair, jacket, accent, shade, hat, glasses, label }
+   * Shed-wall band card / gig flyer — draws photo trading-card refs when ready.
+   * opts: { w, h, poster (0..3), label } — procedural neon fallback if images fail.
    */
   function drawBandFlyer(ctx, x, y, opts) {
     opts = opts || {};
     const w = opts.w || 52;
     const h = opts.h || 70;
+    const idx = ((opts.poster != null ? opts.poster : 0) % BAND_POSTER_IMGS.length + BAND_POSTER_IMGS.length) % BAND_POSTER_IMGS.length;
+    const img = BAND_POSTER_IMGS[idx];
+    if (img && img._ready && !img._failed) {
+      ctx.save();
+      // Soft neon glow behind card
+      const accent = opts.accent || '#ff60c0';
+      ctx.fillStyle = accent;
+      ctx.globalAlpha = 0.18;
+      ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+      ctx.globalAlpha = 1;
+      ctx.drawImage(img, x, y, w, h);
+      // Thin neon edge so cards pop on wood wall
+      ctx.strokeStyle = accent;
+      ctx.globalAlpha = 0.55;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+      ctx.globalAlpha = 1;
+      if (opts.label) {
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(x + 4, y + h - 14, w - 8, 10);
+        ctx.fillStyle = '#ffe8ff';
+        ctx.font = 'bold 7px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(opts.label, x + w * 0.5, y + h - 6);
+        ctx.textAlign = 'left';
+      }
+      ctx.restore();
+      return;
+    }
+    // Procedural fallback (cartoon) while images load / if missing
     const skin = opts.skin || '#c89070';
     const hair = opts.hair || '#2a1a10';
     const jacket = opts.jacket || '#2a4060';
     const accent = opts.accent || '#ff40c0';
     const shade = opts.shade || '#1a1030';
     ctx.save();
-    // Neon alley night bg
     const bg = ctx.createLinearGradient(x, y, x + w, y + h);
     bg.addColorStop(0, shade);
     bg.addColorStop(0.45, '#2a1848');
     bg.addColorStop(1, '#0a1828');
     ctx.fillStyle = bg;
     ctx.fillRect(x, y, w, h);
-    // Soft neon blobs
     ctx.fillStyle = accent;
     ctx.globalAlpha = 0.35;
     ctx.beginPath();
     ctx.arc(x + w * 0.78, y + h * 0.22, 10, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#40c0ff';
-    ctx.beginPath();
-    ctx.arc(x + w * 0.2, y + h * 0.7, 8, 0, Math.PI * 2);
-    ctx.fill();
     ctx.globalAlpha = 1;
-    // Halftone dots
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    for (let row = 0; row < 6; row++) {
-      for (let col = 0; col < 4; col++) {
-        ctx.beginPath();
-        ctx.arc(x + 8 + col * 12, y + 10 + row * 11, 1.2, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    // Streetlamp glow above head
-    const lamp = ctx.createRadialGradient(x + w * 0.5, y + 8, 1, x + w * 0.5, y + 18, 22);
-    lamp.addColorStop(0, 'rgba(255,220,80,0.55)');
-    lamp.addColorStop(1, 'rgba(255,180,40,0)');
-    ctx.fillStyle = lamp;
-    ctx.fillRect(x, y, w, 36);
-    // Shoulders / jacket
     ctx.fillStyle = jacket;
     ctx.beginPath();
     ctx.moveTo(x + 8, y + h - 6);
@@ -1672,60 +1709,17 @@
     ctx.lineTo(x + 4, y + h);
     ctx.closePath();
     ctx.fill();
-    // Collar hint
-    ctx.strokeStyle = opts.collar || accent;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(x + w * 0.35, y + h * 0.58);
-    ctx.lineTo(x + w * 0.5, y + h * 0.68);
-    ctx.lineTo(x + w * 0.65, y + h * 0.58);
-    ctx.stroke();
-    // Head
     ctx.fillStyle = skin;
     ctx.beginPath();
     ctx.ellipse(x + w * 0.5, y + h * 0.38, 11, 13, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Hair
     ctx.fillStyle = hair;
     ctx.beginPath();
     ctx.ellipse(x + w * 0.5, y + h * 0.3, 12, 9, 0, Math.PI, Math.PI * 2);
     ctx.fill();
-    if (opts.hat) {
-      ctx.fillStyle = opts.hat;
-      ctx.fillRect(x + w * 0.5 - 13, y + h * 0.22, 26, 6);
-      ctx.fillRect(x + w * 0.5 - 9, y + h * 0.14, 18, 10);
-    }
-    if (opts.glasses !== false) {
-      ctx.strokeStyle = opts.glassCol || '#1a1a1a';
-      ctx.lineWidth = 1.4;
-      ctx.strokeRect(x + w * 0.5 - 11, y + h * 0.36, 8, 5);
-      ctx.strokeRect(x + w * 0.5 + 3, y + h * 0.36, 8, 5);
-      ctx.beginPath();
-      ctx.moveTo(x + w * 0.5 - 3, y + h * 0.38);
-      ctx.lineTo(x + w * 0.5 + 3, y + h * 0.38);
-      ctx.stroke();
-    }
-    // Mustache / beard hint
-    if (opts.stache) {
-      ctx.fillStyle = hair;
-      ctx.fillRect(x + w * 0.5 - 7, y + h * 0.46, 14, 2.5);
-    }
-    // Thin chrome / neon frame
     ctx.strokeStyle = accent;
     ctx.lineWidth = 2;
     ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
-    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x + 3, y + 3, w - 6, h - 6);
-    if (opts.label) {
-      ctx.fillStyle = 'rgba(0,0,0,0.55)';
-      ctx.fillRect(x + 4, y + h - 14, w - 8, 10);
-      ctx.fillStyle = '#ffe8ff';
-      ctx.font = 'bold 7px Segoe UI, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(opts.label, x + w * 0.5, y + h - 6);
-      ctx.textAlign = 'left';
-    }
     ctx.restore();
   }
 
@@ -1791,22 +1785,21 @@
     }
   }
 
+  /** Photo cutout of a real ’67 El Camino (assets/elcamino-side.png). */
+  const ELCAMINO_IMG = (function () {
+    const img = new Image();
+    img._ready = false;
+    img._failed = false;
+    img.onload = function () { img._ready = !!(img.naturalWidth && img.naturalHeight); };
+    img.onerror = function () { img._failed = true; img._ready = false; };
+    img.src = 'assets/elcamino-side.png';
+    return img;
+  })();
+
   /**
-   * 1967 Chevy El Camino — canvas side view (classic coupe-utility).
+   * 1967 Chevy El Camino — side view (ute: long hood ≈ open bed, short cab,
+   * C-pillar flowing into bed rails). Prefers photo cutout; procedural fallback.
    * Local space is nose-left; facingRight flips. Ground at y≈0, car center x=0.
-   *
-   * Proportion ratios used (px, local):
-   *   overall     448   CAMINO_HALF_W=224     long / low / horizontal
-   *   hood        150   nose -222 → windshield -72    33.5%
-   *   cabin       128   windshield -72 → bed rail 56   28.6% (roof itself only 54px)
-   *   bed         166   bed rail 56 → tail 222         37.1%
-   *   hood/bed    0.90  both long; compact cab in the middle
-   *   wheelbase   234   wf -116, wr +118               52%
-   *   roof y      -102  short greenhouse
-   *   window belt -60
-   *   body belt   -44   chrome spear / rocker trim
-   *   rocker      -24   wheels sit IN arch cutouts
-   *
    * opts: dusty, scale, facingRight, wheelRot, drawDriver(ctx), noLabel
    */
   function drawElCamino(ctx, x, y, t, opts) {
@@ -1820,12 +1813,82 @@
     ctx.scale(s, s);
     if (facingRight) ctx.scale(-1, 1);
 
+    const img = ELCAMINO_IMG;
+    if (img && img._ready && !img._failed) {
+      // Photo sprite: map to same local half-width as gameplay (CAMINO_HALF_W)
+      const drawW = CAMINO_HALF_W * 2;
+      const aspect = img.naturalWidth / Math.max(1, img.naturalHeight);
+      const drawH = drawW / aspect;
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.38)';
+      ctx.beginPath();
+      ctx.ellipse(0, 5, drawW * 0.46, 11, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Image bottom ≈ tire contact; nudge so rocker sits above ground
+      const yOff = 6;
+      ctx.drawImage(img, -drawW / 2, -drawH + yOff, drawW, drawH);
+
+      // Driver head-in-window (clip to cabin glass region matching CAMINO_WIN)
+      const w = CAMINO_WIN;
+      if (typeof opts.drawDriver === 'function') {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(w.x, w.y, w.w, w.h);
+        ctx.clip();
+        opts.drawDriver(ctx);
+        ctx.restore();
+        // Light glass wash so photo still reads as glass over driver
+        ctx.fillStyle = dusty ? 'rgba(140,170,190,0.18)' : 'rgba(170,205,230,0.16)';
+        ctx.fillRect(w.x, w.y, w.w, w.h);
+      }
+
+      // Soft rotating spoke hint over photo wheels (keeps motion readable)
+      if (wheelRot) {
+        const wfX = -drawW * 0.26;
+        const wrX = drawW * 0.27;
+        const cy = -drawH * 0.18 + yOff;
+        const r = drawH * 0.22;
+        function spokeHint(wx) {
+          ctx.save();
+          ctx.translate(wx, cy);
+          ctx.rotate(wheelRot);
+          ctx.strokeStyle = dusty ? 'rgba(220,220,230,0.35)' : 'rgba(255,255,255,0.4)';
+          ctx.lineWidth = 1.2;
+          for (let a = 0; a < 6; a++) {
+            const ang = a * (Math.PI / 3);
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(ang) * 3, Math.sin(ang) * 3);
+            ctx.lineTo(Math.cos(ang) * r * 0.55, Math.sin(ang) * r * 0.55);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+        spokeHint(wfX);
+        spokeHint(wrX);
+      }
+
+      if (dusty) {
+        ctx.fillStyle = 'rgba(160,140,100,0.1)';
+        ctx.fillRect(-drawW / 2, -drawH + yOff, drawW, drawH * 0.7);
+      }
+
+      if (!opts.noLabel) {
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.font = 'bold 11px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText("'67 EL CAMINO", 0, 28);
+        ctx.textAlign = 'left';
+      }
+      ctx.restore();
+      return;
+    }
+
+    // —— Procedural fallback: long hood ≈ bed, short cab, flying-buttress C-pillar ——
     const goldHi = dusty ? '#d8b86e' : '#f4d894';
     const goldMid = dusty ? '#c49a4a' : '#dcb050';
     const goldLo = dusty ? '#8e6c32' : '#b07e28';
     const goldDeep = dusty ? '#5c4622' : '#704e1a';
     const vinyl = dusty ? '#1a1a1c' : '#0e0e10';
-    const vinylHi = dusty ? '#2a2a2e' : '#1c1c20';
 
     function paint(x0, y0, x1, y1) {
       const g = ctx.createLinearGradient(x0, y0, x1, y1);
@@ -1846,32 +1909,32 @@
       return g;
     }
 
-    const wfX = -116;
-    const wrX = 118;
+    // Proportions: hood ≈ bed (~38% each), short cab (~24%)
+    const wfX = -118;
+    const wrX = 122;
     const wR = 26;
     const archR = 32;
-    const bodyBot = -36;
-    const wheelCy = bodyBot + 12; // -24, matches tire center (bottom ≈ +2)
+    const wheelCy = -24;
 
     ctx.fillStyle = 'rgba(0,0,0,0.38)';
     ctx.beginPath();
     ctx.ellipse(0, 5, 210, 11, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Silhouette: long hood → short roof → flying-buttress C-pillar → long OPEN bed
     function bodyOutline() {
       ctx.beginPath();
+      // Tail / bed rear
       ctx.moveTo(222, -14);
       ctx.lineTo(222, -32);
       ctx.lineTo(214, -36);
-      ctx.lineTo(210, -56);
-      ctx.lineTo(56, -58);                      // long bed rail
-      ctx.quadraticCurveTo(34, -58, 8, -102);   // flying buttress (rail tangent → roof)
-      ctx.lineTo(-46, -102);                    // short roof
-      ctx.lineTo(-72, -60);                     // raked windshield
-      ctx.lineTo(-198, -57);                    // long hood
-      ctx.lineTo(-214, -46);
-      ctx.lineTo(-222, -30);
+      ctx.lineTo(208, -56);
+      ctx.lineTo(42, -58);                       // long bed rail
+      ctx.quadraticCurveTo(22, -58, -2, -100);   // C-pillar → roof (flying buttress)
+      ctx.lineTo(-52, -100);                     // short roof
+      ctx.lineTo(-78, -58);                      // raked windshield
+      ctx.lineTo(-200, -56);                     // long hood ≈ bed
+      ctx.lineTo(-214, -44);
+      ctx.lineTo(-222, -28);
       ctx.lineTo(-216, -14);
       ctx.lineTo(wfX - archR - 4, wheelCy);
       ctx.lineTo(wfX - archR, wheelCy);
@@ -1882,143 +1945,25 @@
       ctx.closePath();
     }
 
-    ctx.fillStyle = paint(-224, -102, 224, -10);
+    ctx.fillStyle = paint(-224, -100, 224, -10);
     bodyOutline();
     ctx.fill();
 
-    ctx.save();
-    bodyOutline();
-    ctx.clip();
-    const loShade = ctx.createLinearGradient(0, -80, 0, -16);
-    loShade.addColorStop(0, 'rgba(0,0,0,0)');
-    loShade.addColorStop(0.55, 'rgba(0,0,0,0.06)');
-    loShade.addColorStop(1, 'rgba(0,0,0,0.28)');
-    ctx.fillStyle = loShade;
-    ctx.fillRect(-230, -120, 460, 140);
-    ctx.fillStyle = dusty ? 'rgba(255,240,200,0.1)' : 'rgba(255,250,220,0.22)';
-    ctx.fillRect(-210, -46, 410, 4);
-    // hood power-bulge
-    ctx.fillStyle = dusty ? 'rgba(255,245,210,0.1)' : 'rgba(255,250,230,0.2)';
-    ctx.beginPath();
-    ctx.moveTo(-194, -56);
-    ctx.lineTo(-110, -60);
-    ctx.lineTo(-110, -44);
-    ctx.lineTo(-194, -42);
-    ctx.closePath();
-    ctx.fill();
-    // door shut (rear of door)
-    ctx.strokeStyle = 'rgba(40,24,8,0.35)';
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(2, -60);
-    ctx.lineTo(2, -28);
-    ctx.stroke();
-    ctx.strokeStyle = dusty ? 'rgba(255,230,170,0.18)' : 'rgba(255,240,200,0.28)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(4, -60);
-    ctx.lineTo(4, -28);
-    ctx.stroke();
-    // character line
-    ctx.strokeStyle = dusty ? 'rgba(255,230,170,0.12)' : 'rgba(255,245,210,0.2)';
-    ctx.beginPath();
-    ctx.moveTo(-200, -48);
-    ctx.lineTo(-110, -50);
-    ctx.lineTo(4, -50);
-    ctx.lineTo(190, -48);
-    ctx.stroke();
-    // C-pillar crease (flying buttress edge)
-    ctx.strokeStyle = 'rgba(40,24,8,0.28)';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(8, -100);
-    ctx.quadraticCurveTo(30, -62, 54, -58);
-    ctx.stroke();
-    ctx.restore();
-
-    // Chrome rocker between arches
-    ctx.fillStyle = chrome(wfX + archR + 2, -46, wrX - archR - 2, -40);
-    ctx.fillRect(wfX + archR + 2, -46, (wrX - archR) - (wfX + archR) - 4, 4);
-    ctx.fillStyle = dusty ? 'rgba(200,200,210,0.55)' : 'rgba(240,240,248,0.75)';
-    ctx.fillRect(wfX + archR + 2, -47, (wrX - archR) - (wfX + archR) - 4, 1.5);
-
-    // —— OPEN cargo bed (look-down, not a trunk lid) ——
-    // Far bed wall
-    ctx.fillStyle = goldLo;
-    ctx.beginPath();
-    ctx.moveTo(58, -62);
-    ctx.lineTo(196, -60);
-    ctx.lineTo(194, -46);
-    ctx.lineTo(62, -50);
-    ctx.closePath();
-    ctx.fill();
-    // Dark floor receding
+    // Open bed look-down
     ctx.fillStyle = dusty ? '#24180c' : '#120c08';
     ctx.beginPath();
-    ctx.moveTo(54, -54);
+    ctx.moveTo(40, -54);
     ctx.lineTo(200, -52);
     ctx.lineTo(194, -40);
-    ctx.lineTo(60, -44);
+    ctx.lineTo(46, -44);
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = dusty ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.55)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 7; i++) {
-      const bx = 70 + i * 18;
-      ctx.beginPath();
-      ctx.moveTo(bx, -52);
-      ctx.lineTo(bx - 2, -42);
-      ctx.stroke();
-    }
-    // Rear wheel-well hump sitting in the bed
     ctx.fillStyle = goldMid;
-    ctx.beginPath();
-    ctx.ellipse(wrX, -42, 32, 13, 0, Math.PI, 0, true);
-    ctx.fill();
-    ctx.fillStyle = goldDeep;
-    ctx.beginPath();
-    ctx.ellipse(wrX, -42, 26, 9, 0, Math.PI, 0, true);
-    ctx.fill();
-    // Near-side gold wall (thin — open cargo reads above it)
-    ctx.fillStyle = goldMid;
-    ctx.fillRect(54, -58, 148, 6);
-    // Chrome near rail
-    ctx.fillStyle = chrome(52, -62, 208, -54);
-    ctx.fillRect(54, -60, 152, 3.5);
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.fillRect(56, -60, 148, 1.1);
-    // Far chrome rail
-    ctx.fillStyle = dusty ? 'rgba(210,210,218,0.45)' : 'rgba(236,236,244,0.55)';
-    ctx.fillRect(62, -63, 132, 1.6);
+    ctx.fillRect(40, -58, 162, 6);
+    ctx.fillStyle = chrome(40, -62, 210, -54);
+    ctx.fillRect(40, -60, 164, 3.5);
 
-    // Tailgate
-    ctx.fillStyle = paint(198, -58, 214, -20);
-    ctx.beginPath();
-    ctx.moveTo(198, -56);
-    ctx.lineTo(210, -54);
-    ctx.lineTo(210, -28);
-    ctx.lineTo(198, -30);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = chrome(198, -58, 212, -52);
-    ctx.fillRect(198, -56, 12, 3);
-
-    // Cab rear bulkhead just behind the greenhouse
-    ctx.fillStyle = paint(14, -70, 28, -30);
-    ctx.beginPath();
-    ctx.moveTo(12, -72);
-    ctx.lineTo(22, -58);
-    ctx.lineTo(22, -30);
-    ctx.lineTo(12, -32);
-    ctx.closePath();
-    ctx.fill();
-
-    // —— Cabin glass + thin black vinyl roof (cab only) ——
-    ctx.fillStyle = dusty ? 'rgba(140,100,60,0.55)' : 'rgba(180,130,75,0.65)';
-    ctx.fillRect(-64, -62, 70, 12);
-    ctx.fillStyle = 'rgba(60,40,20,0.4)';
-    ctx.fillRect(-62, -60, 66, 3);
-
+    // Cab glass + driver
     const w = CAMINO_WIN;
     if (typeof opts.drawDriver === 'function') {
       ctx.save();
@@ -2028,241 +1973,35 @@
       opts.drawDriver(ctx);
       ctx.restore();
     }
-
-    ctx.fillStyle = dusty ? 'rgba(30,24,16,0.35)' : 'rgba(20,16,10,0.4)';
+    ctx.fillStyle = dusty ? 'rgba(140,170,190,0.38)' : 'rgba(170,205,230,0.36)';
     ctx.beginPath();
-    ctx.moveTo(-68, -62);
-    ctx.lineTo(-54, -100);
-    ctx.lineTo(4, -100);
-    ctx.lineTo(10, -62);
+    ctx.moveTo(-74, -58);
+    ctx.lineTo(-56, -98);
+    ctx.lineTo(-6, -98);
+    ctx.lineTo(8, -58);
     ctx.closePath();
     ctx.fill();
 
-    // Vinyl roof — thin, cab-only
+    // Vinyl roof (cab only)
     ctx.fillStyle = vinyl;
     ctx.beginPath();
-    ctx.moveTo(-46, -102);
-    ctx.lineTo(8, -102);
-    ctx.lineTo(4, -94);
-    ctx.lineTo(-42, -94);
-    ctx.closePath();
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(6, -102);
-    ctx.lineTo(16, -82);
-    ctx.lineTo(10, -82);
-    ctx.lineTo(2, -100);
-    ctx.closePath();
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(-46, -102);
-    ctx.lineTo(-62, -76);
-    ctx.lineTo(-56, -76);
-    ctx.lineTo(-42, -100);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = dusty ? 'rgba(55,55,60,0.55)' : 'rgba(45,45,50,0.6)';
-    ctx.lineWidth = 0.8;
-    for (let i = 0; i < 3; i++) {
-      const ry = -101 + i * 2.4;
-      ctx.beginPath();
-      ctx.moveTo(-40 + i, ry);
-      ctx.lineTo(4 - i, ry + 0.4);
-      ctx.stroke();
-    }
-    ctx.fillStyle = vinylHi;
-    ctx.fillRect(-44, -102, 50, 1.6);
-
-    // Windshield (raked)
-    const windG = ctx.createLinearGradient(-74, -102, -60, -60);
-    windG.addColorStop(0, dusty ? 'rgba(100,130,150,0.55)' : 'rgba(150,190,220,0.5)');
-    windG.addColorStop(0.5, 'rgba(220,235,245,0.28)');
-    windG.addColorStop(1, dusty ? 'rgba(70,100,120,0.5)' : 'rgba(60,100,130,0.48)');
-    ctx.fillStyle = windG;
-    ctx.beginPath();
-    ctx.moveTo(-72, -60);
-    ctx.lineTo(-58, -102);
-    ctx.lineTo(-46, -102);
-    ctx.lineTo(-60, -60);
+    ctx.moveTo(-52, -100);
+    ctx.lineTo(-2, -100);
+    ctx.lineTo(-6, -92);
+    ctx.lineTo(-48, -92);
     ctx.closePath();
     ctx.fill();
 
-    // Side window over driver
-    const glassG = ctx.createLinearGradient(w.x, w.y, w.x + w.w, w.y + w.h);
-    glassG.addColorStop(0, dusty ? 'rgba(140,170,190,0.38)' : 'rgba(170,205,230,0.36)');
-    glassG.addColorStop(0.4, 'rgba(240,248,255,0.14)');
-    glassG.addColorStop(1, dusty ? 'rgba(90,120,140,0.34)' : 'rgba(70,110,140,0.32)');
-    ctx.fillStyle = glassG;
-    ctx.beginPath();
-    ctx.moveTo(-58, -62);
-    ctx.lineTo(-50, -100);
-    ctx.lineTo(4, -100);
-    ctx.lineTo(10, -62);
-    ctx.closePath();
-    ctx.fill();
-
-    // Vent window divider
-    ctx.strokeStyle = dusty ? '#b0b0b8' : '#e4e4ec';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(-42, -100);
-    ctx.lineTo(-46, -62);
-    ctx.stroke();
-
-    // Rear cab glass (raked backlight into flying buttress)
-    ctx.fillStyle = dusty ? 'rgba(90,120,140,0.4)' : 'rgba(130,170,200,0.45)';
-    ctx.beginPath();
-    ctx.moveTo(4, -98);
-    ctx.lineTo(18, -72);
-    ctx.lineTo(24, -62);
-    ctx.lineTo(12, -62);
-    ctx.lineTo(2, -98);
-    ctx.closePath();
-    ctx.fill();
-
-    // Chrome window / drip-rail trim
-    ctx.strokeStyle = dusty ? '#b8b8c0' : '#f0f0f6';
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.moveTo(-72, -60);
-    ctx.lineTo(-58, -102);
-    ctx.lineTo(6, -102);
-    ctx.lineTo(12, -62);
-    ctx.closePath();
-    ctx.stroke();
-    ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    ctx.moveTo(4, -98);
-    ctx.lineTo(10, -62);
-    ctx.stroke();
-    ctx.fillStyle = chrome(-72, -64, 14, -58);
-    ctx.fillRect(-72, -63, 84, 2.5);
-
-    // Door handle (toward nose, matches CAMINO_DOOR_DX)
-    ctx.fillStyle = chrome(-42, -50, -22, -44);
-    ctx.fillRect(-40, -48, 16, 4);
-
-    // Side mirror at A-pillar
-    ctx.fillStyle = chrome(-78, -78, -62, -66);
-    ctx.beginPath();
-    ctx.ellipse(-72, -74, 7, 5, -0.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = dusty ? '#4a5560' : '#6a8090';
-    ctx.beginPath();
-    ctx.ellipse(-71, -74, 4, 3, -0.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = dusty ? '#909098' : '#d0d0d8';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(-66, -72);
-    ctx.lineTo(-58, -64);
-    ctx.stroke();
-
-    // Cab antenna
-    ctx.strokeStyle = dusty ? '#9a9aa2' : '#c8c8d0';
-    ctx.lineWidth = 1.1;
-    ctx.beginPath();
-    ctx.moveTo(14, -86);
-    ctx.lineTo(18, -128);
-    ctx.stroke();
-
-    // —— Front: bumper, grille, stacked headlights ——
+    // Chrome bumper + stacked lamps
     ctx.fillStyle = chrome(-224, -34, -190, -12);
+    ctx.fillRect(-222, -32, 30, 18);
+    ctx.fillStyle = dusty ? '#d8d8e0' : '#f0f0f6';
     ctx.beginPath();
-    ctx.moveTo(-222, -32);
-    ctx.lineTo(-192, -34);
-    ctx.lineTo(-188, -14);
-    ctx.lineTo(-222, -16);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.fillRect(-220, -30, 26, 2);
-    ctx.fillStyle = dusty ? '#c88820' : '#ffaa28';
-    ctx.fillRect(-218, -24, 12, 4);
-
-    ctx.fillStyle = '#121214';
-    ctx.fillRect(-204, -56, 26, 24);
-    ctx.strokeStyle = dusty ? '#a8a8b0' : '#e8e8f0';
-    ctx.lineWidth = 1.1;
-    for (let i = 0; i < 6; i++) {
-      ctx.beginPath();
-      ctx.moveTo(-202, -54 + i * 3.6);
-      ctx.lineTo(-180, -54 + i * 3.6);
-      ctx.stroke();
-    }
-    ctx.fillStyle = dusty ? '#8a2020' : '#c02828';
-    ctx.beginPath();
-    ctx.moveTo(-193, -44);
-    ctx.lineTo(-189, -46);
-    ctx.lineTo(-185, -44);
-    ctx.lineTo(-189, -42);
-    ctx.closePath();
+    ctx.arc(-210, -52, 7, 0, Math.PI * 2);
+    ctx.arc(-210, -34, 7, 0, Math.PI * 2);
     ctx.fill();
 
-    function lamp(hx, hy, r) {
-      ctx.fillStyle = dusty ? '#9898a0' : '#d8d8e0';
-      ctx.beginPath();
-      ctx.arc(hx, hy, r + 2.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = dusty ? '#c8c8d0' : '#f4f4fa';
-      ctx.lineWidth = 1.4;
-      ctx.stroke();
-      const hg = ctx.createRadialGradient(hx - 1.5, hy - 1.5, 0.5, hx, hy, r);
-      hg.addColorStop(0, '#fffcee');
-      hg.addColorStop(0.4, '#ffe8a8');
-      hg.addColorStop(0.85, '#c8a848');
-      hg.addColorStop(1, '#5a4a20');
-      ctx.fillStyle = hg;
-      ctx.beginPath();
-      ctx.arc(hx, hy, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.fillStyle = chrome(-216, -62, -202, -30);
-    ctx.fillRect(-214, -60, 10, 32);
-    lamp(-209, -54, 6.5);
-    lamp(-209, -36, 6.5);
-
-    // —— Rear bumper + vertical taillight ——
-    ctx.fillStyle = chrome(198, -34, 224, -12);
-    ctx.beginPath();
-    ctx.moveTo(200, -32);
-    ctx.lineTo(222, -30);
-    ctx.lineTo(224, -14);
-    ctx.lineTo(198, -16);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.fillRect(204, -28, 16, 2);
-    ctx.fillStyle = dusty ? '#901818' : '#d02020';
-    ctx.fillRect(204, -56, 8, 24);
-    ctx.fillStyle = dusty ? '#c03030' : '#ff4040';
-    ctx.fillRect(205, -54, 6, 6);
-    ctx.fillRect(205, -46, 6, 6);
-    ctx.fillRect(205, -38, 6, 6);
-    ctx.strokeStyle = dusty ? '#c0c0c8' : '#f0f0f6';
-    ctx.lineWidth = 1.2;
-    ctx.strokeRect(204, -56, 8, 24);
-    ctx.fillStyle = chrome(208, -18, 220, -10);
-    ctx.fillRect(210, -16, 10, 4);
-
-    // SS / 396 fender badge
-    ctx.fillStyle = chrome(-108, -58, -76, -46);
-    ctx.fillRect(-106, -56, 28, 9);
-    ctx.fillStyle = '#1a1a20';
-    ctx.font = 'bold 7px Segoe UI, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('396', -92, -49);
-
-    // Chrome wheel-arch rings
-    ctx.strokeStyle = dusty ? '#a8a8b0' : '#e0e0e8';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(wfX, wheelCy, archR - 1, Math.PI + 0.08, -0.08, false);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(wrX, wheelCy, archR - 1, Math.PI + 0.08, -0.08, false);
-    ctx.stroke();
-
+    // Wheels
     function wheel(wx) {
       const cy = wheelCy;
       ctx.fillStyle = '#0a0a0c';
@@ -2274,63 +2013,26 @@
       ctx.beginPath();
       ctx.arc(wx, cy, wR - 3.5, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.strokeStyle = '#222228';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.arc(wx, cy, wR - 7, 0, Math.PI * 2);
-      ctx.stroke();
-
       ctx.save();
       ctx.translate(wx, cy);
       ctx.rotate(wheelRot);
-      ctx.fillStyle = dusty ? '#3a3a42' : '#2a2a32';
-      ctx.beginPath();
-      ctx.arc(0, 0, 15, 0, Math.PI * 2);
-      ctx.fill();
       ctx.strokeStyle = dusty ? '#c8c8d0' : '#f2f2f8';
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.arc(0, 0, 15, 0, Math.PI * 2);
-      ctx.stroke();
       ctx.lineWidth = 1.4;
       for (let a = 0; a < 12; a++) {
         const ang = a * (Math.PI / 6);
         ctx.beginPath();
-        ctx.moveTo(Math.cos(ang) * 3.2, Math.sin(ang) * 3.2);
-        ctx.lineTo(Math.cos(ang) * 13.5, Math.sin(ang) * 13.5);
+        ctx.moveTo(Math.cos(ang) * 3, Math.sin(ang) * 3);
+        ctx.lineTo(Math.cos(ang) * 13, Math.sin(ang) * 13);
         ctx.stroke();
       }
-      const hub = ctx.createRadialGradient(-2, -2, 1, 0, 0, 7);
-      hub.addColorStop(0, dusty ? '#e8e8f0' : '#ffffff');
-      hub.addColorStop(0.5, dusty ? '#b0b0b8' : '#d8d8e0');
-      hub.addColorStop(1, '#3a3a42');
-      ctx.fillStyle = hub;
+      ctx.fillStyle = '#d8d8e0';
       ctx.beginPath();
-      ctx.arc(0, 0, 6.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = dusty ? '#8a2020' : '#c02828';
-      ctx.beginPath();
-      ctx.arc(0, 0, 2.8, 0, Math.PI * 2);
+      ctx.arc(0, 0, 6, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
     wheel(wfX);
     wheel(wrX);
-
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.beginPath();
-    ctx.ellipse(0, 1, 190, 6, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    if (dusty) {
-      ctx.fillStyle = 'rgba(160,140,100,0.07)';
-      ctx.fillRect(-220, -90, 430, 55);
-      ctx.fillStyle = 'rgba(120,100,70,0.12)';
-      for (let i = 0; i < 26; i++) {
-        const dx = -210 + (i * 97) % 410;
-        ctx.fillRect(dx, -85 + (i * 53) % 58, 3, 2);
-      }
-    }
 
     if (!opts.noLabel) {
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -3356,40 +3058,16 @@
     // pegboard
     drawPegboard(ctx, 195 - camX, 50, 70, 110);
 
-    // Denser Retrofit band-card / gig-flyer collage on shed walls (neon alley vibe)
-    drawBandFlyer(ctx, 560 - camX, 42, {
-      jacket: '#5a3a22', hair: '#8a6a40', accent: '#ff60c0', shade: '#1a1030',
-      glasses: true, stache: true, label: 'RETROFIT',
-    });
-    drawBandFlyer(ctx, 618 - camX, 38, {
-      jacket: '#1a1a1a', hair: '#2a1a10', accent: '#40e0ff', shade: '#101828',
-      hat: '#1a1a1a', glasses: true, label: 'GIG',
-    });
-    drawBandFlyer(ctx, 676 - camX, 48, {
-      jacket: '#2a5080', hair: '#1a1a1a', accent: '#ffe040', shade: '#181030',
-      glasses: true, label: 'LIVE',
-    });
-    drawBandFlyer(ctx, 1048 - camX, 36, {
-      jacket: '#2a6040', hair: '#1a0a08', accent: '#ff40a0', shade: '#201028',
-      glasses: true, label: 'YALE',
-    });
-    drawBandFlyer(ctx, 1104 - camX, 44, {
-      jacket: '#2a2a38', hair: '#2a2018', accent: '#80ff40', shade: '#14122a',
-      hat: '#4a4a50', glasses: true, stache: true, label: 'CHEAM',
-    });
-    drawBandFlyer(ctx, 1160 - camX, 40, {
-      jacket: '#2850a0', hair: '#1a1a1a', accent: '#ff8060', shade: '#1a1830',
-      hat: '#801828', glasses: true, label: 'UFO?',
-    });
-    // Overlapping flyer scraps / handbills
-    drawBandFlyer(ctx, 590 - camX, 118, {
-      w: 40, h: 52, jacket: '#604020', hair: '#3a2a18', accent: '#c040ff',
-      shade: '#201018', glasses: true, label: 'SES',
-    });
-    drawBandFlyer(ctx, 1080 - camX, 112, {
-      w: 38, h: 50, jacket: '#184060', hair: '#0a0a0a', accent: '#40ffc0',
-      shade: '#101828', glasses: true, label: 'AM',
-    });
+    // Neon trading-card band posters on shed walls (photo refs)
+    drawBandFlyer(ctx, 560 - camX, 42, { poster: 0, accent: '#ff60c0' });
+    drawBandFlyer(ctx, 618 - camX, 38, { poster: 1, accent: '#40e0ff' });
+    drawBandFlyer(ctx, 676 - camX, 48, { poster: 2, accent: '#ffe040' });
+    drawBandFlyer(ctx, 1048 - camX, 36, { poster: 3, accent: '#ff40a0' });
+    drawBandFlyer(ctx, 1104 - camX, 44, { poster: 0, accent: '#80ff40' });
+    drawBandFlyer(ctx, 1160 - camX, 40, { poster: 1, accent: '#ff8060' });
+    // Overlapping scraps
+    drawBandFlyer(ctx, 590 - camX, 118, { poster: 2, w: 40, h: 60, accent: '#c040ff' });
+    drawBandFlyer(ctx, 1080 - camX, 112, { poster: 3, w: 38, h: 58, accent: '#40ffc0' });
     // Keep a couple classic framed posters tucked in
     drawPoster(ctx, 1220 - camX, 48, 'BEER', '#4a2a1a');
     drawPoster(ctx, 520 - camX, 55, 'OH', '#3a1a2a');
@@ -4741,9 +4419,10 @@
    */
   function drawBandMate(ctx, x, y, look, t, opts) {
     opts = opts || {};
-    const scale = opts.scale != null ? opts.scale : CHAR_SCALE * 0.92;
+    // Same standing height as Zakk/Tayler (STANDING_HEIGHT via CHAR_SCALE)
+    const scale = opts.scale != null ? opts.scale : CHAR_SCALE;
     const f = 1;
-    const pose = goWalkPose(false, false, t + (opts.seed || 0));
+    const pose = goWalkPose(!!opts.moving, !!opts.seated, t + (opts.seed || 0));
     const skinHi = '#e8c4a4', skin = '#d4a882', skinLo = '#b07a58';
     const pantHi = '#2e2e36', pant = '#16161c', pantLo = '#08080c';
 
@@ -4809,9 +4488,9 @@
     ctx.ellipse(2, 0, 14, 3.6, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    const bob = pose.bob * 0.4;
+    const bob = pose.bob;
     const lean = pose.lean * 0.5;
-    const sway = pose.sway * 0.4;
+    const sway = pose.sway * 0.5;
     const hipY = -27 - bob;
     const hipX = lean * 0.3;
     const bodyCy = -41 - bob;
@@ -5070,38 +4749,69 @@
     }
   }
 
-  function drawCitizen(ctx, x, y, look, t) {
-    const s = 0.82;
+  function drawCitizen(ctx, x, y, look, t, opts) {
+    opts = opts || {};
+    const localH = 62; // feet→crown in citizen local units
+    const s = opts.scale != null ? opts.scale : (STANDING_HEIGHT / localH);
+    const moving = !!opts.moving;
+    const pose = goWalkPose(moving, false, t || 0);
+    const bob = pose.bob;
+    const sway = pose.sway;
     ctx.save();
-    ctx.translate(x, y);
+    ctx.translate(x + sway * 0.2, y);
     ctx.scale(s, s);
     const skin = '#d4a882';
     ctx.fillStyle = 'rgba(0,0,0,0.32)';
     ctx.beginPath();
     ctx.ellipse(0, 0, 11, 3.5, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Soft neon rim (magenta/cyan) — less flat South-Park block
+    // Soft neon rim (magenta/cyan)
     ctx.strokeStyle = 'rgba(255,60,200,0.22)';
     ctx.lineWidth = 2.2;
     ctx.beginPath();
-    ctx.moveTo(-11, -42);
-    ctx.quadraticCurveTo(-13, -28, -10, -8);
+    ctx.moveTo(-11, -42 - bob);
+    ctx.quadraticCurveTo(-13, -28 - bob, -10, -8);
     ctx.stroke();
     ctx.strokeStyle = 'rgba(60,200,255,0.18)';
     ctx.beginPath();
-    ctx.moveTo(11, -42);
-    ctx.quadraticCurveTo(13, -28, 10, -8);
+    ctx.moveTo(11, -42 - bob);
+    ctx.quadraticCurveTo(13, -28 - bob, 10, -8);
     ctx.stroke();
+    // Legs with slight walk swing
     const pantG = ctx.createLinearGradient(-8, -22, 8, -4);
     pantG.addColorStop(0, '#2a2a36');
     pantG.addColorStop(0.5, '#16161e');
     pantG.addColorStop(1, '#0a0a10');
     ctx.fillStyle = pantG;
-    ctx.fillRect(-8, -22, 7, 18);
-    ctx.fillRect(1, -22, 7, 18);
+    const legSwing = pose.nThigh * 10;
+    ctx.save();
+    ctx.translate(-4.5, -22 - bob * 0.3);
+    ctx.rotate(pose.fThigh * 0.5);
+    ctx.fillRect(-3.5, 0, 7, 18);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(4.5, -22 - bob * 0.3);
+    ctx.rotate(pose.nThigh * 0.5);
+    ctx.fillRect(-3.5, 0, 7, 18);
+    ctx.restore();
     ctx.fillStyle = '#0e0e14';
-    ctx.fillRect(-9, -6, 8, 6);
-    ctx.fillRect(1, -6, 8, 6);
+    ctx.fillRect(-9 + legSwing * 0.15, -6, 8, 6);
+    ctx.fillRect(1 - legSwing * 0.15, -6, 8, 6);
+
+    // Upper body bob + slight opposite arm swing while walking
+    ctx.translate(0, -bob);
+    ctx.save();
+    ctx.translate(-12, -36);
+    ctx.rotate(pose.fArm * 0.55);
+    ctx.fillStyle = skin;
+    ctx.fillRect(-2, 0, 4, 14);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(12, -36);
+    ctx.rotate(pose.nArm * 0.55);
+    ctx.fillStyle = skin;
+    ctx.fillRect(-2, 0, 4, 14);
+    ctx.restore();
 
     function head() {
       const hg = ctx.createRadialGradient(-2, -56, 1, 0, -54, 9);
@@ -5943,11 +5653,11 @@
       ctx.beginPath();
       ctx.ellipse(x, y - 2, 16, 5, 0, 0, Math.PI * 2);
       ctx.stroke();
-      drawCitizen(ctx, x, y, tg.kind.look || 'denim', t);
+      drawCitizen(ctx, x, y, tg.kind.look || 'denim', t + (tg.wobble || 0) * 50, { moving: true });
       ctx.fillStyle = '#7dff3a';
       ctx.font = 'bold 8px Segoe UI, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(tg.kind.label, x, y - 56);
+      ctx.fillText(tg.kind.label, x, y - STANDING_HEIGHT - 8);
     } else {
       // red warning = hazard
       ctx.strokeStyle = 'rgba(255,80,60,0.75)';
@@ -7716,6 +7426,8 @@
     CAMINO_HALF_W,
     SHED_WINDOW_X,
     CHAR_SCALE,
+    STANDING_HEIGHT,
+    SEATED_HEIGHT,
     drawCassetteProp,
     drawStereo,
     drawElCamino,
