@@ -5,7 +5,8 @@
     if (!PHOTOS[k]) return;
     var img = new Image();
     img._ready = false;
-    img.onload = function () { img._ready = true; };
+    img.onerror = function () { img._failed = true; };
+    img.onload = function () { img._ready = !!(img.naturalWidth); };
     img.src = PHOTOS[k];
     IMGS[k] = img;
   });
@@ -18,16 +19,17 @@
     if (!ready(key)) return false;
     var img = IMGS[key];
     var seated = !!opts.seated;
-    var targetH = seated ? 190 : 300;
+    var sc = opts.scale || 1;
+    var targetH = (seated ? 190 : 260) * sc;
     var aspect = img.naturalWidth / Math.max(1, img.naturalHeight);
     var drawH = targetH;
     var drawW = drawH * aspect;
     var f = facing >= 0 ? 1 : -1;
     var bob = moving ? Math.sin((t || 0) * 0.012) * 3.5 : 0;
     ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.30)";
+    ctx.fillStyle = "rgba(0,0,0,0.28)";
     ctx.beginPath();
-    ctx.ellipse(x + 2, y + 2, Math.max(12, drawW * 0.22), 5, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + 2, y + 2, Math.max(10, drawW * 0.22), 5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.translate(x, y - bob);
     ctx.scale(f, 1);
@@ -37,12 +39,19 @@
   }
   function wrap() {
     var W = global.MothershipWorld;
-    if (!W) return;
+    if (!W || W._photoSpritesWrapped) return;
+    W._photoSpritesWrapped = true;
+    var origZ = W.drawZakk;
+    var origT = W.drawTayler;
     W.drawZakk = function (ctx, x, y, facing, moving, t, opts) {
-      drawCutout(ctx, "zakk", x, y, facing, moving, t, opts || {});
+      if (!drawCutout(ctx, "zakk", x, y, facing, moving, t, opts || {})) {
+        if (origZ) origZ(ctx, x, y, facing, moving, t, opts);
+      }
     };
     W.drawTayler = function (ctx, x, y, facing, moving, t, opts) {
-      drawCutout(ctx, "tayler", x, y, facing, moving, t, opts || {});
+      if (!drawCutout(ctx, "tayler", x, y, facing, moving, t, opts || {})) {
+        if (origT) origT(ctx, x, y, facing, moving, t, opts);
+      }
     };
   }
   wrap();
