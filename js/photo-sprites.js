@@ -1,113 +1,65 @@
 (function (global) {
-  function walkSwing(moving, t, side) {
-    if (!moving) return 0;
-    return Math.sin((t || 0) * 0.014) * 10 * side;
+  var PHOTOS = global.MothershipCharPhotos || {};
+  var IMGS = {};
+  ["zakk","tayler"].forEach(function (k) {
+    if (!PHOTOS[k]) return;
+    var img = new Image();
+    img._ready = false;
+    img.onload = function () { img._ready = true; };
+    img.src = PHOTOS[k];
+    IMGS[k] = img;
+  });
+  function ready(k) {
+    var img = IMGS[k];
+    return !!(img && img._ready && img.naturalWidth);
   }
-  function goAvatar(ctx, x, y, facing, moving, t, look) {
-    var seated = !!(look.seated);
+  function paperCutout(ctx, key, x, y, facing, moving, t, opts) {
+    opts = opts || {};
+    if (!ready(key)) return false;
+    var img = IMGS[key];
+    var seated = !!opts.seated;
+    var targetH = seated ? 170 : 250;
+    var aspect = img.naturalWidth / Math.max(1, img.naturalHeight);
+    var drawH = targetH;
+    var drawW = drawH * aspect;
+    if (drawW > 140) { drawW = 140; drawH = drawW / aspect; }
     var f = facing >= 0 ? 1 : -1;
-    var scale = seated ? 1.35 : 1.72;
-    var bob = moving ? Math.abs(Math.sin((t || 0) * 0.014)) * 3 : 0;
+    var bob = moving ? Math.sin((t || 0) * 0.012) * 3.5 : 0;
     ctx.save();
-    ctx.translate(x, y - bob);
-    ctx.scale(f * scale, scale);
-    ctx.fillStyle = 'rgba(0,0,0,0.28)';
-    ctx.beginPath(); ctx.ellipse(0, 2, 14, 4.5, 0, 0, Math.PI * 2); ctx.fill();
-    var skin = look.skin || '#e0b898';
-    var skinD = look.skinD || '#c49270';
-    var swing = walkSwing(moving, t, 1);
-    var swingB = walkSwing(moving, t, -1);
-    if (!seated) {
-      ctx.save(); ctx.translate(-6, 0); ctx.rotate(swing * 0.012);
-      ctx.fillStyle = look.shoe || '#1a1a1a'; ctx.fillRect(-5, -6, 11, 8); ctx.fillStyle = '#eee'; ctx.fillRect(-5, 0, 11, 3);
-      ctx.fillStyle = look.pant || '#1c1c24'; ctx.fillRect(-4, -28, 9, 24);
-      ctx.restore();
-      ctx.save(); ctx.translate(6, 0); ctx.rotate(swingB * 0.012);
-      ctx.fillStyle = look.shoe || '#1a1a1a'; ctx.fillRect(-5, -6, 11, 8); ctx.fillStyle = '#eee'; ctx.fillRect(-5, 0, 11, 3);
-      ctx.fillStyle = look.pant || '#1c1c24'; ctx.fillRect(-4, -28, 9, 24);
-      ctx.restore();
-    } else {
-      ctx.fillStyle = look.pant || '#1c1c24'; ctx.fillRect(-14, -16, 12, 10); ctx.fillRect(2, -16, 12, 10);
-    }
-    ctx.fillStyle = look.shirt || '#222';
+    ctx.fillStyle = "rgba(0,0,0,0.32)";
     ctx.beginPath();
-    ctx.moveTo(-13, seated ? -22 : -30);
-    ctx.lineTo(13, seated ? -22 : -30);
-    ctx.lineTo(11, seated ? -8 : -8);
-    ctx.lineTo(-11, seated ? -8 : -8);
-    ctx.closePath(); ctx.fill();
-    if (look.plaid) {
-      ctx.strokeStyle = 'rgba(20,0,10,0.45)'; ctx.lineWidth = 1.2;
-      for (var i = -12; i < 12; i += 4) { ctx.beginPath(); ctx.moveTo(i, seated ? -30 : -30); ctx.lineTo(i, seated ? -8 : -8); ctx.stroke(); }
-    }
-    if (look.flowers) {
-      ctx.fillStyle = '#e8e4dc';
-      for (var n = 0; n < 5; n++) { ctx.beginPath(); ctx.arc(-6 + (n % 3) * 6, -24 + Math.floor(n / 3) * 8, 2.1, 0, Math.PI * 2); ctx.fill(); }
-    }
-    ctx.fillStyle = look.shirt2 || look.shirt || '#111';
-    ctx.fillRect(-6, seated ? -28 : -36, 12, seated ? 8 : 8);
-    ctx.save(); ctx.translate(-15, seated ? -20 : -28); ctx.rotate(swingB * 0.01);
-    ctx.fillStyle = skin; ctx.fillRect(-3, 0, 6, 20); ctx.beginPath(); ctx.arc(0, 22, 3.2, 0, Math.PI * 2); ctx.fill();
+    ctx.ellipse(x + 6, y + 4, drawW * 0.32, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.translate(x, y - bob);
+    ctx.scale(f, 1);
+    ctx.fillStyle = "#f6f0e6";
+    ctx.fillRect(-drawW / 2 - 6, -drawH - 6, drawW + 12, drawH + 14);
+    ctx.strokeStyle = "rgba(30,10,40,0.4)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-drawW / 2 - 6, -drawH - 6, drawW + 12, drawH + 14);
+    ctx.drawImage(img, -drawW / 2, -drawH, drawW, drawH);
     ctx.restore();
-    ctx.save(); ctx.translate(15, seated ? -20 : -28); ctx.rotate(swing * 0.01);
-    ctx.fillStyle = skin; ctx.fillRect(-3, 0, 6, 20); ctx.beginPath(); ctx.arc(0, 22, 3.2, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-    ctx.fillStyle = skin;
-    ctx.beginPath(); ctx.ellipse(0, -48, 13, 15, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = skinD; ctx.beginPath(); ctx.ellipse(0, -42, 8, 5, 0, 0, Math.PI); ctx.fill();
-    ctx.fillStyle = '#1a1a1a';
-    ctx.beginPath(); ctx.ellipse(-5, -50, 1.6, 2.2, 0, 0, Math.PI * 2); ctx.ellipse(5, -50, 1.6, 2.2, 0, 0, Math.PI * 2); ctx.fill();
-    if (look.shades) {
-      ctx.fillStyle = '#111'; ctx.fillRect(-9, -53, 18, 5); ctx.fillRect(-2, -52, 4, 3);
+    if (!opts.noLabel) {
+      ctx.fillStyle = "#f4c6ff";
+      ctx.font = "bold 11px Segoe UI, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(key === "zakk" ? "ZAKK" : "TAYLER", x, y + 18);
+      ctx.textAlign = "left";
     }
-    if (look.mustache) {
-      ctx.fillStyle = '#4a2a18'; ctx.fillRect(-6, -45, 12, 3);
-    }
-    if (look.beard) {
-      ctx.fillStyle = '#5a3418'; ctx.beginPath(); ctx.ellipse(0, -38, 8, 6, 0, 0, Math.PI); ctx.fill();
-    }
-    ctx.fillStyle = look.hair || '#3a2418';
-    ctx.beginPath(); ctx.ellipse(0, -58, 14, 8, 0, Math.PI, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(-12, -50, 4, 8, 0.2, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(12, -50, 4, 8, -0.2, 0, Math.PI * 2); ctx.fill();
-    if (look.flatCap) {
-      ctx.fillStyle = '#1a1a1a';
-      ctx.beginPath(); ctx.ellipse(0, -62, 15, 6, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillRect(-4, -64, 20, 4);
-    }
-    if (look.backCap) {
-      ctx.fillStyle = look.cap || '#6a2030';
-      ctx.beginPath(); ctx.ellipse(0, -62, 14, 7, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillRect(-18, -62, 10, 5);
-    }
-    ctx.restore();
-    if (!look.noLabel && look.name) {
-      ctx.fillStyle = '#ff9ae0'; ctx.font = 'bold 11px Segoe UI, sans-serif';
-      ctx.textAlign = 'center'; ctx.fillText(look.name, x, y + 16); ctx.textAlign = 'left';
-    }
+    return true;
   }
-  var ZAKK = { name: 'ZAKK', shirt: '#1a1a1a', shirt2: '#111', pant: '#1c1c24', shoe: '#111', hair: '#2a1a12', flatCap: true, mustache: true, skin: '#e0b898' };
-  var TAYLER = { name: 'TAYLER', shirt: '#7a2840', pant: '#2a3a58', shoe: '#5a3020', hair: '#3a2014', backCap: true, cap: '#6a2030', plaid: true, skin: '#e8c4a0' };
   function wrap() {
     var W = global.MothershipWorld;
     if (!W) return;
     W.drawZakk = function (ctx, x, y, facing, moving, t, opts) {
-      opts = opts || {};
-      var look = {};
-      for (var k in ZAKK) look[k] = ZAKK[k];
-      look.seated = !!opts.seated; look.noLabel = !!opts.noLabel;
-      goAvatar(ctx, x, y, facing, moving, t, look);
+      paperCutout(ctx, "zakk", x, y, facing, moving, t, opts || {});
     };
     W.drawTayler = function (ctx, x, y, facing, moving, t, opts) {
-      opts = opts || {};
-      var look = {};
-      for (var k in TAYLER) look[k] = TAYLER[k];
-      look.seated = !!opts.seated; look.noLabel = !!opts.noLabel;
-      goAvatar(ctx, x, y, facing, moving, t, look);
+      paperCutout(ctx, "tayler", x, y, facing, moving, t, opts || {});
     };
   }
   wrap();
-  document.addEventListener('DOMContentLoaded', wrap);
+  document.addEventListener("DOMContentLoaded", wrap);
   setTimeout(wrap, 0);
-  setTimeout(wrap, 300);
+  setTimeout(wrap, 400);
 })(window);
