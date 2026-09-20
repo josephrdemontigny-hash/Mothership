@@ -241,21 +241,34 @@
 
   // ——— Sky / mountains: misty layered silhouettes (user haze ref) ———
   function drawSky(ctx, w, h, t) {
-    // Pale mist sky — off-white to soft blue-grey
+    // Neon dusk sky — deep purple → magenta horizon (trading-card vibe)
     const gsky = ctx.createLinearGradient(0, 0, 0, h);
-    gsky.addColorStop(0, '#e8eef2');
-    gsky.addColorStop(0.45, '#d5dde4');
-    gsky.addColorStop(0.75, '#c5ced6');
-    gsky.addColorStop(1, '#b8c4cc');
+    gsky.addColorStop(0, '#1a0a38');
+    gsky.addColorStop(0.35, '#3a1858');
+    gsky.addColorStop(0.65, '#8a2868');
+    gsky.addColorStop(0.85, '#c85840');
+    gsky.addColorStop(1, '#e8a060');
     ctx.fillStyle = gsky;
     ctx.fillRect(0, 0, w, h);
 
-    // Soft bright fog glow upper mid
-    const fog = ctx.createRadialGradient(w * 0.45, h * 0.28, 10, w * 0.45, h * 0.35, w * 0.55);
-    fog.addColorStop(0, 'rgba(255,255,255,0.55)');
-    fog.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = fog;
+    // Magenta / cyan rim lamps
+    const mag = ctx.createRadialGradient(w * 0.15, h * 0.35, 6, w * 0.15, h * 0.4, w * 0.4);
+    mag.addColorStop(0, 'rgba(255,40,180,0.28)');
+    mag.addColorStop(1, 'rgba(255,40,180,0)');
+    ctx.fillStyle = mag;
+    ctx.fillRect(0, 0, w, h * 0.75);
+    const cyan = ctx.createRadialGradient(w * 0.82, h * 0.22, 6, w * 0.82, h * 0.28, w * 0.35);
+    cyan.addColorStop(0, 'rgba(60,200,255,0.22)');
+    cyan.addColorStop(1, 'rgba(60,200,255,0)');
+    ctx.fillStyle = cyan;
     ctx.fillRect(0, 0, w, h * 0.7);
+
+    // Warm horizon haze
+    const fog = ctx.createRadialGradient(w * 0.45, h * 0.55, 10, w * 0.45, h * 0.62, w * 0.5);
+    fog.addColorStop(0, 'rgba(255,180,90,0.35)');
+    fog.addColorStop(1, 'rgba(255,120,40,0)');
+    ctx.fillStyle = fog;
+    ctx.fillRect(0, h * 0.35, w, h * 0.5);
   }
 
   /**
@@ -4088,11 +4101,11 @@
       ctx.beginPath();
       ctx.rect(wx, wy, ww, wh);
       ctx.clip();
-      // misty sky matching drawSky
+      // dusk neon sky matching drawSky
       const skyG = ctx.createLinearGradient(0, wy, 0, wy + wh);
-      skyG.addColorStop(0, '#e8eef2');
-      skyG.addColorStop(0.5, '#d5dde4');
-      skyG.addColorStop(1, '#b8c4cc');
+      skyG.addColorStop(0, '#1a0a38');
+      skyG.addColorStop(0.45, '#6a2868');
+      skyG.addColorStop(1, '#e8a060');
       ctx.fillStyle = skyG;
       ctx.fillRect(wx, wy, ww, wh);
       // drifting mountains (aliens flying)
@@ -4372,15 +4385,31 @@
     // Same Cheam sunset skyline as fly mode
     drawFlySkylineBackdrop(ctx, w, h, groundY, camX);
 
-    // Yard grass in the foreground (skyline already painted to groundY)
-    ctx.fillStyle = '#3d7a38';
+    // Yard grass — dusk-lit with wet specular sheen
+    const grass = ctx.createLinearGradient(0, groundY, 0, h);
+    grass.addColorStop(0, '#2a5a38');
+    grass.addColorStop(0.45, '#1e4830');
+    grass.addColorStop(1, '#142820');
+    ctx.fillStyle = grass;
     ctx.fillRect(0, groundY, w, h - groundY);
-    ctx.fillStyle = '#2f6230';
+    ctx.fillStyle = '#1a3a28';
     for (let x = -((camX | 0) % 16); x < w; x += 16) {
       ctx.fillRect(x, groundY, 3, 8);
     }
-    // Soft dusk wash so grass matches sunset lighting
-    ctx.fillStyle = 'rgba(255,120,40,0.08)';
+    // Magenta/cyan wet streaks
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (let i = 0; i < 10; i++) {
+      const sx = ((i * 97 + ((camX | 0) * 0.3)) % (w + 30)) - 15;
+      const col = i % 2 ? 'rgba(255,60,200,0.12)' : 'rgba(60,200,255,0.1)';
+      const g = ctx.createLinearGradient(sx, groundY, sx, h);
+      g.addColorStop(0, col);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(sx, groundY, 2 + (i % 3), h - groundY);
+    }
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,100,60,0.1)';
     ctx.fillRect(0, groundY, w, h - groundY);
 
     // mom's house
@@ -5047,14 +5076,30 @@
     ctx.translate(x, y);
     ctx.scale(s, s);
     const skin = '#d4a882';
-    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.fillStyle = 'rgba(0,0,0,0.32)';
     ctx.beginPath();
     ctx.ellipse(0, 0, 11, 3.5, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#1a1a22';
+    // Soft neon rim (magenta/cyan) — less flat South-Park block
+    ctx.strokeStyle = 'rgba(255,60,200,0.22)';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(-11, -42);
+    ctx.quadraticCurveTo(-13, -28, -10, -8);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(60,200,255,0.18)';
+    ctx.beginPath();
+    ctx.moveTo(11, -42);
+    ctx.quadraticCurveTo(13, -28, 10, -8);
+    ctx.stroke();
+    const pantG = ctx.createLinearGradient(-8, -22, 8, -4);
+    pantG.addColorStop(0, '#2a2a36');
+    pantG.addColorStop(0.5, '#16161e');
+    pantG.addColorStop(1, '#0a0a10');
+    ctx.fillStyle = pantG;
     ctx.fillRect(-8, -22, 7, 18);
     ctx.fillRect(1, -22, 7, 18);
-    ctx.fillStyle = '#111';
+    ctx.fillStyle = '#0e0e14';
     ctx.fillRect(-9, -6, 8, 6);
     ctx.fillRect(1, -6, 8, 6);
 
@@ -5083,7 +5128,10 @@
     }
 
     if (look === 'blazer') {
-      ctx.fillStyle = '#8a5a32';
+      const blazerG = ctx.createLinearGradient(-11, -44, 11, -20);
+      blazerG.addColorStop(0, '#a07048');
+      blazerG.addColorStop(1, '#5a3820');
+      ctx.fillStyle = blazerG;
       ctx.fillRect(-11, -44, 22, 24);
       ctx.fillStyle = '#e8d8b8';
       ctx.fillRect(-4, -42, 8, 18);
@@ -5101,7 +5149,10 @@
       ctx.strokeRect(-6.2, -57, 5, 3.6);
       ctx.strokeRect(1.2, -57, 5, 3.6);
     } else if (look === 'graphic') {
-      ctx.fillStyle = '#121214';
+      const graphG = ctx.createLinearGradient(-10, -44, 10, -20);
+      graphG.addColorStop(0, '#2a2a32');
+      graphG.addColorStop(1, '#0a0a10');
+      ctx.fillStyle = graphG;
       ctx.fillRect(-10, -44, 20, 24);
       ctx.fillStyle = '#ff8ab8';
       ctx.beginPath();
@@ -5125,7 +5176,10 @@
       ctx.strokeRect(-6, -57, 5, 3.4);
       ctx.strokeRect(1, -57, 5, 3.4);
     } else if (look === 'denim') {
-      ctx.fillStyle = '#2a5a8a';
+      const denG = ctx.createLinearGradient(-11, -44, 11, -20);
+      denG.addColorStop(0, '#3a6a9a');
+      denG.addColorStop(1, '#1a3a5a');
+      ctx.fillStyle = denG;
       ctx.fillRect(-11, -44, 22, 24);
       ctx.fillStyle = '#f0f0f0';
       ctx.fillRect(-4, -40, 8, 14);
@@ -5973,14 +6027,21 @@
   function drawFlySkylineBackdrop(ctx, w, h, groundY, scrollX) {
     // —— Fiery sunset sky (match photo palette) ——
     const sky = ctx.createLinearGradient(0, 0, 0, groundY);
-    sky.addColorStop(0, '#3a1848');
-    sky.addColorStop(0.2, '#8a2848');
-    sky.addColorStop(0.42, '#d94a28');
-    sky.addColorStop(0.62, '#f07828');
-    sky.addColorStop(0.82, '#f8c060');
-    sky.addColorStop(1, '#fff0c0');
+    sky.addColorStop(0, '#140828');
+    sky.addColorStop(0.18, '#3a1858');
+    sky.addColorStop(0.38, '#a02858');
+    sky.addColorStop(0.55, '#d94a28');
+    sky.addColorStop(0.72, '#f07828');
+    sky.addColorStop(0.88, '#f8b050');
+    sky.addColorStop(1, '#ffe0a0');
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, w, groundY);
+    // Soft cyan rim in upper sky (vaporwave night)
+    const cyanSky = ctx.createRadialGradient(w * 0.78, groundY * 0.12, 4, w * 0.78, groundY * 0.18, w * 0.4);
+    cyanSky.addColorStop(0, 'rgba(60,200,255,0.18)');
+    cyanSky.addColorStop(1, 'rgba(60,200,255,0)');
+    ctx.fillStyle = cyanSky;
+    ctx.fillRect(0, 0, w, groundY * 0.5);
 
     // Horizontal streaked clouds
     for (let i = 0; i < 7; i++) {
@@ -6104,17 +6165,33 @@
     // Drawn sunset + Cheam silhouette (from user photo shape)
     drawFlySkylineBackdrop(ctx, w, h, groundY, scrollX);
 
-    // ground bands
-    ctx.fillStyle = '#5a9a3a';
+    // ground bands — dusk grass + wet Yale Rd specular
+    const gBand = ctx.createLinearGradient(0, groundY, 0, h);
+    gBand.addColorStop(0, '#2a5a3a');
+    gBand.addColorStop(1, '#142418');
+    ctx.fillStyle = gBand;
     ctx.fillRect(0, groundY, w, h - groundY);
-    ctx.fillStyle = '#8a8680';
+    ctx.fillStyle = '#5a5860';
     ctx.fillRect(0, groundY - 7, w, 7);
-    ctx.fillStyle = '#6a6a68';
+    ctx.fillStyle = '#3a3a42';
     ctx.fillRect(0, groundY - 1, w, 1);
-    // Yale Rd
-    ctx.fillStyle = '#4a4a4a';
+    // Yale Rd — wet asphalt
+    const road = ctx.createLinearGradient(0, groundY + 8, 0, groundY + 34);
+    road.addColorStop(0, '#2a2a34');
+    road.addColorStop(0.5, '#1a1a24');
+    road.addColorStop(1, '#12121a');
+    ctx.fillStyle = road;
     ctx.fillRect(0, groundY + 8, w, 26);
-    ctx.strokeStyle = '#e8e8a0';
+    // Neon wet streaks on road
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (let i = 0; i < 8; i++) {
+      const rx = ((i * 119 - scrollX * 0.4) % (w + 40)) - 20;
+      ctx.fillStyle = i % 2 ? 'rgba(255,50,200,0.14)' : 'rgba(50,200,255,0.12)';
+      ctx.fillRect(rx, groundY + 10, 2 + (i % 3), 20);
+    }
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(255,220,120,0.75)';
     ctx.lineWidth = 2;
     ctx.setLineDash([18, 14]);
     ctx.beginPath();
@@ -6304,17 +6381,33 @@
 
     drawFlySkylineBackdrop(ctx, w, h, groundY, scrollX);
 
-    // ground bands (match drawFlyScene)
-    ctx.fillStyle = '#5a9a3a';
+    // ground bands (match drawFlyScene) — wet Yale Rd
+    const gBand = ctx.createLinearGradient(0, groundY, 0, h);
+    gBand.addColorStop(0, '#2a5a3a');
+    gBand.addColorStop(1, '#142418');
+    ctx.fillStyle = gBand;
     ctx.fillRect(0, groundY, w, h - groundY);
-    ctx.fillStyle = '#8a8680';
+    ctx.fillStyle = '#5a5860';
     ctx.fillRect(0, groundY - 7, w, 7);
-    ctx.fillStyle = '#6a6a68';
+    ctx.fillStyle = '#3a3a42';
     ctx.fillRect(0, groundY - 1, w, 1);
-    // Yale Rd
-    ctx.fillStyle = '#4a4a4a';
+    // Yale Rd — wet asphalt
+    const road = ctx.createLinearGradient(0, groundY + 8, 0, groundY + 34);
+    road.addColorStop(0, '#2a2a34');
+    road.addColorStop(0.5, '#1a1a24');
+    road.addColorStop(1, '#12121a');
+    ctx.fillStyle = road;
     ctx.fillRect(0, groundY + 8, w, 26);
-    ctx.strokeStyle = '#e8e8a0';
+    // Neon wet streaks on road
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (let i = 0; i < 8; i++) {
+      const rx = ((i * 119 - scrollX * 0.4) % (w + 40)) - 20;
+      ctx.fillStyle = i % 2 ? 'rgba(255,50,200,0.14)' : 'rgba(50,200,255,0.12)';
+      ctx.fillRect(rx, groundY + 10, 2 + (i % 3), 20);
+    }
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(255,220,120,0.75)';
     ctx.lineWidth = 2;
     ctx.setLineDash([18, 14]);
     ctx.beginPath();
@@ -6378,7 +6471,10 @@
   function drawTitleBackdrop(ctx, w, h, t) {
     drawSky(ctx, w, h, t);
     drawMountains(ctx, w, h * 0.7, t * 0.02);
-    ctx.fillStyle = '#4a9a3a';
+    const titleGrass = ctx.createLinearGradient(0, h * 0.7, 0, h);
+    titleGrass.addColorStop(0, '#2a5a38');
+    titleGrass.addColorStop(1, '#142418');
+    ctx.fillStyle = titleGrass;
     ctx.fillRect(0, h * 0.7, w, h * 0.3);
     drawClayUFO(ctx, w / 2 + Math.sin(t * 0.001) * 40, 118 + Math.cos(t * 0.0007) * 12, 1.72, t, true, { showPilots: true, legExtend: 0 });
     // brothers on title
