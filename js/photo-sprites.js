@@ -26,26 +26,14 @@
     var f = facing >= 0 ? 1 : -1;
     var bob = moving ? Math.sin((t || 0) * 0.012) * 3.5 : 0;
     ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.32)";
+    ctx.fillStyle = "rgba(0,0,0,0.28)";
     ctx.beginPath();
-    ctx.ellipse(x + 6, y + 4, drawW * 0.32, 7, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + 4, y + 3, drawW * 0.28, 6, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.translate(x, y - bob);
     ctx.scale(f, 1);
-    ctx.fillStyle = "#f6f0e6";
-    ctx.fillRect(-drawW / 2 - 6, -drawH - 6, drawW + 12, drawH + 14);
-    ctx.strokeStyle = "rgba(30,10,40,0.4)";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(-drawW / 2 - 6, -drawH - 6, drawW + 12, drawH + 14);
     ctx.drawImage(img, -drawW / 2, -drawH, drawW, drawH);
     ctx.restore();
-    if (!opts.noLabel) {
-      ctx.fillStyle = "#f4c6ff";
-      ctx.font = "bold 11px Segoe UI, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(key === "zakk" ? "ZAKK" : "TAYLER", x, y + 18);
-      ctx.textAlign = "left";
-    }
     return true;
   }
   function wrap() {
