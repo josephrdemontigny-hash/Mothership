@@ -41,19 +41,45 @@
   }
   function drawKurtis(ctx, x, y, facing, pose) {
     ctx.save(); ctx.translate(x, y); ctx.scale(facing < 0 ? -1 : 1, 1);
-    ctx.fillStyle = '#2a1a14'; ctx.fillRect(-10, -38, 20, 28);
-    ctx.fillStyle = '#c4a06a'; ctx.fillRect(-9, -28, 18, 8);
-    ctx.fillStyle = '#1a1a1a'; ctx.fillRect(-8, -10, 7, 10); ctx.fillRect(2, -10, 7, 10);
-    ctx.fillStyle = '#e0b898'; ctx.beginPath(); ctx.arc(0, -48, 9, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#3a2418'; ctx.beginPath(); ctx.ellipse(0, -54, 10, 7, 0, Math.PI, 0); ctx.fill();
-    ctx.fillStyle = '#5a3020'; ctx.fillRect(-6, -44, 12, 3);
-    if (pose === 'piano') { ctx.fillStyle = '#e0b898'; ctx.fillRect(-18, -30, 8, 4); ctx.fillRect(10, -30, 8, 4); }
-    else {
-      ctx.strokeStyle = '#c44'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(14, -36); ctx.lineTo(14, -22); ctx.stroke();
-      ctx.fillStyle = '#8a1028'; ctx.beginPath(); ctx.moveTo(10, -36); ctx.lineTo(18, -36); ctx.lineTo(16, -28); ctx.lineTo(12, -28); ctx.closePath(); ctx.fill();
+    var bob = pose === 'piano' ? 1 : 0;
+    ctx.translate(0, bob);
+    ctx.fillStyle = '#1a1a22';
+    ctx.fillRect(-9, -18, 8, 20); ctx.fillRect(1, -18, 8, 20);
+    ctx.fillStyle = '#f4f4f4'; ctx.fillRect(-9, 0, 8, 3); ctx.fillRect(1, 0, 8, 3);
+    ctx.fillStyle = '#111'; ctx.fillRect(-9, 2, 8, 2); ctx.fillRect(1, 2, 8, 2);
+    ctx.fillStyle = '#1c1c24'; ctx.fillRect(-11, -42, 22, 26);
+    ctx.fillStyle = '#0a0a0a'; ctx.fillRect(-7, -40, 14, 18);
+    ctx.fillStyle = '#e8e4dc';
+    for (var i = 0; i < 8; i++) {
+      ctx.beginPath();
+      ctx.ellipse(-8 + (i % 4) * 5, -36 + Math.floor(i / 4) * 10, 2.2, 2.8, 0.3, 0, Math.PI * 2);
+      ctx.fill();
     }
-    ctx.fillStyle = '#f4e8c8'; ctx.font = 'bold 8px Segoe UI, sans-serif'; ctx.textAlign = 'center';
-    ctx.scale(facing < 0 ? -1 : 1, 1); ctx.fillText('KURTIS (NOT) HALL', 0, 12); ctx.restore();
+    ctx.fillStyle = '#d8b090';
+    ctx.fillRect(-13, -34, 5, 16); ctx.fillRect(8, -34, 5, 16);
+    if (pose === 'wine') {
+      ctx.strokeStyle = '#c8c8d0'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(14, -32); ctx.lineTo(14, -18); ctx.stroke();
+      ctx.fillStyle = '#7a1024';
+      ctx.beginPath(); ctx.moveTo(10, -34); ctx.lineTo(18, -34); ctx.lineTo(16, -26); ctx.lineTo(12, -26); ctx.closePath(); ctx.fill();
+    } else {
+      ctx.fillStyle = '#d8b090'; ctx.fillRect(-16, -28, 6, 4); ctx.fillRect(10, -28, 6, 4);
+    }
+    ctx.fillStyle = '#d8b090';
+    ctx.beginPath(); ctx.ellipse(0, -50, 9, 10, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#6a3a22';
+    ctx.beginPath(); ctx.ellipse(0, -56, 11, 8, 0, Math.PI, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-9, -50, 4, 8, 0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(9, -50, 4, 8, -0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#5a2e18';
+    ctx.beginPath(); ctx.ellipse(0, -44, 7, 5, 0, 0, Math.PI); ctx.fill();
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(-8, -52, 16, 5);
+    ctx.fillStyle = '#3a3a40'; ctx.fillRect(-7, -51, 6, 3); ctx.fillRect(1, -51, 6, 3);
+    ctx.fillStyle = '#f4e8c8'; ctx.font = 'bold 7px Segoe UI, sans-serif'; ctx.textAlign = 'center';
+    ctx.scale(facing < 0 ? -1 : 1, 1);
+    ctx.fillText('KURTIS (NOT) HALL', 0, 14);
+    ctx.restore();
   }
   function drawTaylorSwift(ctx, x, y, t) {
     ctx.save(); ctx.translate(x, y);
