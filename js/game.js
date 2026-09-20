@@ -1079,15 +1079,24 @@
     return lastPlayCount;
   }
 
+  /** Update amber-dial status text without wiping dial chrome / STEREO lamp. */
+  function setStereoLcd(text) {
+    if (!el.stereoDisplay) return;
+    const lcd = el.stereoDisplay.querySelector('.stereo-lcd');
+    if (lcd) {
+      lcd.textContent = text;
+      return;
+    }
+    el.stereoDisplay.innerHTML =
+      '<span class="stereo-eq" aria-hidden="true"></span><span class="stereo-lcd">' + text + '</span>';
+  }
+
   function resetStereoTitleUI() {
     titleInserting = false;
     if (el.carStereo) {
       el.carStereo.classList.remove('inserting', 'inserted', 'playing');
     }
-    if (el.stereoDisplay) {
-      el.stereoDisplay.innerHTML =
-        '<span class="stereo-eq" aria-hidden="true"></span><span class="stereo-lcd">INSERT TAPE</span>';
-    }
+    setStereoLcd('INSERT TAPE');
     if (el.slotHint) el.slotHint.classList.remove('hidden');
   }
 
@@ -1096,10 +1105,7 @@
       el.carStereo.classList.add('inserted', 'playing');
       el.carStereo.classList.remove('inserting');
     }
-    if (el.stereoDisplay) {
-      el.stereoDisplay.innerHTML =
-        '<span class="stereo-eq" aria-hidden="true"></span><span class="stereo-lcd">▶ MOTHERSHIP</span>';
-    }
+    setStereoLcd('▶ MOTHERSHIP');
   }
 
   /**
@@ -1120,10 +1126,7 @@
       el.carStereo.classList.add('inserting');
       el.carStereo.classList.remove('inserted', 'playing');
     }
-    if (el.stereoDisplay) {
-      el.stereoDisplay.innerHTML =
-        '<span class="stereo-eq" aria-hidden="true"></span><span class="stereo-lcd">LOADING…</span>';
-    }
+    setStereoLcd('LOADING…');
     setTimeout(function () {
       setStereoPlayingUI();
       beginRun(true);
@@ -2012,9 +2015,14 @@
       'Pad from beyond Yale Road',
     ],
     guitar: [
-      'Strat coughs mothership feedback',
+      'Cherry SG — blue eye stares back',
       'Power chord, Paramount parking lot',
       'Amp says yes — yellow van approved',
+    ],
+    eko: [
+      'Eko teardrop sighs Bigsby vibrato',
+      'Cream body, Chilliwack cream dream',
+      'Three slanted singles — mothership approved',
     ],
   };
 
@@ -2058,9 +2066,9 @@
     W.burst(particles, inst.x - camX, GROUND - 40, '#00d8ff', 8);
     // Prefer dedicated tone; fall back creatively
     if (Audio && Audio.play) {
-      Audio.play(inst.id);
+      Audio.play(inst.id === 'eko' ? 'guitar' : inst.id);
       if (inst.id === 'drums') setTimeout(() => Audio.play('power'), 40);
-      else if (inst.id === 'guitar') setTimeout(() => Audio.play('score'), 50);
+      else if (inst.id === 'guitar' || inst.id === 'eko') setTimeout(() => Audio.play('score'), 50);
       else if (inst.id === 'keys') setTimeout(() => Audio.play('ui'), 30);
       else if (inst.id === 'bass') setTimeout(() => Audio.play('smoke'), 60);
     }
@@ -2808,7 +2816,7 @@
     clockTower: 'pull the chime rope',
     museum: 'read the case label',
     royalHotel: 'ring for room service',
-    theatre: 'take the stage mic',
+    theatre: 'grab buttery cosmic popcorn',
     fireHall: 'slide the brass pole',
     vedderBridge: 'scatter crumbs over the rail',
   };
@@ -3088,10 +3096,12 @@
       flyResume.moonJuice = Math.max(flyResume.moonJuice | 0, 240);
       flyResume.beamWide = true;
       score += 100;
-      showFlash("Paramount '49 — one bar for the mothership.", 130);
+      showFlash("Buttery cosmic popcorn — Paramount '49 still pops.", 130);
       Audio.play('power');
       W.burst(particles, hx, hy, '#88ffcc', 18);
+      W.burst(particles, hx - 90, hy - 10, '#ffe08a', 12);
       W.addFloater(floaters, hx, hy - 30, 'MOON JUICE', '#88ffcc');
+      W.addFloater(floaters, hx - 90, hy - 48, '🍿 BUTTERY', '#ffe08a');
     } else if (kind === 'fireHall') {
       if ((flyResume.lives | 0) < (flyResume.maxLives | 0)) {
         flyResume.lives = (flyResume.lives | 0) + 1;

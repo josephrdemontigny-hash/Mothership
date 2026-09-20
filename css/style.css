@@ -423,7 +423,7 @@ html, body {
   letter-spacing: 0.04em;
 }
 
-/* ——— Restomod dash stereo title ——— */
+/* ——— Oxblood dash cassette player (title) ——— */
 .stereo-wrap {
   position: relative;
   display: flex;
@@ -435,21 +435,72 @@ html, body {
   z-index: 1;
 }
 
-/* Glossy orange-brown dashboard surround */
+/* Maroon / oxblood vinyl dash surround */
 .dash-panel {
   position: absolute;
-  inset: -28px -36px -40px;
+  inset: -36px -40px -48px;
   z-index: -1;
-  border-radius: 22px;
+  border-radius: 18px;
   background:
-    radial-gradient(ellipse at 30% 18%, rgba(255, 210, 150, 0.28) 0%, transparent 42%),
-    linear-gradient(165deg, #c47a48 0%, #a5532d 28%, #8a3f22 62%, #6e3018 100%);
+    radial-gradient(ellipse at 28% 12%, rgba(180, 90, 90, 0.35) 0%, transparent 45%),
+    radial-gradient(ellipse at 72% 80%, rgba(40, 8, 12, 0.55) 0%, transparent 50%),
+    linear-gradient(165deg, #6a2430 0%, #4a1520 32%, #3a1018 62%, #2a0c12 100%);
   box-shadow:
-    0 22px 48px rgba(0, 0, 0, 0.55),
-    inset 0 2px 1px rgba(255, 220, 180, 0.35),
-    inset 0 -10px 24px rgba(60, 18, 6, 0.45),
-    inset 0 0 0 1px rgba(90, 40, 18, 0.6);
+    0 22px 48px rgba(0, 0, 0, 0.6),
+    inset 0 2px 1px rgba(180, 100, 100, 0.22),
+    inset 0 -12px 28px rgba(20, 4, 8, 0.55),
+    inset 0 0 0 1px rgba(90, 30, 40, 0.7);
   pointer-events: none;
+  overflow: hidden;
+}
+
+/* AC vent above the head unit */
+.dash-vent {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  top: 10px;
+  height: 22px;
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      #1a0a10 0 3px,
+      #2a1218 3px 5px
+    );
+  border: 1px solid rgba(60, 20, 28, 0.9);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.65),
+    0 1px 0 rgba(120, 60, 70, 0.25);
+}
+
+/* Dark woodgrain strip framing the stereo */
+.dash-wood {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 40px;
+  height: 118px;
+  border-radius: 4px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(60, 30, 14, 0.35) 0 2px,
+      transparent 2px 5px
+    ),
+    linear-gradient(
+      180deg,
+      #5a3a22 0%,
+      #3e2818 28%,
+      #2a1a10 55%,
+      #4a301c 78%,
+      #342014 100%
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(160, 110, 60, 0.35),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(20, 10, 6, 0.7);
+  opacity: 0.95;
 }
 
 .car-stereo {
@@ -460,123 +511,260 @@ html, body {
   background: transparent;
   border: none;
   box-shadow: none;
+  margin-top: 28px;
 }
 
 .stereo-face {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 12px 14px;
-  border-radius: 10px;
-  /* Black leather-grain faceplate */
-  background-color: #121214;
-  background-image:
-    radial-gradient(circle at 20% 30%, rgba(255,255,255,0.04) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 70% 60%, rgba(255,255,255,0.03) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 40% 80%, rgba(0,0,0,0.4) 0 1.2px, transparent 1.8px),
-    linear-gradient(180deg, #1e1e22 0%, #101012 48%, #0a0a0c 100%);
-  background-size: 5px 5px, 7px 7px, 6px 6px, 100% 100%;
-  border: 1px solid #2a2a2e;
+  gap: 12px;
+  padding: 12px 14px 14px;
+  border-radius: 8px;
+  /* Recessed black head-unit face inside chrome */
+  background:
+    linear-gradient(180deg, #1a1216 0%, #0c0a0c 50%, #080608 100%);
+  border: 1px solid #2a1a1e;
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.85),
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    inset 0 -2px 8px rgba(0, 0, 0, 0.55),
-    0 8px 22px rgba(0, 0, 0, 0.4);
+    0 0 0 2px rgba(200, 200, 210, 0.55),
+    0 0 0 3px rgba(40, 20, 24, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -3px 10px rgba(0, 0, 0, 0.65),
+    0 10px 24px rgba(0, 0, 0, 0.45);
 }
 
-/* ——— Chrome knobs with wing tabs ——— */
+/* ——— Chrome dual-ring knobs ——— */
 .stereo-knob {
   position: relative;
-  width: 58px;
+  width: 56px;
   flex-shrink: 0;
   aspect-ratio: 1;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 32% 28%, #f4f4f6 0%, #b8b8c0 28%, #6e6e76 58%, #2a2a30 100%);
-  border: 2px solid #d8d8de;
-  box-shadow:
-    0 3px 6px rgba(0, 0, 0, 0.55),
-    inset 0 2px 3px rgba(255, 255, 255, 0.55),
-    inset 0 -3px 5px rgba(0, 0, 0, 0.45);
+  background: transparent;
 }
 
-.knob-face {
+.knob-ring {
   position: absolute;
-  inset: 9px;
+  inset: 0;
   border-radius: 50%;
   background:
-    repeating-conic-gradient(from 0deg, #c8c8d0 0deg 4deg, #8a8a94 4deg 8deg);
+    repeating-conic-gradient(
+      from 0deg,
+      #e8e8ee 0deg 3deg,
+      #9a9aa4 3deg 6deg,
+      #d0d0d8 6deg 9deg,
+      #6a6a74 9deg 12deg
+    );
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.25),
-    inset 0 0 8px rgba(0, 0, 0, 0.35);
-  opacity: 0.85;
+    0 3px 6px rgba(0, 0, 0, 0.55),
+    inset 0 2px 2px rgba(255, 255, 255, 0.55),
+    inset 0 -3px 5px rgba(0, 0, 0, 0.4);
+  border: 1px solid #f0f0f4;
 }
 
-.knob-wing {
+.knob-cap {
   position: absolute;
-  top: 50%;
-  width: 10px;
-  height: 14px;
-  margin-top: -7px;
-  border-radius: 2px;
-  background: linear-gradient(180deg, #e8e8ee 0%, #9a9aa4 45%, #5a5a64 100%);
+  inset: 11px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 28%, #ffffff 0%, #d8d8e0 32%, #8a8a94 68%, #3a3a42 100%);
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  z-index: 2;
+    inset 0 2px 3px rgba(255, 255, 255, 0.7),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.35);
 }
-.knob-wing-l { left: -5px; }
-.knob-wing-r { right: -5px; }
 
 .knob-mark {
   position: absolute;
   left: 50%;
-  top: 11px;
-  width: 3px;
-  height: 11px;
-  margin-left: -1.5px;
-  background: linear-gradient(180deg, #fff, #a0a0a8);
+  top: 14px;
+  width: 2.5px;
+  height: 10px;
+  margin-left: -1.25px;
+  background: linear-gradient(180deg, #fff, #888);
   border-radius: 1px;
   box-shadow: 0 0 2px #000;
   z-index: 3;
 }
-.stereo-knob-l .knob-mark { transform: rotate(-35deg); transform-origin: center 18px; }
-.stereo-knob-r .knob-mark { transform: rotate(48deg); transform-origin: center 18px; }
+.stereo-knob-l .knob-mark { transform: rotate(-38deg); transform-origin: center 16px; }
+.stereo-knob-r .knob-mark { transform: rotate(42deg); transform-origin: center 16px; }
 
-/* ——— Thick chrome bezel around slot + LCD + buttons ——— */
+/* Legacy wing/face bits (inert if markup returns) */
+.knob-wing,
+.knob-face { display: none; }
+
+/* Thin chrome bezel around dial + slot + presets */
 .stereo-chrome {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  padding: 10px 10px 9px;
-  border-radius: 12px;
+  gap: 6px;
+  padding: 8px 9px 8px;
+  border-radius: 6px;
   background:
     linear-gradient(
       145deg,
-      #f5f5f7 0%,
-      #cfcfd6 14%,
-      #8e8e98 32%,
-      #ececf0 48%,
-      #6a6a74 68%,
-      #d8d8de 84%,
+      #f2f2f6 0%,
+      #c8c8d0 16%,
+      #8a8a94 34%,
+      #ececf0 50%,
+      #6a6a74 70%,
+      #d4d4dc 86%,
       #9a9aa4 100%
     );
   border: 1px solid #f8f8fa;
   box-shadow:
     0 2px 4px rgba(0, 0, 0, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.35),
-    inset 2px 0 3px rgba(255, 255, 255, 0.25),
-    inset -2px 0 3px rgba(0, 0, 0, 0.2);
+    inset 0 -2px 4px rgba(0, 0, 0, 0.3);
 }
 
-/* Slim cassette slot under top chrome lip */
+/* Amber analog dial + needle */
+.stereo-display {
+  position: relative;
+  background:
+    linear-gradient(180deg, #c8a030 0%, #a87818 40%, #8a6010 100%);
+  border: 2px solid #2a2010;
+  border-radius: 3px;
+  padding: 6px 10px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow:
+    inset 0 0 18px rgba(255, 200, 60, 0.45),
+    inset 0 2px 4px rgba(0, 0, 0, 0.35),
+    0 1px 0 rgba(255, 255, 255, 0.25);
+  min-height: 44px;
+  overflow: hidden;
+}
+
+.dial-glass {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dial-band {
+  position: absolute;
+  left: 8px;
+  top: 4px;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: rgba(40, 24, 8, 0.7);
+}
+
+.dial-ticks {
+  position: absolute;
+  left: 10%;
+  right: 22%;
+  top: 14px;
+  height: 16px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(40, 24, 8, 0.55) 0 1px,
+      transparent 1px 9px
+    ),
+    linear-gradient(
+      180deg,
+      transparent 0 6px,
+      rgba(40, 24, 8, 0.35) 6px 7px,
+      transparent 7px
+    );
+  opacity: 0.85;
+}
+
+.dial-needle {
+  position: absolute;
+  left: 42%;
+  top: 8px;
+  bottom: 10px;
+  width: 2px;
+  margin-left: -1px;
+  background: linear-gradient(180deg, #2a1008, #8a2010);
+  border-radius: 1px;
+  box-shadow: 0 0 3px rgba(120, 20, 10, 0.5);
+  transform-origin: 50% 100%;
+}
+
+.car-stereo.playing .dial-needle {
+  animation: needleWobble 2.4s ease-in-out infinite;
+}
+@keyframes needleWobble {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(3deg); }
+}
+
+/* Glowing red STEREO lamp */
+.stereo-indicator {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: rgba(80, 10, 10, 0.45);
+  text-shadow: none;
+  transition: color 0.2s, text-shadow 0.2s;
+}
+.car-stereo.playing .stereo-indicator,
+.car-stereo.inserted .stereo-indicator {
+  color: #ff2a2a;
+  text-shadow:
+    0 0 4px rgba(255, 40, 40, 0.95),
+    0 0 10px rgba(255, 20, 20, 0.75),
+    0 0 18px rgba(255, 0, 0, 0.45);
+}
+
+.stereo-lcd {
+  position: relative;
+  z-index: 1;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: rgba(40, 20, 8, 0.82);
+  text-shadow: 0 1px 0 rgba(255, 220, 120, 0.35);
+  flex: 1;
+  text-align: center;
+  text-transform: uppercase;
+  margin-top: 14px;
+}
+.stereo-eq {
+  position: relative;
+  z-index: 1;
+  width: 18px;
+  height: 10px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(60, 30, 10, 0.55) 0 2px,
+      transparent 2px 4px
+    );
+  opacity: 0.25;
+  flex-shrink: 0;
+  transform-origin: bottom center;
+  margin-top: 14px;
+}
+.car-stereo.playing .stereo-eq {
+  opacity: 0.7;
+  animation: eqPulse 0.45s ease-in-out infinite alternate;
+}
+@keyframes eqPulse {
+  from { transform: scaleY(0.55); }
+  to { transform: scaleY(1.15); }
+}
+
+/* Cassette slot under amber dial */
 .cassette-slot {
   position: relative;
   height: 18px;
-  border-radius: 3px;
+  border-radius: 2px;
   background:
     linear-gradient(180deg, #050506 0%, #121216 45%, #030304 100%);
   border: 1px solid #3a3a42;
@@ -614,12 +802,11 @@ html, body {
   font-size: 7px;
   font-weight: 800;
   letter-spacing: 0.18em;
-  color: rgba(94, 239, 255, 0.55);
-  text-shadow: 0 0 5px rgba(0, 229, 255, 0.35);
+  color: rgba(255, 180, 60, 0.45);
   pointer-events: none;
   opacity: 0.7;
   animation: slotBlink 1.6s ease-in-out infinite;
-  text-indent: -9999px; /* hide label text; keep node for game.js */
+  text-indent: -9999px;
   overflow: hidden;
 }
 .slot-hint::after {
@@ -630,8 +817,7 @@ html, body {
   top: 50%;
   height: 2px;
   margin-top: -1px;
-  background: linear-gradient(90deg, transparent, rgba(94,239,255,0.35), transparent);
-  text-indent: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,180,60,0.4), transparent);
   animation: slotBlink 1.6s ease-in-out infinite;
 }
 .car-stereo.inserted .slot-hint { display: none; }
@@ -640,60 +826,7 @@ html, body {
   50% { opacity: 0.95; }
 }
 
-/* Cyan / teal segment LCD */
-.stereo-display {
-  background:
-    linear-gradient(180deg, #061018 0%, #030a10 100%);
-  border: 2px solid #1a2a32;
-  border-radius: 4px;
-  padding: 9px 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow:
-    inset 0 0 16px rgba(0, 40, 50, 0.85),
-    inset 0 2px 4px rgba(0, 0, 0, 0.7),
-    0 1px 0 rgba(255, 255, 255, 0.2);
-  min-height: 40px;
-}
-.stereo-lcd {
-  font-family: "Courier New", ui-monospace, monospace;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: #5eefff;
-  text-shadow:
-    0 0 6px rgba(0, 229, 255, 0.75),
-    0 0 14px rgba(0, 200, 220, 0.45),
-    0 1px 0 rgba(0, 80, 90, 0.8);
-  flex: 1;
-  text-align: center;
-  text-transform: uppercase;
-}
-.stereo-eq {
-  width: 26px;
-  height: 14px;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      #2a9aaa 0 3px,
-      transparent 3px 5px
-    );
-  opacity: 0.3;
-  flex-shrink: 0;
-  transform-origin: bottom center;
-  filter: drop-shadow(0 0 3px rgba(0, 229, 255, 0.4));
-}
-.car-stereo.playing .stereo-eq {
-  opacity: 1;
-  animation: eqPulse 0.45s ease-in-out infinite alternate;
-}
-@keyframes eqPulse {
-  from { transform: scaleY(0.55); }
-  to { transform: scaleY(1.15); }
-}
-
-/* Five matte-black rectangular preset buttons */
+/* Five chrome preset buttons */
 .stereo-buttons {
   display: flex;
   justify-content: stretch;
@@ -702,18 +835,18 @@ html, body {
 }
 .stereo-buttons span {
   flex: 1;
-  height: 16px;
-  border-radius: 3px;
+  height: 15px;
+  border-radius: 2px;
   background:
-    linear-gradient(180deg, #2a2a2e 0%, #141416 55%, #0a0a0c 100%);
-  border: 1px solid #3a3a40;
+    linear-gradient(180deg, #f0f0f4 0%, #b8b8c0 35%, #6a6a74 70%, #c8c8d0 100%);
+  border: 1px solid #e8e8ee;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 -2px 3px rgba(0, 0, 0, 0.55);
+    0 1px 2px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.35);
 }
 
-/* Cassette tape (menu) — photo-real Retrofit tape, sized for this deck */
+/* Cassette tape (menu) — photo-real Retrofit tape */
 .menu-cassette {
   display: block;
   width: calc(100% - 88px);
@@ -734,11 +867,11 @@ html, body {
   transform: translateY(-5px) scale(1.03);
   outline: none;
   filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.6))
-          drop-shadow(0 0 12px rgba(0, 229, 255, 0.22));
+          drop-shadow(0 0 12px rgba(255, 80, 60, 0.22));
 }
 .menu-cassette:focus-visible .tape-shell {
   box-shadow:
-    0 0 0 3px rgba(0, 229, 255, 0.55),
+    0 0 0 3px rgba(255, 100, 60, 0.5),
     0 10px 22px rgba(0, 0, 0, 0.5);
 }
 .menu-cassette:active {
@@ -761,7 +894,6 @@ html, body {
   padding: 0;
   background: #0c0c0e;
   border-radius: 6px;
-  /* slight foreshortening so it reads as ready to enter the chrome slot */
   transform: perspective(520px) rotateX(8deg);
   transform-origin: 50% 100%;
 }
@@ -778,14 +910,13 @@ html, body {
   aspect-ratio: 960 / 597;
 }
 
-/* Legacy flat-label bits (kept inert if markup returns) */
 .tape-window,
 .tape-label,
 .reel {
   display: none;
 }
 
-/* Insert animation: photo tape slides up into the chrome slot */
+/* Insert animation: photo tape slides up into the slot */
 .car-stereo.inserting .menu-cassette {
   pointer-events: none;
   animation: tapeInsert 0.52s cubic-bezier(0.4, 0.05, 0.55, 1) forwards;
@@ -834,8 +965,8 @@ html, body {
 .stereo-stats .highscore {
   margin: 0;
   font-size: 12px;
-  color: #5eefff;
-  text-shadow: 0 0 8px rgba(0, 229, 255, 0.35);
+  color: #ffb070;
+  text-shadow: 0 0 8px rgba(255, 120, 60, 0.35);
 }
 .stereo-stats .play-count {
   margin: 0;
@@ -846,20 +977,24 @@ html, body {
 
 @media (orientation: landscape) and (max-height: 500px) {
   .dash-panel { inset: -16px -22px -22px; border-radius: 14px; }
+  .dash-vent { top: 4px; height: 14px; }
+  .dash-wood { top: 22px; height: 88px; }
+  .car-stereo { margin-top: 14px; }
   .stereo-face { padding: 8px 8px 8px; }
   .menu-cassette { margin-top: 8px; max-width: 200px; width: calc(100% - 64px); }
   .stereo-knob { width: 44px; }
-  .stereo-display { min-height: 32px; padding: 6px 8px; }
-  .stereo-lcd { font-size: 12px; }
+  .stereo-display { min-height: 32px; padding: 4px 8px 6px; }
+  .stereo-lcd { font-size: 10px; margin-top: 10px; }
   .stereo-buttons span { height: 12px; }
   .cassette-slot { height: 14px; }
+  .stereo-indicator { font-size: 7px; }
 }
 
 @media (max-width: 420px) {
   .dash-panel { inset: -18px -14px -28px; }
   .stereo-knob { width: 46px; }
   .menu-cassette { width: calc(100% - 36px); max-width: 260px; }
-  .stereo-lcd { font-size: 12px; letter-spacing: 0.1em; }
+  .stereo-lcd { font-size: 10px; letter-spacing: 0.1em; }
 }
 
 #btn-destruct {

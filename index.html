@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>Mothership — Retrofit</title>
   <link rel="stylesheet" href="css/style.css" />
-  <link rel="stylesheet" href="css/neon.css?v=10" />
+  <link rel="stylesheet" href="css/neon.css?v=11" />
 </head>
 <body>
   <div id="game-wrap">
@@ -32,21 +32,48 @@
         <button type="button" id="mute-btn" title="Mute">🗣</button>
       </div>
     </div>
-    <button type="button" id="hud-destruct" class="hud-destruct hidden">💥</button>
+    <button type="button" id="hud-destruct" class="hud-destruct hidden" title="Self destruct (X) — hold away from flight controls">💥</button>
+    <!-- Title: oxblood dash cassette player + insert -->
     <div id="screen-title" class="screen">
       <div class="stereo-wrap">
-        <div class="dash-panel" aria-hidden="true"></div>
-        <div class="car-stereo" id="car-stereo">
+        <div class="dash-panel" aria-hidden="true">
+          <div class="dash-vent"></div>
+          <div class="dash-wood"></div>
+        </div>
+        <div class="car-stereo" id="car-stereo" aria-label="Vintage dash cassette player">
           <div class="stereo-face">
-            <div class="stereo-knob stereo-knob-l" aria-hidden="true"><span class="knob-wing knob-wing-l"></span><span class="knob-wing knob-wing-r"></span><span class="knob-face"></span><span class="knob-mark"></span></div>
-            <div class="stereo-chrome">
-              <div class="cassette-slot" id="cassette-slot"><div class="slot-lip"></div><div class="slot-dark"></div><div class="slot-hint" id="slot-hint">INSERT TAPE</div></div>
-              <div class="stereo-display" id="stereo-display"><span class="stereo-eq"></span><span class="stereo-lcd">INSERT TAPE</span></div>
-              <div class="stereo-buttons" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+            <div class="stereo-knob stereo-knob-l" aria-hidden="true">
+              <span class="knob-ring"></span>
+              <span class="knob-cap"></span>
+              <span class="knob-mark"></span>
             </div>
-            <div class="stereo-knob stereo-knob-r" aria-hidden="true"><span class="knob-wing knob-wing-l"></span><span class="knob-wing knob-wing-r"></span><span class="knob-face"></span><span class="knob-mark"></span></div>
+            <div class="stereo-chrome">
+              <div class="stereo-display" id="stereo-display">
+                <div class="dial-glass" aria-hidden="true">
+                  <span class="dial-band dial-band-am">AM</span>
+                  <span class="dial-ticks"></span>
+                  <span class="dial-needle"></span>
+                  <span class="stereo-indicator">STEREO</span>
+                </div>
+                <span class="stereo-eq" aria-hidden="true"></span>
+                <span class="stereo-lcd">INSERT TAPE</span>
+              </div>
+              <div class="cassette-slot" id="cassette-slot" title="Insert cassette">
+                <div class="slot-lip"></div>
+                <div class="slot-dark"></div>
+                <div class="slot-hint" id="slot-hint">INSERT TAPE</div>
+              </div>
+              <div class="stereo-buttons" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
+            <div class="stereo-knob stereo-knob-r" aria-hidden="true">
+              <span class="knob-ring"></span>
+              <span class="knob-cap"></span>
+              <span class="knob-mark"></span>
+            </div>
           </div>
-          <button type="button" id="menu-cassette" class="menu-cassette">
+          <button type="button" id="menu-cassette" class="menu-cassette" aria-label="Insert cassette — Retrofit Mothership the game">
             <span class="tape-shell tape-shell--photo">
               <img class="tape-face" src="assets/cassette-menu.jpeg" srcset="assets/cassette-menu-sm.jpeg 720w, assets/cassette-menu.jpeg 960w" sizes="(max-width: 520px) 86vw, 300px" width="960" height="597" alt="" draggable="false" />
             </span>
@@ -59,7 +86,7 @@
     <div id="screen-operate-choice" class="screen operate-choice hidden">
       <div class="panel operate-panel">
         <h2>OPEN HIM UP</h2>
-        <p class="results-line">Findings: <strong>KFC</strong> & <strong>microplastics</strong>.</p>
+        <p class="results-line">Findings: <strong>KFC</strong> &amp; <strong>microplastics</strong>.</p>
         <button type="button" id="btn-land-shed" class="btn primary">LAND AT SHED</button>
         <button type="button" id="btn-fly-again-op" class="btn">FLY AGAIN</button>
       </div>

@@ -97,26 +97,28 @@ html, body {
   border-color: #ff9ae0 !important;
 }
 
-/* TITLE — kill the mustard dash, make wet-neon street chrome */
+/* TITLE — keep oxblood woodgrain dash + amber dial; neon only on chrome around it */
 .dash-panel {
-  background:
-    linear-gradient(180deg, #1a1224 0%, #0c0814 55%, #160c1c 100%) !important;
+  /* do not override oxblood / woodgrain from style.css */
   filter: none !important;
-  box-shadow:
-    inset 0 0 40px rgba(255, 40, 180, 0.18),
-    0 0 40px rgba(40, 180, 255, 0.18) !important;
 }
 .stereo-wrap {
   filter: none;
 }
 .car-stereo, .stereo-face, .stereo-chrome {
-  filter: hue-rotate(210deg) saturate(1.35) brightness(0.92) contrast(1.1);
+  /* no hue-rotate — preserve maroon dash head-unit chrome */
+  filter: none;
 }
 .stereo-lcd {
-  color: #7dfff6 !important;
-  text-shadow: 0 0 8px rgba(61, 240, 255, 0.8);
+  /* amber dial status text (dark on amber glass) */
+  color: rgba(40, 20, 8, 0.88) !important;
+  text-shadow: 0 1px 0 rgba(255, 220, 120, 0.35) !important;
 }
-.stereo-stats, .highscore, .play-count, .lb-title, .lb-empty {
+.stereo-stats .highscore {
+  color: #ffb070 !important;
+  text-shadow: 0 0 8px rgba(255, 120, 60, 0.35) !important;
+}
+.stereo-stats .play-count, .lb-empty {
   color: #d8c8ff !important;
 }
 .leaderboard {
