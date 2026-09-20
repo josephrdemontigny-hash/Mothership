@@ -13,22 +13,22 @@
     var img = IMGS[k];
     return !!(img && img._ready && img.naturalWidth);
   }
+  /* Person-shaped transparent cutout only — no card, no frame, no label. */
   function paperCutout(ctx, key, x, y, facing, moving, t, opts) {
     opts = opts || {};
     if (!ready(key)) return false;
     var img = IMGS[key];
     var seated = !!opts.seated;
-    var targetH = seated ? 170 : 250;
+    var targetH = seated ? 188 : 292;
     var aspect = img.naturalWidth / Math.max(1, img.naturalHeight);
     var drawH = targetH;
     var drawW = drawH * aspect;
-    if (drawW > 140) { drawW = 140; drawH = drawW / aspect; }
     var f = facing >= 0 ? 1 : -1;
     var bob = moving ? Math.sin((t || 0) * 0.012) * 3.5 : 0;
     ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.28)";
+    ctx.fillStyle = "rgba(0,0,0,0.30)";
     ctx.beginPath();
-    ctx.ellipse(x + 4, y + 3, drawW * 0.28, 6, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + 3, y + 2, Math.max(16, drawW * 0.34), 5.5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.translate(x, y - bob);
     ctx.scale(f, 1);
