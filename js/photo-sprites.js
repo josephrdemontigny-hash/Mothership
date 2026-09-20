@@ -9,97 +9,40 @@
     img.src = PHOTOS[k];
     IMGS[k] = img;
   });
-
   function ready(k) {
     var img = IMGS[k];
     return !!(img && img._ready && img.naturalWidth);
   }
-
-  /* Standing-person outline in local sprite space.
-     Origin is feet at (0,0), head up at -H. */
-  function clipPerson(ctx, w, h) {
-    var hw = w / 2;
-    ctx.beginPath();
-    /* head + cap */
-    ctx.ellipse(0, -h * 0.86, hw * 0.38, h * 0.12, 0, 0, Math.PI * 2);
-    /* neck */
-    ctx.moveTo(-hw * 0.12, -h * 0.76);
-    ctx.lineTo(hw * 0.12, -h * 0.76);
-    ctx.lineTo(hw * 0.14, -h * 0.70);
-    ctx.lineTo(-hw * 0.14, -h * 0.70);
-    ctx.closePath();
-    /* torso */
-    ctx.moveTo(-hw * 0.42, -h * 0.70);
-    ctx.lineTo(hw * 0.42, -h * 0.70);
-    ctx.lineTo(hw * 0.34, -h * 0.38);
-    ctx.lineTo(-hw * 0.34, -h * 0.38);
-    ctx.closePath();
-    /* left arm */
-    ctx.moveTo(-hw * 0.40, -h * 0.68);
-    ctx.lineTo(-hw * 0.62, -h * 0.50);
-    ctx.lineTo(-hw * 0.70, -h * 0.28);
-    ctx.lineTo(-hw * 0.52, -h * 0.26);
-    ctx.lineTo(-hw * 0.36, -h * 0.48);
-    ctx.closePath();
-    /* right arm */
-    ctx.moveTo(hw * 0.40, -h * 0.68);
-    ctx.lineTo(hw * 0.62, -h * 0.50);
-    ctx.lineTo(hw * 0.70, -h * 0.28);
-    ctx.lineTo(hw * 0.52, -h * 0.26);
-    ctx.lineTo(hw * 0.36, -h * 0.48);
-    ctx.closePath();
-    /* left leg */
-    ctx.moveTo(-hw * 0.32, -h * 0.38);
-    ctx.lineTo(-hw * 0.06, -h * 0.38);
-    ctx.lineTo(-hw * 0.10, -h * 0.06);
-    ctx.lineTo(-hw * 0.36, -h * 0.02);
-    ctx.lineTo(-hw * 0.42, -h * 0.08);
-    ctx.closePath();
-    /* right leg */
-    ctx.moveTo(hw * 0.06, -h * 0.38);
-    ctx.lineTo(hw * 0.32, -h * 0.38);
-    ctx.lineTo(hw * 0.42, -h * 0.08);
-    ctx.lineTo(hw * 0.36, -h * 0.02);
-    ctx.lineTo(hw * 0.10, -h * 0.06);
-    ctx.closePath();
-    ctx.clip();
-  }
-
-  function paperCutout(ctx, key, x, y, facing, moving, t, opts) {
+  function drawCutout(ctx, key, x, y, facing, moving, t, opts) {
     opts = opts || {};
     if (!ready(key)) return false;
     var img = IMGS[key];
     var seated = !!opts.seated;
-    var targetH = seated ? 188 : 300;
+    var targetH = seated ? 190 : 300;
     var aspect = img.naturalWidth / Math.max(1, img.naturalHeight);
     var drawH = targetH;
-    var drawW = Math.min(drawH * aspect, seated ? 110 : 150);
-    drawH = drawW / aspect;
+    var drawW = drawH * aspect;
     var f = facing >= 0 ? 1 : -1;
     var bob = moving ? Math.sin((t || 0) * 0.012) * 3.5 : 0;
-
     ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.32)";
+    ctx.fillStyle = "rgba(0,0,0,0.30)";
     ctx.beginPath();
-    ctx.ellipse(x + 3, y + 2, Math.max(14, drawW * 0.22), 5, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + 2, y + 2, Math.max(12, drawW * 0.22), 5, 0, 0, Math.PI * 2);
     ctx.fill();
-
     ctx.translate(x, y - bob);
     ctx.scale(f, 1);
-    clipPerson(ctx, drawW, drawH);
     ctx.drawImage(img, -drawW / 2, -drawH, drawW, drawH);
     ctx.restore();
     return true;
   }
-
   function wrap() {
     var W = global.MothershipWorld;
     if (!W) return;
     W.drawZakk = function (ctx, x, y, facing, moving, t, opts) {
-      paperCutout(ctx, "zakk", x, y, facing, moving, t, opts || {});
+      drawCutout(ctx, "zakk", x, y, facing, moving, t, opts || {});
     };
     W.drawTayler = function (ctx, x, y, facing, moving, t, opts) {
-      paperCutout(ctx, "tayler", x, y, facing, moving, t, opts || {});
+      drawCutout(ctx, "tayler", x, y, facing, moving, t, opts || {});
     };
   }
   wrap();
