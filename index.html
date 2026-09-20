@@ -6,12 +6,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>Mothership — Retrofit</title>
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/neon.css" />
 </head>
 <body>
   <div id="game-wrap">
     <canvas id="game" width="960" height="540"></canvas>
 
-    <!-- HUD overlay -->
     <div id="hud" class="hidden">
       <div class="hud-left">
         <span id="score-label">SCORE <strong id="score">0</strong></span>
@@ -34,10 +34,8 @@
       </div>
     </div>
 
-    <!-- Self-destruct: far from beam/USE (top-left corner, fly only) -->
-    <button type="button" id="hud-destruct" class="hud-destruct hidden" title="Self destruct (X) — hold away from flight controls">💥</button>
+    <button type="button" id="hud-destruct" class="hud-destruct hidden" title="Self destruct (X)">💥</button>
 
-    <!-- Title: restomod dash stereo + cassette insert -->
     <div id="screen-title" class="screen">
       <div class="stereo-wrap">
         <div class="dash-panel" aria-hidden="true"></div>
@@ -72,16 +70,7 @@
           </div>
           <button type="button" id="menu-cassette" class="menu-cassette" aria-label="Insert cassette — Retrofit Mothership the game">
             <span class="tape-shell tape-shell--photo">
-              <img
-                class="tape-face"
-                src="assets/cassette-menu.jpeg"
-                srcset="assets/cassette-menu-sm.jpeg 720w, assets/cassette-menu.jpeg 960w"
-                sizes="(max-width: 520px) 86vw, 300px"
-                width="960"
-                height="597"
-                alt=""
-                draggable="false"
-              />
+              <img class="tape-face" src="assets/cassette-menu.jpeg" srcset="assets/cassette-menu-sm.jpeg 720w, assets/cassette-menu.jpeg 960w" sizes="(max-width: 520px) 86vw, 300px" width="960" height="597" alt="" draggable="false" />
             </span>
           </button>
         </div>
@@ -97,7 +86,6 @@
       </div>
     </div>
 
-    <!-- Post-surgery choice (20th person Easter egg) -->
     <div id="screen-operate-choice" class="screen operate-choice hidden" aria-label="After surgery">
       <div class="panel operate-panel">
         <h2>SURGERY COMPLETE</h2>
@@ -109,7 +97,6 @@
       </div>
     </div>
 
-    <!-- Results screen -->
     <div id="screen-results" class="screen hidden">
       <div class="panel results-panel">
         <h2>MISSION DEBRIEF</h2>
@@ -136,7 +123,6 @@
       </div>
     </div>
 
-    <!-- Touch controls -->
     <div id="touch" class="hidden">
       <div class="pad" id="pad-left">
         <button type="button" data-dir="left" aria-label="Left">◀</button>
@@ -153,7 +139,6 @@
       </div>
     </div>
 
-    <!-- Touch self-destruct: opposite corner from BEAM (top-left), fly only -->
     <button type="button" id="btn-destruct" class="btn-destruct-safe hidden" aria-label="Self destruct">💥 SD</button>
   </div>
 
@@ -167,6 +152,7 @@
   <script src="js/chars/denim.js"></script>
   <script src="js/chars/raglan.js"></script>
   <script src="js/photo-sprites.js"></script>
+  <script src="js/neon-look.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>
