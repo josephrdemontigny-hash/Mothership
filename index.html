@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>Mothership — Retrofit</title>
   <link rel="stylesheet" href="css/style.css" />
-  <link rel="stylesheet" href="css/neon.css" />
+  <link rel="stylesheet" href="css/neon.css?v=4" />
 </head>
 <body>
   <div id="game-wrap">
@@ -91,16 +91,13 @@
         <div class="save-score hidden" id="save-score-wrap">
           <p class="save-score-label" id="save-score-label">SAVE SCORE</p>
           <div class="save-score-row">
-            <input type="text" id="score-name" maxlength="12" minlength="1" placeholder="YOUR NAME" autocomplete="nickname" spellcheck="false" inputmode="text" aria-label="Name for leaderboard" />
+            <input type="text" id="score-name" maxlength="12" minlength="1" placeholder="YOUR NAME" autocomplete="nickname" spellcheck="false" inputmode="text" />
             <button type="button" id="btn-save-score" class="btn primary">SUBMIT</button>
           </div>
-          <p class="save-score-hint">1–12 letters, numbers, spaces</p>
-          <p class="save-score-msg hidden" id="save-score-msg"></p>
         </div>
         <div class="leaderboard results-lb" id="results-leaderboard">
           <h3 class="lb-title">LEADERBOARD</h3>
           <ol class="lb-list" id="results-lb-list"></ol>
-          <p class="lb-empty" id="results-lb-empty">No scores yet</p>
         </div>
         <button type="button" id="btn-again" class="btn primary">FLY AGAIN</button>
         <button type="button" id="btn-title" class="btn">TITLE</button>
@@ -108,34 +105,28 @@
     </div>
     <div id="touch" class="hidden">
       <div class="pad" id="pad-left">
-        <button type="button" data-dir="left" aria-label="Left">◀</button>
+        <button type="button" data-dir="left">◀</button>
         <div class="pad-mid">
-          <button type="button" data-dir="up" aria-label="Up">▲</button>
-          <button type="button" data-dir="down" aria-label="Down">▼</button>
+          <button type="button" data-dir="up">▲</button>
+          <button type="button" data-dir="down">▼</button>
         </div>
-        <button type="button" data-dir="right" aria-label="Right">▶</button>
+        <button type="button" data-dir="right">▶</button>
       </div>
       <div class="touch-actions">
-        <button type="button" id="btn-interact" aria-label="Interact">USE</button>
-        <button type="button" id="btn-beam" aria-label="Beam">BEAM</button>
-        <button type="button" id="btn-boost" class="hidden" aria-label="Boost">⚡ BOOST</button>
+        <button type="button" id="btn-interact">USE</button>
+        <button type="button" id="btn-beam">BEAM</button>
+        <button type="button" id="btn-boost" class="hidden">⚡ BOOST</button>
       </div>
     </div>
-    <button type="button" id="btn-destruct" class="btn-destruct-safe hidden" aria-label="Self destruct">💥 SD</button>
+    <button type="button" id="btn-destruct" class="btn-destruct-safe hidden">💥 SD</button>
   </div>
   <audio id="theme-audio" src="assets/mothership-theme.mp3" playsinline webkit-playsinline loop preload="auto"></audio>
   <script src="js/audio.js"></script>
   <script src="js/world.js"></script>
-  <script src="js/chars/zakk.js"></script>
-  <script src="js/chars/tayler.js"></script>
-  <script src="js/chars/blazer.js"></script>
-  <script src="js/chars/graphic.js"></script>
-  <script src="js/chars/denim.js"></script>
-  <script src="js/chars/raglan.js"></script>
-  <script src="js/photo-sprites.js"></script>
-  <script src="js/sossys.js"></script>
-  <script src="js/neon-look.js"></script>
+  <script src="js/photo-sprites.js?v=4"></script>
+  <script src="js/sossys.js?v=4"></script>
+  <script src="js/neon-look.js?v=4"></script>
   <script src="js/game.js"></script>
-  <script src="js/song-cues.js"></script>
+  <script src="js/song-cues.js?v=4"></script>
 </body>
 </html>
