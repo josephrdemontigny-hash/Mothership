@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>Mothership — Retrofit</title>
   <link rel="stylesheet" href="css/style.css" />
-  <link rel="stylesheet" href="css/neon.css?v=5" />
+  <link rel="stylesheet" href="css/neon.css?v=6" />
 </head>
 <body>
   <div id="game-wrap">
@@ -53,14 +53,13 @@
           </button>
         </div>
         <p class="stereo-stats"><span class="highscore" id="title-high">High Score: 0</span> <span class="play-count" id="play-count">Plays: …</span></p>
-        <div class="leaderboard" id="title-leaderboard"><h3 class="lb-title">LEADERBOARD</h3><ol class="lb-list" id="title-lb-list"></ol><p class="lb-empty" id="title-lb-empty">No scores yet — insert tape & fly!</p></div>
+        <div class="leaderboard" id="title-leaderboard"><h3 class="lb-title">LEADERBOARD</h3><ol class="lb-list" id="title-lb-list"></ol></div>
       </div>
     </div>
     <div id="screen-operate-choice" class="screen operate-choice hidden">
       <div class="panel operate-panel">
         <h2>OPEN HIM UP</h2>
         <p class="results-line">Findings: <strong>KFC</strong> & <strong>microplastics</strong>.</p>
-        <p class="one-liner">Wait a minute — I know him.</p>
         <button type="button" id="btn-land-shed" class="btn primary">LAND AT SHED</button>
         <button type="button" id="btn-fly-again-op" class="btn">FLY AGAIN</button>
       </div>
@@ -70,7 +69,6 @@
         <h2>MISSION DEBRIEF</h2>
         <p class="results-line">Beamed: <strong id="res-beamed">0</strong> Chilliwackians</p>
         <p class="results-line">Score: <strong id="res-score">0</strong></p>
-        <p class="results-line high" id="res-high-wrap">High Score: <strong id="res-high">0</strong></p>
         <p class="one-liner" id="res-liner">This is a night I know that I'm gonna forget.</p>
         <button type="button" id="btn-again" class="btn primary">FLY AGAIN</button>
         <button type="button" id="btn-title" class="btn">TITLE</button>
@@ -93,10 +91,12 @@
   <audio id="theme-audio" src="assets/mothership-theme.mp3" playsinline webkit-playsinline loop preload="auto"></audio>
   <script src="js/audio.js"></script>
   <script src="js/world.js"></script>
-  <script src="js/photo-sprites.js?v=5"></script>
-  <script src="js/sossys.js?v=5"></script>
-  <script src="js/neon-look.js?v=5"></script>
+  <script src="js/chars/zakk.js?v=6"></script>
+  <script src="js/chars/tayler.js?v=6"></script>
+  <script src="js/photo-sprites.js?v=6"></script>
+  <script src="js/sossys.js?v=6"></script>
+  <script src="js/neon-look.js?v=6"></script>
   <script src="js/game.js"></script>
-  <script src="js/song-cues.js?v=5"></script>
+  <script src="js/song-cues.js?v=6"></script>
 </body>
 </html>
