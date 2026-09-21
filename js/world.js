@@ -6831,7 +6831,7 @@
   function titleDashImage() {
     if (_titleDashImg) return _titleDashImg;
     _titleDashImg = new Image();
-    _titleDashImg.src = 'assets/title-dash-bg.jpg?v=18';
+    _titleDashImg.src = 'assets/title-dash-bg.jpg?v=20';
     return _titleDashImg;
   }
 

@@ -435,7 +435,7 @@ html, body {
   inset: 0;
   z-index: 0;
   background:
-    #0a0604 url("../assets/title-dash-bg.jpg") center center / cover no-repeat;
+    #0a0604 url("../assets/title-dash-bg.jpg?v=20") center center / cover no-repeat;
   filter: saturate(1.05) contrast(1.08);
   transform: scale(1.02);
 }
@@ -696,7 +696,10 @@ html, body {
   50% { opacity: 1; transform: scale(1.04); }
 }
 
-.tape-body {
+.tape-body, .tape-label-face, .tape-window, .tape-screw {
+  display: none !important; /* superseded by .tape-photo */
+}
+.tape-body-UNUSED {
   position: relative;
   z-index: 1;
   display: block;
