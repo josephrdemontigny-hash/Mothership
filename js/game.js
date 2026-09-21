@@ -3504,6 +3504,7 @@
         jointLit: jointLit,
         ashSmoke: !inUnlitSesh,
         hideCamino: !shedCamino,
+        deferCamino: !!shedCamino, // FG draw after characters
         caminoX: shedCamino ? camino.x : W.SHED_CAMINO_X,
         caminoDusty: false,
         caminoFacingRight: shedCamino ? !!camino.facingRight : false,
@@ -3567,6 +3568,17 @@
           stageProg,
           t
         );
+      }
+      // Foreground El Camino — larger, in front of characters / drums
+      if (shedCamino) {
+        W.drawElCamino(ctx, camino.x - camX, GROUND + 12, t, {
+          dusty: false,
+          facingRight: !!camino.facingRight,
+          wheelRot: camino.wheelRot || 0,
+          drawDriver: drivingCamino ? makeCaminoDriverDraw() : null,
+          noLabel: !!drivingCamino,
+          scale: 1.08,
+        });
       }
       if (nearTaylerSesh()) {
         const step = currentJointPrompt();
@@ -3632,7 +3644,18 @@
         ctx.fillStyle = '#9dff6a';
         ctx.fillRect(CW / 2 - 80, 106, 160 * smokeProgress, 7);
       }
-      if (!drivingCamino && nearCaminoDoor()) {
+            // Foreground El Camino (yard) — in front of characters
+      if (camino && camino.inYard) {
+        W.drawElCamino(ctx, camino.x - camX, GROUND + 12, t, {
+          dusty: false,
+          facingRight: !!camino.facingRight,
+          wheelRot: camino.wheelRot || 0,
+          drawDriver: drivingCamino ? makeCaminoDriverDraw() : null,
+          noLabel: !!drivingCamino,
+          scale: 1.08,
+        });
+      }
+if (!drivingCamino && nearCaminoDoor()) {
         const bob = Math.sin(t * 0.01) * 3;
         ctx.fillStyle = '#ffd76a';
         ctx.font = 'bold 15px Segoe UI, sans-serif';

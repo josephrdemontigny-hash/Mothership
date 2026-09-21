@@ -152,9 +152,9 @@
   /** Gold '67 El Camino (side view) center X — walk path in FRONT of the car */
   const SHED_CAMINO_X = 360;
   /** Driver door / seat offset from car center (local, nose-left space) */
-  const CAMINO_DOOR_DX = -28;
+  const CAMINO_DOOR_DX = -36;
   /** Approx half-length for exit / bounds checks (canvas car ~448px wide) */
-  const CAMINO_HALF_W = 142;
+  const CAMINO_HALF_W = 188; // larger FG car — past drums when driving out
   /** Interactive band gear in shed (world X) — game.js proximity / USE */
   const SHED_INSTRUMENTS = [
     { id: 'drums', x: 520, label: 'DRUMS', radius: 55 },
@@ -166,7 +166,7 @@
     { id: 'guitar', x: 1045, label: 'SG', radius: 42 },
   ];
   /** Side-window rect in local nose-left space — driver is clipped here */
-  const CAMINO_WIN = { x: -44, y: -65, w: 53, h: 28 };
+  const CAMINO_WIN = { x: -58, y: -86, w: 70, h: 37 }; // scaled with HALF_W
   /** Large framed backyard window on back wall (world X of glass left edge) */
   const SHED_WINDOW_X = 720;
   const SHED_WINDOW_W = 380;
@@ -3503,9 +3503,9 @@
       ctx.restore();
     }
 
-    // Life-sized El Camino — NOT furniture-scaled; path walks in FRONT.
-    // Header promises El Camino: if driven to yard, still park a dusty stand-in.
-    {
+    // El Camino: mid-layer only when not deferred to FG (after characters).
+    // Dusty stand-in still draws here when the real car is in the yard.
+    if (!opts.deferCamino) {
       const cx = (opts.hideCamino
         ? SHED_CAMINO_X
         : (opts.caminoX != null ? opts.caminoX : SHED_CAMINO_X)) - camX;
@@ -3515,6 +3515,7 @@
         wheelRot: opts.hideCamino ? 0 : opts.caminoWheelRot,
         drawDriver: opts.hideCamino ? null : opts.caminoDrawDriver,
         noLabel: !!opts.caminoNoLabel || !!opts.hideCamino,
+        scale: opts.caminoScale != null ? opts.caminoScale : 1,
       });
     }
 
@@ -4608,6 +4609,7 @@
 
     // Driven-out El Camino Easter egg
     if (opts.showCamino) {
+    if (!opts.deferCamino) {
       drawElCamino(ctx, (opts.caminoX != null ? opts.caminoX : 420) - camX, groundY, t, {
         dusty: false,
         facingRight: !!opts.caminoFacingRight,
@@ -4616,6 +4618,8 @@
         noLabel: !!opts.caminoNoLabel,
         scale: opts.caminoScale != null ? opts.caminoScale : 0.92,
       });
+    }
+
     }
 
     // fence
