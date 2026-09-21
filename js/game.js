@@ -188,7 +188,7 @@
       // Head-in-window: drawElCamino clips to CAMINO_WIN so only cabin glass shows Zakk.
       // Feet/body stay below the clip; scale keeps the head readable at game size.
       W.drawZakk(ctx, W.CAMINO_DOOR_DX + 4, -70, -1, false, t, {
-        seated: true,
+        seated: true, // vector pose only; photo cutouts stay standing-height unless seatedCrop
         scale: 0.46,
         noLabel: true,
         noShadow: true,
@@ -3524,7 +3524,6 @@
         const taylerHolds = showCharJoint && !smokeAnimLate &&
           !(smokeDone || ufoLanding || jointStage === 'smoke' || jointStepIndex >= 3);
         W.drawTayler(ctx, tayler.x - camX, tayler.y, 1, false, t, {
-          seated: true,
           smoking: taylerHolds,
           jointLit: jointLit,
           puffing: false,

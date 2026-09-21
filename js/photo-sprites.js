@@ -6,8 +6,8 @@
  */
 (function (global) {
   var PATHS = {
-    zakk: "assets/zakk-cutout.png",
-    tayler: "assets/tayler-cutout.png",
+    zakk: "assets/zakk-cutout.png?v=15",
+    tayler: "assets/tayler-cutout.png?v=15",
   };
   var IMGS = {};
   var LABELS = { zakk: "Zakk", tayler: "Tayler" };
@@ -39,13 +39,19 @@
     return 1.48;
   }
 
-  /** Shared standing/seated screen height (px), scaled when opts.scale overrides CHAR_SCALE. */
+  /**
+   * Shared screen height (px), scaled when opts.scale overrides CHAR_SCALE.
+   * Photo cutouts stay at STANDING_HEIGHT by default — seated pose must NOT
+   * shrink the sprite unless opts.seatedCrop is explicitly set (avoids the
+   * shed Tayler ~2/3-height bug when only pose flags are passed).
+   */
   function targetHeight(opts, seated) {
     var W = global.MothershipWorld;
     var defSc = W && W.CHAR_SCALE != null ? W.CHAR_SCALE : 1.48;
     var stand = W && W.STANDING_HEIGHT != null ? W.STANDING_HEIGHT : Math.round(73 * defSc);
     var seat = W && W.SEATED_HEIGHT != null ? W.SEATED_HEIGHT : Math.round(52 * defSc);
-    var base = seated ? seat : stand;
+    var cropSeat = !!(opts && opts.seatedCrop);
+    var base = cropSeat && seated ? seat : stand;
     var sc = charScale(opts);
     return base * (sc / defSc);
   }
@@ -218,7 +224,8 @@
     var srcY = 0;
     var srcW = img.naturalWidth;
     var srcH = img.naturalHeight;
-    if (seated) {
+    // Legs crop only when explicitly requested (seatedCrop) — never from seated alone
+    if (seated && opts.seatedCrop) {
       var cropFrac = 0.12;
       srcH = Math.floor(img.naturalHeight * (1 - cropFrac));
       aspect = srcW / Math.max(1, srcH);

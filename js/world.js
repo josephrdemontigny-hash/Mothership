@@ -1435,7 +1435,7 @@
     drawZakk(ctx, x, y, facing, moving, t, opts);
   }
   function drawTaylor(ctx, sx, sy, t) {
-    drawTayler(ctx, sx, sy, 1, false, t, { seated: true, smoking: true, jointLit: true });
+    drawTayler(ctx, sx, sy, 1, false, t, { smoking: true, jointLit: true });
   }
 
   // ——— Shed props ———
@@ -1576,49 +1576,139 @@
   }
 
   function drawFridge(ctx, x, y) {
-    ctx.fillStyle = '#9a9aaa';
+    // Beer fridge — chrome body, specular edge, neon stickers
+    const body = ctx.createLinearGradient(x, y, x + 44, y);
+    body.addColorStop(0, '#3a3a48');
+    body.addColorStop(0.18, '#c8c8d8');
+    body.addColorStop(0.45, '#9a9aac');
+    body.addColorStop(0.72, '#6a6a7a');
+    body.addColorStop(1, '#2a2a38');
+    ctx.fillStyle = body;
     ctx.fillRect(x, y, 44, 95);
-    ctx.fillStyle = '#6a6a7a';
+    // magenta/cyan rim
+    ctx.strokeStyle = 'rgba(255,40,180,0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x + 0.5, y + 0.5, 43, 94);
+    ctx.strokeStyle = 'rgba(60,220,255,0.35)';
+    ctx.strokeRect(x + 2, y + 2, 40, 91);
+    // doors with inset depth
+    const doorG = ctx.createLinearGradient(x + 3, y, x + 41, y);
+    doorG.addColorStop(0, '#5a5a6a');
+    doorG.addColorStop(0.4, '#8a8a9a');
+    doorG.addColorStop(1, '#4a4a58');
+    ctx.fillStyle = doorG;
     ctx.fillRect(x + 3, y + 6, 38, 38);
     ctx.fillRect(x + 3, y + 50, 38, 38);
-    ctx.fillStyle = '#ccc';
-    ctx.fillRect(x + 36, y + 22, 3, 14);
-    // stickers
-    ctx.fillStyle = '#7dff3a';
-    ctx.font = '8px Segoe UI, sans-serif';
+    // door seam shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(x + 3, y + 44, 38, 6);
+    // specular stripe
+    ctx.fillStyle = 'rgba(255,255,255,0.28)';
+    ctx.fillRect(x + 6, y + 8, 3, 82);
+    // handles
+    const hg = ctx.createLinearGradient(x + 35, y, x + 40, y);
+    hg.addColorStop(0, '#eee');
+    hg.addColorStop(1, '#888');
+    ctx.fillStyle = hg;
+    ctx.fillRect(x + 36, y + 20, 4, 16);
+    ctx.fillRect(x + 36, y + 64, 4, 16);
+    // neon stickers
+    ctx.fillStyle = 'rgba(125,255,58,0.9)';
+    ctx.font = 'bold 8px Segoe UI, sans-serif';
     ctx.fillText('BEER', x + 8, y + 28);
-    ctx.fillStyle = '#ff6644';
+    ctx.fillStyle = 'rgba(255,60,160,0.95)';
     ctx.fillText('MOON', x + 8, y + 68);
+    // floor contact shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath();
+    ctx.ellipse(x + 22, y + 95, 20, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   function drawAmp(ctx, x, y) {
-    // combo amp + cables
-    ctx.fillStyle = '#1a1a1a';
+    // combo amp — depth, grill specular, neon edge, cables
+    const cab = ctx.createLinearGradient(x, y - 50, x + 56, y);
+    cab.addColorStop(0, '#2a2a32');
+    cab.addColorStop(0.35, '#141418');
+    cab.addColorStop(0.7, '#0a0a0e');
+    cab.addColorStop(1, '#1a1a22');
+    ctx.fillStyle = cab;
     ctx.fillRect(x, y - 50, 56, 50);
-    ctx.fillStyle = '#2a2a2a';
+    // cyan/magenta rim
+    ctx.strokeStyle = 'rgba(60,220,255,0.5)';
+    ctx.lineWidth = 1.4;
+    ctx.strokeRect(x + 0.5, y - 49.5, 55, 49);
+    ctx.strokeStyle = 'rgba(255,40,180,0.28)';
+    ctx.strokeRect(x + 2, y - 48, 52, 46);
+    // speaker grill recess
+    const grill = ctx.createLinearGradient(x + 4, y - 46, x + 52, y - 18);
+    grill.addColorStop(0, '#3a3a44');
+    grill.addColorStop(0.5, '#1a1a22');
+    grill.addColorStop(1, '#0e0e14');
+    ctx.fillStyle = grill;
     ctx.fillRect(x + 4, y - 46, 48, 28);
-    ctx.fillStyle = '#ff8844';
-    ctx.globalAlpha = 0.7;
-    ctx.fillRect(x + 8, y - 40, 40, 8);
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = '#444';
-    for (let i = 0; i < 4; i++) {
+    // grill cloth weave
+    ctx.strokeStyle = 'rgba(80,80,90,0.55)';
+    ctx.lineWidth = 0.7;
+    for (let gy = y - 44; gy < y - 20; gy += 3) {
       ctx.beginPath();
-      ctx.arc(x + 12 + i * 10, y - 22, 3, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(x + 6, gy);
+      ctx.lineTo(x + 50, gy);
+      ctx.stroke();
     }
+    for (let gx = x + 6; gx < x + 50; gx += 4) {
+      ctx.beginPath();
+      ctx.moveTo(gx, y - 44);
+      ctx.lineTo(gx, y - 20);
+      ctx.stroke();
+    }
+    // warm pilot glow bar
+    const bar = ctx.createLinearGradient(x + 8, y - 40, x + 48, y - 32);
+    bar.addColorStop(0, 'rgba(255,80,40,0.15)');
+    bar.addColorStop(0.5, 'rgba(255,160,60,0.85)');
+    bar.addColorStop(1, 'rgba(255,60,180,0.35)');
+    ctx.fillStyle = bar;
+    ctx.fillRect(x + 8, y - 40, 40, 8);
+    ctx.fillStyle = 'rgba(255,200,120,0.45)';
+    ctx.fillRect(x + 10, y - 39, 8, 2);
+    // knobs with specular
+    for (let i = 0; i < 4; i++) {
+      const kx = x + 12 + i * 10;
+      const ky = y - 22;
+      const kg = ctx.createRadialGradient(kx - 1, ky - 1, 0.5, kx, ky, 4);
+      kg.addColorStop(0, '#aaa');
+      kg.addColorStop(0.5, '#555');
+      kg.addColorStop(1, '#222');
+      ctx.fillStyle = kg;
+      ctx.beginPath();
+      ctx.arc(kx, ky, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(60,220,255,0.4)';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    }
+    // corner feet
+    ctx.fillStyle = '#333';
+    ctx.fillRect(x + 2, y - 4, 6, 4);
+    ctx.fillRect(x + 48, y - 4, 6, 4);
     // cables
-    ctx.strokeStyle = '#222';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 2.2;
     ctx.beginPath();
     ctx.moveTo(x + 56, y - 10);
     ctx.quadraticCurveTo(x + 80, y - 30, x + 70, y);
     ctx.stroke();
-    ctx.strokeStyle = '#333';
+    ctx.strokeStyle = '#2a2a30';
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
     ctx.moveTo(x + 50, y);
     ctx.quadraticCurveTo(x + 90, y + 10, x + 100, y - 5);
     ctx.stroke();
+    // floor shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath();
+    ctx.ellipse(x + 28, y + 2, 26, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   function drawPoster(ctx, x, y, title, col) {
@@ -1641,7 +1731,7 @@
     img._failed = false;
     img.onload = function () { img._ready = !!(img.naturalWidth && img.naturalHeight); };
     img.onerror = function () { img._failed = true; img._ready = false; };
-    img.src = 'assets/posters/band-' + n + '.jpeg';
+    img.src = 'assets/posters/band-' + n + '.jpeg?v=15';
     return img;
   });
 
@@ -1651,24 +1741,38 @@
    */
   function drawBandFlyer(ctx, x, y, opts) {
     opts = opts || {};
-    const w = opts.w || 52;
-    const h = opts.h || 70;
+    const w = opts.w || 78;
+    const h = opts.h || 104;
     const idx = ((opts.poster != null ? opts.poster : 0) % BAND_POSTER_IMGS.length + BAND_POSTER_IMGS.length) % BAND_POSTER_IMGS.length;
     const img = BAND_POSTER_IMGS[idx];
     if (img && img._ready && !img._failed) {
       ctx.save();
-      // Soft neon glow behind card
+      // Soft neon glow + chrome card frame (trading-card aesthetic)
       const accent = opts.accent || '#ff60c0';
       ctx.fillStyle = accent;
-      ctx.globalAlpha = 0.18;
-      ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+      ctx.globalAlpha = 0.22;
+      ctx.fillRect(x - 5, y - 5, w + 10, h + 10);
       ctx.globalAlpha = 1;
+      // Chrome outer bevel
+      const frameG = ctx.createLinearGradient(x - 3, y - 3, x + w + 3, y + h + 3);
+      frameG.addColorStop(0, '#e8e8f0');
+      frameG.addColorStop(0.35, '#888898');
+      frameG.addColorStop(0.65, '#f0f0f8');
+      frameG.addColorStop(1, '#505060');
+      ctx.fillStyle = frameG;
+      ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
+      ctx.fillStyle = '#0a0812';
+      ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
       ctx.drawImage(img, x, y, w, h);
-      // Thin neon edge so cards pop on wood wall
+      // Neon inner edge
       ctx.strokeStyle = accent;
-      ctx.globalAlpha = 0.55;
-      ctx.lineWidth = 1.5;
+      ctx.globalAlpha = 0.7;
+      ctx.lineWidth = 1.8;
       ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+      ctx.globalAlpha = 0.35;
+      ctx.strokeStyle = '#40e0ff';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
       ctx.globalAlpha = 1;
       if (opts.label) {
         ctx.fillStyle = 'rgba(0,0,0,0.55)';
@@ -1792,7 +1896,7 @@
     img._failed = false;
     img.onload = function () { img._ready = !!(img.naturalWidth && img.naturalHeight); };
     img.onerror = function () { img._failed = true; img._ready = false; };
-    img.src = 'assets/elcamino-side.png';
+    img.src = 'assets/elcamino-side.png?v=15';
     return img;
   })();
 
@@ -2870,60 +2974,98 @@
     const doorLocked = !!opts.doorLocked;
     const ufoProg = opts.windowUfo != null ? opts.windowUfo : 0;
 
-    // plywood back wall — darker, dusty, subtle panel shading
+    // plywood back wall — rich grain + magenta/cyan rim light (neon card aesthetic)
     const wallG = ctx.createLinearGradient(0, 0, 0, floorY);
-    wallG.addColorStop(0, '#5a482e');
-    wallG.addColorStop(0.4, '#6a5436');
-    wallG.addColorStop(1, '#4a3a26');
+    wallG.addColorStop(0, '#4a3420');
+    wallG.addColorStop(0.25, '#6e5234');
+    wallG.addColorStop(0.55, '#7a5a38');
+    wallG.addColorStop(0.85, '#5a4028');
+    wallG.addColorStop(1, '#3a2818');
     ctx.fillStyle = wallG;
     ctx.fillRect(0, 0, w, floorY);
-    ctx.strokeStyle = '#4a3a22';
-    ctx.lineWidth = 2;
+    // Magenta wash from left, cyan from right (rim light)
+    const rimL = ctx.createLinearGradient(0, 0, w * 0.45, 0);
+    rimL.addColorStop(0, 'rgba(255,40,180,0.14)');
+    rimL.addColorStop(1, 'rgba(255,40,180,0)');
+    ctx.fillStyle = rimL;
+    ctx.fillRect(0, 0, w * 0.45, floorY);
+    const rimR = ctx.createLinearGradient(w * 0.55, 0, w, 0);
+    rimR.addColorStop(0, 'rgba(40,200,255,0)');
+    rimR.addColorStop(1, 'rgba(40,200,255,0.14)');
+    ctx.fillStyle = rimR;
+    ctx.fillRect(w * 0.55, 0, w * 0.45, floorY);
+    // Panel seams + rich grain
     for (let x = -((camX | 0) % 90); x < w + 40; x += 90) {
+      ctx.strokeStyle = 'rgba(30,20,12,0.55)';
+      ctx.lineWidth = 2.2;
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, floorY);
       ctx.stroke();
-      // panel grain hint
-      ctx.strokeStyle = 'rgba(90,70,40,0.25)';
+      // warm highlight on panel edge
+      ctx.strokeStyle = 'rgba(200,160,100,0.18)';
       ctx.lineWidth = 1;
-      for (let gy = 20; gy < floorY; gy += 28) {
+      ctx.beginPath();
+      ctx.moveTo(x + 1.5, 0);
+      ctx.lineTo(x + 1.5, floorY);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(90,60,30,0.35)';
+      ctx.lineWidth = 1;
+      for (let gy = 18; gy < floorY; gy += 22) {
+        const wobble = Math.sin(gy * 0.08 + x * 0.02) * 3;
         ctx.beginPath();
-        ctx.moveTo(x + 4, gy);
-        ctx.lineTo(x + 80, gy + (gy % 40) * 0.05);
+        ctx.moveTo(x + 6, gy);
+        ctx.bezierCurveTo(x + 30 + wobble, gy + 2, x + 55 - wobble, gy - 1, x + 84, gy + (gy % 17) * 0.08);
         ctx.stroke();
       }
-      ctx.strokeStyle = '#4a3a22';
-      ctx.lineWidth = 2;
     }
-    // exposed studs
-    ctx.fillStyle = '#4a3824';
+    // exposed studs with neon kiss
     for (let x = -((camX | 0) % 72) + 18; x < w + 40; x += 72) {
+      const studG = ctx.createLinearGradient(x, 0, x + 8, 0);
+      studG.addColorStop(0, '#2a1a10');
+      studG.addColorStop(0.35, '#6a4a2e');
+      studG.addColorStop(0.7, '#4a3420');
+      studG.addColorStop(1, '#2a1a10');
+      ctx.fillStyle = studG;
       ctx.fillRect(x, 0, 8, floorY);
-      // stud edge highlight
-      ctx.fillStyle = 'rgba(120,90,50,0.25)';
+      ctx.fillStyle = 'rgba(255,80,180,0.12)';
       ctx.fillRect(x, 0, 1.5, floorY);
-      ctx.fillStyle = '#4a3824';
+      ctx.fillStyle = 'rgba(60,220,255,0.1)';
+      ctx.fillRect(x + 6.5, 0, 1.5, floorY);
     }
     // plywood knots / darker grain blotches
-    ctx.fillStyle = 'rgba(60,42,24,0.28)';
-    for (let i = 0; i < 18; i++) {
+    ctx.fillStyle = 'rgba(50,32,16,0.32)';
+    for (let i = 0; i < 22; i++) {
       const kx = ((i * 167 - (camX | 0)) % (w + 60)) - 20;
       const ky = 40 + (i * 37) % Math.max(40, (floorY - 80));
       ctx.beginPath();
       ctx.ellipse(kx, ky, 5 + (i % 4), 3 + (i % 3), (i % 5) * 0.3, 0, Math.PI * 2);
       ctx.fill();
+      ctx.strokeStyle = 'rgba(90,60,30,0.4)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.ellipse(kx, ky, 3 + (i % 3), 2, (i % 5) * 0.3, 0, Math.PI * 2);
+      ctx.stroke();
     }
-    ctx.fillStyle = '#3a2a1c';
+    // rafter header
+    const raftG = ctx.createLinearGradient(0, 0, 0, 22);
+    raftG.addColorStop(0, '#2a1a10');
+    raftG.addColorStop(1, '#4a3424');
+    ctx.fillStyle = raftG;
     ctx.fillRect(0, 0, w, 22);
     for (let x = -((camX | 0) % 55); x < w + 40; x += 55) {
       ctx.fillStyle = '#5a4030';
       ctx.fillRect(x, 14, 10, 16);
+      ctx.fillStyle = 'rgba(255,40,180,0.15)';
+      ctx.fillRect(x, 14, 2, 16);
     }
     // silver insulation peek between rafters
-    ctx.fillStyle = 'rgba(180,190,200,0.35)';
+    ctx.fillStyle = 'rgba(180,190,210,0.42)';
     for (let x = -((camX | 0) % 55) + 12; x < w; x += 55) {
       ctx.fillRect(x, 4, 40, 10);
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.fillRect(x + 2, 5, 8, 8);
+      ctx.fillStyle = 'rgba(180,190,210,0.42)';
     }
 
     // orange sled in the rafters (ref vibe)
@@ -2967,42 +3109,114 @@
     ctx.fillStyle = '#4a3424';
     ctx.fillRect(glassX - 2, glassY - 2, glassW + 4, glassH + 4);
 
-    // glass + backyard + Cheam + UFO — clipped cleanly inside glass rect
+    // glass + neon dusk landscape + UFO — clipped cleanly inside glass rect
     ctx.save();
     ctx.beginPath();
     ctx.rect(glassX, glassY, glassW, glassH);
     ctx.clip();
 
-    // Fly sunset skyline (same Cheam/sunset as flight) clipped into glass
+    // Neon dusk sky (illustrated, not flat cartoon mountain)
+    const dusk = ctx.createLinearGradient(glassX, glassY, glassX, glassY + glassH);
+    dusk.addColorStop(0, '#0a0620');
+    dusk.addColorStop(0.2, '#1a0a48');
+    dusk.addColorStop(0.42, '#6a1868');
+    dusk.addColorStop(0.58, '#c02858');
+    dusk.addColorStop(0.72, '#e85828');
+    dusk.addColorStop(0.88, '#f0a040');
+    dusk.addColorStop(1, '#ffe8a0');
+    ctx.fillStyle = dusk;
+    ctx.fillRect(glassX, glassY, glassW, glassH);
+    // Cyan night rim upper-right
+    const cyanWin = ctx.createRadialGradient(glassX + glassW * 0.82, glassY + 10, 2, glassX + glassW * 0.75, glassY + 24, glassW * 0.55);
+    cyanWin.addColorStop(0, 'rgba(60,220,255,0.35)');
+    cyanWin.addColorStop(1, 'rgba(60,220,255,0)');
+    ctx.fillStyle = cyanWin;
+    ctx.fillRect(glassX, glassY, glassW, glassH * 0.55);
+    // Magenta bloom left
+    const magWin = ctx.createRadialGradient(glassX + 20, glassY + glassH * 0.35, 4, glassX + 40, glassY + glassH * 0.4, glassW * 0.4);
+    magWin.addColorStop(0, 'rgba(255,40,180,0.28)');
+    magWin.addColorStop(1, 'rgba(255,40,180,0)');
+    ctx.fillStyle = magWin;
+    ctx.fillRect(glassX, glassY, glassW, glassH);
+    // Streaked dusk clouds
+    for (let i = 0; i < 5; i++) {
+      const cy = glassY + glassH * (0.12 + i * 0.1);
+      const band = ctx.createLinearGradient(glassX, cy - 6, glassX, cy + 10);
+      const a = 0.12 + (i % 3) * 0.05;
+      band.addColorStop(0, 'rgba(255,80,160,0)');
+      band.addColorStop(0.4, 'rgba(255,60,120,' + a + ')');
+      band.addColorStop(0.7, 'rgba(255,160,80,' + (a * 0.8) + ')');
+      band.addColorStop(1, 'rgba(255,200,120,0)');
+      ctx.fillStyle = band;
+      ctx.fillRect(glassX, cy - 6, glassW, 16);
+    }
+    // Layered mountain silhouettes with neon ridgelines
+    const groundLine = glassY + glassH - 8;
+    function duskRidge(pts, fill, rimCol, ox) {
+      ctx.beginPath();
+      ctx.moveTo(glassX - 4, groundLine + 4);
+      for (let i = 0; i < pts.length; i++) {
+        ctx.lineTo(glassX + ox + pts[i][0] * glassW, groundLine - pts[i][1] * (glassH * 0.55));
+      }
+      ctx.lineTo(glassX + glassW + 4, groundLine + 4);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.strokeStyle = rimCol;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      for (let i = 0; i < pts.length; i++) {
+        const px = glassX + ox + pts[i][0] * glassW;
+        const py = groundLine - pts[i][1] * (glassH * 0.55);
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    }
+    duskRidge([[0,0.15],[0.18,0.42],[0.32,0.28],[0.48,0.72],[0.62,0.38],[0.78,0.55],[1.0,0.2]], 'rgba(12,8,28,0.85)', 'rgba(255,40,180,0.35)', 0);
+    duskRidge([[0,0.08],[0.22,0.28],[0.4,0.18],[0.55,0.48],[0.7,0.22],[0.88,0.35],[1.05,0.1]], 'rgba(8,10,24,0.92)', 'rgba(60,220,255,0.4)', -glassW * 0.04);
+    // Valley city neon dots
+    for (let i = 0; i < 18; i++) {
+      const lx = glassX + 12 + ((i * 47 + (camX | 0) * 0.05) % (glassW - 24));
+      const ly = groundLine - 6 - (i % 5) * 3;
+      ctx.fillStyle = i % 2 ? 'rgba(255,60,180,0.75)' : 'rgba(60,220,255,0.7)';
+      ctx.fillRect(lx, ly, 2 + (i % 2), 2 + (i % 3));
+    }
+    // Horizon sun glow
+    const sunG = ctx.createRadialGradient(glassX + glassW * 0.4, groundLine - 20, 2, glassX + glassW * 0.4, groundLine - 10, glassW * 0.35);
+    sunG.addColorStop(0, 'rgba(255,230,160,0.55)');
+    sunG.addColorStop(0.5, 'rgba(255,120,60,0.18)');
+    sunG.addColorStop(1, 'rgba(255,80,40,0)');
+    ctx.fillStyle = sunG;
+    ctx.fillRect(glassX, glassY, glassW, glassH);
+
+    // Keep Cheam silhouette soft under neon layers (parallax continuity with fly)
     ctx.save();
+    ctx.globalAlpha = 0.35;
     ctx.translate(glassX, glassY);
     drawFlySkylineBackdrop(ctx, glassW, glassH, glassH - 8, camX);
     ctx.restore();
-
-    // Landing pad line near glass bottom (skyline groundY = glassH - 8)
-    const groundLine = glassY + glassH - 8;
 
     // UFO landing (clipped inside glass, drawn on top of skyline)
     if (ufoProg > 0.01) {
       const ufoX = glassX + 55 + ufoProg * (glassW * 0.38);
       const ufoY = glassY + 14 + Math.min(1, ufoProg) * (glassH - 62);
       const ufoS = 0.48 + ufoProg * 0.32;
-      // Legs deploy late in descent; fully down when landed
       const winLegs = Math.max(0, Math.min(1, (ufoProg - 0.5) / 0.45));
       drawClayUFO(ctx, ufoX, ufoY, ufoS, t, ufoProg > 0.18, { legExtend: winLegs });
       if (ufoProg > 0.45) {
-        ctx.fillStyle = 'rgba(200,220,230,' + (0.12 + ufoProg * 0.28) + ')';
+        ctx.fillStyle = 'rgba(200,220,255,' + (0.14 + ufoProg * 0.3) + ')';
         ctx.beginPath();
         ctx.ellipse(ufoX, groundLine + 2, 28 + ufoProg * 16, 5, 0, 0, Math.PI * 2);
         ctx.fill();
       }
     }
 
-    // glass reflection sheen
-    const sheen = ctx.createLinearGradient(glassX, glassY, glassX + glassW * 0.4, glassY + glassH);
-    sheen.addColorStop(0, 'rgba(255,255,255,0.18)');
-    sheen.addColorStop(0.35, 'rgba(255,255,255,0.02)');
-    sheen.addColorStop(1, 'rgba(20,40,60,0.08)');
+    // glass reflection sheen + neon bounce
+    const sheen = ctx.createLinearGradient(glassX, glassY, glassX + glassW * 0.45, glassY + glassH);
+    sheen.addColorStop(0, 'rgba(255,255,255,0.22)');
+    sheen.addColorStop(0.3, 'rgba(60,220,255,0.06)');
+    sheen.addColorStop(0.65, 'rgba(255,40,180,0.04)');
+    sheen.addColorStop(1, 'rgba(20,10,40,0.12)');
     ctx.fillStyle = sheen;
     ctx.fillRect(glassX, glassY, glassW, glassH);
     ctx.restore();
@@ -3013,13 +3227,26 @@
     ctx.fillRect(wx + ww / 2 - mullion / 2, glassY - 1, mullion, glassH + 2);
     // horizontal center mullion
     ctx.fillRect(glassX - 1, wy + wh / 2 - mullion / 2, glassW + 2, mullion);
-    // outer frame highlight edge
-    ctx.strokeStyle = 'rgba(200,170,120,0.35)';
+    // outer frame highlight + neon dusk rim
+    ctx.strokeStyle = 'rgba(200,170,120,0.4)';
     ctx.lineWidth = 2;
     ctx.strokeRect(wx + 2, wy + 2, ww - 4, wh - 4);
+    ctx.strokeStyle = 'rgba(255,40,180,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(wx - 1, wy - 1, ww + 2, wh + 2);
+    ctx.strokeStyle = 'rgba(60,220,255,0.35)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(wx + 4, wy + 4, ww - 8, wh - 8);
     // shadow under sill
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.fillRect(wx - 8, wy + wh + 10, ww + 16, 4);
+    // neon bounce on sill
+    const sillGlow = ctx.createLinearGradient(wx, wy + wh, wx + ww, wy + wh + 12);
+    sillGlow.addColorStop(0, 'rgba(255,40,180,0.12)');
+    sillGlow.addColorStop(0.5, 'rgba(255,180,80,0.18)');
+    sillGlow.addColorStop(1, 'rgba(60,220,255,0.12)');
+    ctx.fillStyle = sillGlow;
+    ctx.fillRect(wx - 10, wy + wh + 2, ww + 20, 10);
 
     if (ufoProg > 0.02 && ufoProg < 0.98) {
       ctx.fillStyle = '#1a4a1a';
@@ -3063,16 +3290,15 @@
     // pegboard
     drawPegboard(ctx, 195 - camX, 50, 70, 110);
 
-    // Neon trading-card band posters on shed walls (photo refs)
-    drawBandFlyer(ctx, 560 - camX, 42, { poster: 0, accent: '#ff60c0' });
-    drawBandFlyer(ctx, 618 - camX, 38, { poster: 1, accent: '#40e0ff' });
-    drawBandFlyer(ctx, 676 - camX, 48, { poster: 2, accent: '#ffe040' });
-    drawBandFlyer(ctx, 1048 - camX, 36, { poster: 3, accent: '#ff40a0' });
-    drawBandFlyer(ctx, 1104 - camX, 44, { poster: 0, accent: '#80ff40' });
-    drawBandFlyer(ctx, 1160 - camX, 40, { poster: 1, accent: '#ff8060' });
-    // Overlapping scraps
-    drawBandFlyer(ctx, 590 - camX, 118, { poster: 2, w: 40, h: 60, accent: '#c040ff' });
-    drawBandFlyer(ctx, 1080 - camX, 112, { poster: 3, w: 38, h: 58, accent: '#40ffc0' });
+    // Larger neon-framed band posters (trading-card chrome) — clear of window 720..1100
+    drawBandFlyer(ctx, 520 - camX, 28, { poster: 0, accent: '#ff60c0' });
+    drawBandFlyer(ctx, 608 - camX, 22, { poster: 1, accent: '#40e0ff' });
+    drawBandFlyer(ctx, 1110 - camX, 24, { poster: 2, accent: '#ffe040' });
+    drawBandFlyer(ctx, 1198 - camX, 30, { poster: 3, accent: '#ff40a0' });
+    // Mid scraps / overlapping cards (below sill / beside stereo wall)
+    drawBandFlyer(ctx, 560 - camX, 148, { poster: 2, w: 48, h: 64, accent: '#c040ff' });
+    drawBandFlyer(ctx, 1124 - camX, 140, { poster: 0, w: 46, h: 62, accent: '#40ffc0' });
+    drawBandFlyer(ctx, 1280 - camX, 40, { poster: 1, w: 56, h: 76, accent: '#ff8060' });
     // Keep a couple classic framed posters tucked in
     drawPoster(ctx, 1220 - camX, 48, 'BEER', '#4a2a1a');
     drawPoster(ctx, 520 - camX, 55, 'OH', '#3a1a2a');
@@ -3102,15 +3328,18 @@
       ctx.restore();
     }
 
-    // Life-sized El Camino — NOT furniture-scaled; path walks in FRONT
-    if (!opts.hideCamino) {
-      const cx = (opts.caminoX != null ? opts.caminoX : SHED_CAMINO_X) - camX;
+    // Life-sized El Camino — NOT furniture-scaled; path walks in FRONT.
+    // Header promises El Camino: if driven to yard, still park a dusty stand-in.
+    {
+      const cx = (opts.hideCamino
+        ? SHED_CAMINO_X
+        : (opts.caminoX != null ? opts.caminoX : SHED_CAMINO_X)) - camX;
       drawElCamino(ctx, cx, floorY, t, {
-        dusty: !!opts.caminoDusty,
-        facingRight: !!opts.caminoFacingRight,
-        wheelRot: opts.caminoWheelRot,
-        drawDriver: opts.caminoDrawDriver,
-        noLabel: !!opts.caminoNoLabel,
+        dusty: !!opts.caminoDusty || !!opts.hideCamino,
+        facingRight: opts.hideCamino ? false : !!opts.caminoFacingRight,
+        wheelRot: opts.hideCamino ? 0 : opts.caminoWheelRot,
+        drawDriver: opts.hideCamino ? null : opts.caminoDrawDriver,
+        noLabel: !!opts.caminoNoLabel || !!opts.hideCamino,
       });
     }
 
@@ -3231,61 +3460,115 @@
       ctx.textAlign = 'left';
     }
 
-    // dusty concrete / dirt floor with richer stains + grain
-    ctx.fillStyle = '#4a4034';
+    // Wet reflective floor — dark plywood/concrete with neon streaks (card aesthetic)
+    const floorG = ctx.createLinearGradient(0, floorY, 0, h);
+    floorG.addColorStop(0, '#2a221c');
+    floorG.addColorStop(0.35, '#3a3228');
+    floorG.addColorStop(1, '#1a1410');
+    ctx.fillStyle = floorG;
     ctx.fillRect(0, floorY, w, h - floorY);
-    // oil / spill stains
-    ctx.fillStyle = 'rgba(30,24,18,0.22)';
-    for (let i = 0; i < 8; i++) {
-      const sx = ((i * 191 - (camX | 0) * 0.5) % (w + 100)) - 30;
-      ctx.beginPath();
-      ctx.ellipse(sx, floorY + 18 + (i % 5) * 10, 18 + (i % 4) * 6, 5 + (i % 3), 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.fillStyle = 'rgba(60,50,40,0.15)';
-    for (let i = 0; i < 40; i++) {
-      const fx = ((i * 97 - (camX | 0)) % (w + 80)) - 20;
-      ctx.fillRect(fx, floorY + 8 + (i % 7) * 9, 3 + (i % 4), 2);
-    }
-    ctx.strokeStyle = '#5a4a38';
+    // board seams
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 1;
     for (let x = -((camX | 0) % 48); x < w; x += 48) {
       ctx.beginPath();
       ctx.moveTo(x, floorY);
       ctx.lineTo(x, h);
       ctx.stroke();
     }
+    // oil / spill stains
+    ctx.fillStyle = 'rgba(20,14,10,0.35)';
+    for (let i = 0; i < 8; i++) {
+      const sx = ((i * 191 - (camX | 0) * 0.5) % (w + 100)) - 30;
+      ctx.beginPath();
+      ctx.ellipse(sx, floorY + 18 + (i % 5) * 10, 18 + (i % 4) * 6, 5 + (i % 3), 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Vertical neon wet-reflection streaks (magenta / cyan)
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (let i = 0; i < 16; i++) {
+      const sx = ((i * 79 - (camX | 0) * 0.35 + (t || 0) * 0.004) % (w + 50)) - 20;
+      const mag = i % 3 !== 1;
+      const col = mag ? 'rgba(255,48,180,' : 'rgba(48,220,255,';
+      const a0 = 0.16 + (i % 4) * 0.03;
+      const streak = ctx.createLinearGradient(sx, floorY, sx, h);
+      streak.addColorStop(0, col + a0 + ')');
+      streak.addColorStop(0.5, col + (a0 * 0.45) + ')');
+      streak.addColorStop(1, col + '0)');
+      ctx.fillStyle = streak;
+      ctx.fillRect(sx, floorY, 2.5 + (i % 4), h - floorY);
+    }
+    // Warm lamp pools on wet floor
+    const pool1 = ctx.createRadialGradient(w * 0.55, floorY + 28, 4, w * 0.55, floorY + 36, 90);
+    pool1.addColorStop(0, 'rgba(255,180,70,0.18)');
+    pool1.addColorStop(1, 'rgba(255,180,70,0)');
+    ctx.fillStyle = pool1;
+    ctx.fillRect(0, floorY, w, h - floorY);
+    const pool2 = ctx.createRadialGradient(w * 0.72, floorY + 22, 3, w * 0.72, floorY + 30, 70);
+    pool2.addColorStop(0, 'rgba(80,200,255,0.14)');
+    pool2.addColorStop(0.5, 'rgba(255,40,180,0.06)');
+    pool2.addColorStop(1, 'rgba(80,200,255,0)');
+    ctx.fillStyle = pool2;
+    ctx.fillRect(0, floorY, w, h - floorY);
+    ctx.restore();
     // worn rug under chill / joint sesh (couch~900 table~950) — visual only, doesn't block
     drawShedRug(ctx, 880 - camX, floorY + 2, 130, 28);
 
-    // exit door
+    // exit door — plywood depth + neon edge fidelity
     const doorX = SHED_DOOR_X - camX;
     const doorH = 155;
-    ctx.fillStyle = '#2a1a10';
-    ctx.fillRect(doorX - 30, floorY - doorH, 60, doorH);
-    ctx.fillStyle = doorLocked ? '#6a5040' : '#8a6030';
+    ctx.fillStyle = '#1a1008';
+    ctx.fillRect(doorX - 32, floorY - doorH - 2, 64, doorH + 4);
+    const doorBody = ctx.createLinearGradient(doorX - 26, 0, doorX + 26, 0);
+    if (doorLocked) {
+      doorBody.addColorStop(0, '#3a2a20');
+      doorBody.addColorStop(0.35, '#6a5040');
+      doorBody.addColorStop(0.7, '#5a4030');
+      doorBody.addColorStop(1, '#2a1a10');
+    } else {
+      doorBody.addColorStop(0, '#4a3020');
+      doorBody.addColorStop(0.35, '#9a6840');
+      doorBody.addColorStop(0.7, '#7a5030');
+      doorBody.addColorStop(1, '#3a2010');
+    }
+    ctx.fillStyle = doorBody;
     ctx.fillRect(doorX - 26, floorY - doorH + 4, 52, doorH - 4);
+    // neon rim
+    ctx.strokeStyle = doorLocked ? 'rgba(255,80,60,0.45)' : 'rgba(60,255,140,0.5)';
+    ctx.lineWidth = 1.6;
+    ctx.strokeRect(doorX - 26.5, floorY - doorH + 3.5, 53, doorH - 3);
+    ctx.strokeStyle = 'rgba(60,220,255,0.22)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(doorX - 24, floorY - doorH + 6, 48, doorH - 8);
     // plywood door grain
-    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-    for (let gy = floorY - doorH + 10; gy < floorY - 8; gy += 12) {
+    ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+    for (let gy = floorY - doorH + 10; gy < floorY - 8; gy += 11) {
       ctx.beginPath();
       ctx.moveTo(doorX - 24, gy);
-      ctx.lineTo(doorX + 24, gy);
+      ctx.lineTo(doorX + 24, gy + Math.sin(gy * 0.1) * 1.5);
       ctx.stroke();
     }
+    // specular edge
+    ctx.fillStyle = 'rgba(255,220,160,0.18)';
+    ctx.fillRect(doorX - 24, floorY - doorH + 6, 3, doorH - 12);
     if (doorLocked) {
-      ctx.fillStyle = '#333';
+      ctx.fillStyle = '#222';
       ctx.fillRect(doorX + 8, floorY - 78, 12, 16);
       ctx.fillStyle = '#c4a35a';
       ctx.beginPath();
       ctx.arc(doorX + 14, floorY - 72, 3, 0, Math.PI * 2);
       ctx.fill();
     } else {
-      ctx.fillStyle = '#c4a35a';
+      const knob = ctx.createRadialGradient(doorX + 15, floorY - 71, 0.5, doorX + 16, floorY - 70, 5);
+      knob.addColorStop(0, '#ffe8a0');
+      knob.addColorStop(1, '#8a6830');
+      ctx.fillStyle = knob;
       ctx.beginPath();
-      ctx.arc(doorX + 16, floorY - 70, 4, 0, Math.PI * 2);
+      ctx.arc(doorX + 16, floorY - 70, 4.5, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.fillStyle = doorLocked ? '#aa4422' : '#1a5a1a';
+    ctx.fillStyle = doorLocked ? '#ff6644' : '#7dff3a';
     ctx.font = 'bold 11px Segoe UI, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(doorLocked ? 'LOCKED' : 'EXIT →', doorX, floorY - doorH - 10);
@@ -3360,12 +3643,18 @@
       ctx.fill();
     }
 
-    ctx.fillStyle = 'rgba(20,14,8,0.62)';
-    ctx.fillRect(w / 2 - 130, 4, 260, 18);
-    ctx.fillStyle = '#f0e0c0';
+    ctx.fillStyle = 'rgba(12,6,20,0.72)';
+    ctx.fillRect(w / 2 - 148, 3, 296, 20);
+    ctx.strokeStyle = 'rgba(255,40,180,0.45)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(w / 2 - 148, 3, 296, 20);
+    ctx.strokeStyle = 'rgba(60,220,255,0.35)';
+    ctx.strokeRect(w / 2 - 146, 5, 292, 16);
+    ctx.fillStyle = '#f0e8ff';
     ctx.font = '11px Segoe UI, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText("Mom's Shed — plywood · band gear · El Camino", w / 2, 16);
+    // Header promises El Camino — always draw (dusty stand-in if driven to yard)
+    ctx.fillText("Mom's Shed — plywood · band gear · El Camino", w / 2, 17);
     ctx.textAlign = 'left';
   }
 
