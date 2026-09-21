@@ -6,8 +6,8 @@
  */
 (function (global) {
   var PATHS = {
-    zakk: "assets/zakk-cutout.png?v=16",
-    tayler: "assets/tayler-cutout.png?v=16",
+    zakk: "assets/zakk-cutout.png?v=17",
+    tayler: "assets/tayler-cutout.png?v=17",
   };
   var IMGS = {};
   var LABELS = { zakk: "Zakk", tayler: "Tayler" };
@@ -59,10 +59,11 @@
   function poseMotion(moving, seated, t) {
     var tt = t || 0;
     if (seated) {
+      // Seated: still (no idle bob/sway)
       return {
-        bob: Math.sin(tt * 0.0035) * 0.6,
-        sway: Math.sin(tt * 0.0022) * 0.35,
-        lean: 0.2,
+        bob: 0,
+        sway: 0,
+        lean: 0,
         squash: 1,
         stretch: 1,
         phase: 0,
@@ -70,28 +71,29 @@
       };
     }
     if (!moving) {
-      // Idle: gentle vertical bob + tiny sway (no limb swing)
+      // IDLE: completely still — no bob, sway, or lean
       return {
-        bob: Math.sin(tt * 0.0042) * 2.2,
-        sway: Math.sin(tt * 0.0028) * 1.1,
-        lean: 0.15,
+        bob: 0,
+        sway: 0,
+        lean: 0,
         squash: 1,
         stretch: 1,
         phase: 0,
         walk: 0,
       };
     }
-    // Walk: light bounce + phase for subtle limb warp
-    var phase = tt * 0.028;
+    // WALKING: side-profile silhouette cycle
+    // forward lean + alternating leg shear + opposite arm swing + step bounce
+    var phase = tt * 0.032;
     var s = Math.sin(phase);
     var absS = Math.abs(s);
     var land = Math.max(0, Math.cos(phase * 2));
-    var squash = 1 - land * 0.03;
-    var stretch = 1 + absS * 0.02;
+    var squash = 1 - land * 0.045;
+    var stretch = 1 + absS * 0.028;
     return {
-      bob: absS * 3.2,
-      sway: s * 1.6,
-      lean: 2.0 + absS * 0.4,
+      bob: absS * 3.6,           // vertical step bounce ONLY while moving
+      sway: s * 0.55,            // minimal lateral; stride reads via shear
+      lean: 4.2 + absS * 0.9,    // clear forward lean into facing
       squash: squash,
       stretch: stretch,
       phase: phase,
@@ -121,15 +123,17 @@
       return;
     }
 
+    // Side-profile walk: clearer alternating stride + opposite arm swing
     // Region splits as fractions of draw height (feet at 0, head at -drawH)
-    var legTop = 0.42; // from bottom
-    var armBandTop = 0.58;
-    var armBandBot = 0.30;
+    var legTop = 0.44;
+    var armBandTop = 0.62;
+    var armBandBot = 0.28;
     var s = walk;
-    var legShear = s * 0.055;
-    var armShear = -s * 0.04;
-    var legLift = Math.abs(s) * 1.4;
-    var armSwing = s * 1.8;
+    var legShear = s * 0.085;      // stronger side-view stride shear
+    var armShear = -s * 0.065;     // arms opposite legs
+    var legLift = Math.abs(s) * 2.2;
+    var armSwing = s * 2.6;
+    var strideX = s * 1.35;
 
     function blitFrac(y0Frac, y1Frac, shear, dx, dy, pivotYFrac) {
       var top = -drawH * y1Frac;
@@ -141,7 +145,7 @@
       var srcSliceH = Math.max(1, srcBot - srcTop);
       ctx.save();
       ctx.beginPath();
-      ctx.rect(-drawW / 2 - 4, top - 1, drawW + 8, h + 2);
+      ctx.rect(-drawW / 2 - 6, top - 2, drawW + 12, h + 4);
       ctx.clip();
       var pivotY = -drawH * (pivotYFrac != null ? pivotYFrac : (y0Frac + y1Frac) * 0.5);
       ctx.translate(dx || 0, dy || 0);
@@ -162,14 +166,14 @@
       ctx.restore();
     }
 
-    // Far/back leg (slight opposite lift)
-    blitFrac(0, legTop, -legShear * 0.7, -s * 0.6, s > 0 ? 0 : legLift * 0.35, 0.2);
-    // Near leg
-    blitFrac(0, legTop, legShear, s * 0.6, s < 0 ? 0 : legLift * 0.35, 0.2);
-    // Torso + head (stable, tiny counter-sway)
-    blitFrac(legTop, 1, -s * 0.008, s * 0.25, 0, 0.72);
-    // Arm band soft opposite swing
-    blitFrac(armBandBot, armBandTop, armShear, armSwing * 0.15, -Math.abs(s) * 0.4, 0.5);
+    // Far/back leg (recedes)
+    blitFrac(0, legTop, -legShear * 0.85, -strideX * 0.85, s > 0 ? 0 : legLift * 0.45, 0.18);
+    // Near leg (plants / strides forward)
+    blitFrac(0, legTop, legShear, strideX * 0.95, s < 0 ? 0 : legLift * 0.45, 0.18);
+    // Torso + head — stable, tiny counter
+    blitFrac(legTop, 1, -s * 0.012, strideX * 0.2, 0, 0.74);
+    // Soft arm band opposite the legs
+    blitFrac(armBandBot, armBandTop, armShear, -armSwing * 0.22, -Math.abs(s) * 0.55, 0.48);
   }
 
   function attachJoint(ctx, key, x, y, facing, drawH, bob, opts) {

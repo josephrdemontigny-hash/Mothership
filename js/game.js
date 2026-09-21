@@ -1475,6 +1475,7 @@
     { x: 1100, kind: 'clockTower', label: 'CLOCK TOWER' },
     { x: 1900, kind: 'museum', label: 'MUSEUM' },
     { x: 2700, kind: 'royalHotel', label: 'ROYAL HOTEL' },
+    { x: 3100, kind: 'sassySaloon', label: 'SASSY SALOON' },
     { x: 3500, kind: 'theatre', label: 'PARAMOUNT' },
     { x: 4200, kind: 'fireHall', label: 'FIRE HALL' },
     { x: 5000, kind: 'vedderBridge', label: 'VEDDER BRIDGE' },
@@ -2816,6 +2817,7 @@
     clockTower: 'pull the chime rope',
     museum: 'read the case label',
     royalHotel: 'ring for room service',
+    sassySaloon: 'hear Kurtis play',
     theatre: 'grab buttery cosmic popcorn',
     fireHall: 'slide the brass pole',
     vedderBridge: 'scatter crumbs over the rail',
@@ -2825,6 +2827,7 @@
     clockTower: 'Chimes already answered — hands still wrong.',
     museum: 'Docent already clocked you.',
     royalHotel: 'Kitchen closed for this visit.',
+    sassySaloon: 'Encore already cashed — Kurtis is on break.',
     theatre: 'House lights already up.',
     fireHall: 'Apparatus already mustered.',
     vedderBridge: 'River kept what you threw.',
@@ -3114,6 +3117,14 @@
       }
       Audio.play('power');
       W.burst(particles, hx, hy, '#ffcc33', 16);
+    } else if (kind === 'sassySaloon') {
+      score += 120;
+      showFlash("I'm Kurtis Not Hall — requests cost a round.", 150);
+      Audio.play('power');
+      Audio.play('score');
+      W.burst(particles, hx, hy, '#ff60c0', 20);
+      W.burst(particles, hx - 20, hy - 20, '#40e0ff', 12);
+      W.addFloater(floaters, hx, hy - 30, '+120 ♪', '#ff60c0');
     } else if (kind === 'vedderBridge') {
       score += 75;
       flyResume.forceCowSoon = true;
