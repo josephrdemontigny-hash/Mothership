@@ -1775,7 +1775,7 @@
     img._failed = false;
     img.onload = function () { img._ready = !!(img.naturalWidth && img.naturalHeight); };
     img.onerror = function () { img._failed = true; img._ready = false; };
-    img.src = 'assets/posters/band-' + n + '.jpeg?v=17';
+    img.src = 'assets/posters/band-' + n + '.jpeg?v=18';
     return img;
   });
 
@@ -1873,9 +1873,9 @@
 
   /** Primary Retrofit wall art — real gig / postcard / tracks photos. */
   const RETROFIT_POSTER_SRCS = [
-    'assets/posters/retrofit-live.png?v=17',
-    'assets/posters/retrofit-greetings.jpg?v=17',
-    'assets/posters/retrofit-tracks.jpg?v=17',
+    'assets/posters/retrofit-live.png?v=18',
+    'assets/posters/retrofit-greetings.jpg?v=18',
+    'assets/posters/retrofit-tracks.jpg?v=18',
   ];
   const RETROFIT_POSTER_IMGS = RETROFIT_POSTER_SRCS.map(function (src) {
     const img = new Image();
@@ -2073,7 +2073,7 @@
     img._failed = false;
     img.onload = function () { img._ready = !!(img.naturalWidth && img.naturalHeight); };
     img.onerror = function () { img._failed = true; img._ready = false; };
-    img.src = 'assets/elcamino-side.png?v=17';
+    img.src = 'assets/elcamino-side.png?v=18';
     return img;
   })();
 
@@ -3469,10 +3469,11 @@
 
     // ——— RETROFIT primary wall art (photoreal posters dominate) ———
     // Left of window: live gig poster (Handsome Daughter / Winnipeg)
-    drawPhotoPoster(ctx, 480 - camX, 18, { which: 0, w: 118, h: 158, accent: '#ff60c0', wood: true, label: 'LIVE' });
+    // Eye-height (~mid-torso/head) — not high on the wall
+    drawPhotoPoster(ctx, 480 - camX, 108, { which: 0, w: 118, h: 158, accent: '#ff60c0', wood: true, label: 'LIVE' });
     // Right of window / stereo wall: Greetings postcard + tracks photo
-    drawPhotoPoster(ctx, 1115 - camX, 16, { which: 1, w: 130, h: 100, accent: '#40e0ff', wood: true, label: 'GREETINGS' });
-    drawPhotoPoster(ctx, 1255 - camX, 22, { which: 2, w: 108, h: 142, accent: '#ffe040', wood: false, label: 'TRACKS' });
+    drawPhotoPoster(ctx, 1115 - camX, 118, { which: 1, w: 130, h: 100, accent: '#40e0ff', wood: true, label: 'GREETINGS' });
+    drawPhotoPoster(ctx, 1255 - camX, 98, { which: 2, w: 108, h: 142, accent: '#ffe040', wood: false, label: 'TRACKS' });
     // One small trading-card scrap kept tucked (not competing with Retrofit)
     drawBandFlyer(ctx, 560 - camX, 178, { poster: 2, w: 42, h: 56, accent: '#c040ff' });
     drawPoster(ctx, 620 - camX, 188, 'BEER', '#4a2a1a');
@@ -3658,31 +3659,17 @@
       ctx.ellipse(sx, floorY + 18 + (i % 5) * 10, 18 + (i % 4) * 6, 5 + (i % 3), 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    // Vertical neon wet-reflection streaks (magenta / cyan)
+    // Soft warm wet-floor pools only (no pink/teal vertical streaks)
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    for (let i = 0; i < 16; i++) {
-      const sx = ((i * 79 - (camX | 0) * 0.35 + (t || 0) * 0.004) % (w + 50)) - 20;
-      const mag = i % 3 !== 1;
-      const col = mag ? 'rgba(255,48,180,' : 'rgba(48,220,255,';
-      const a0 = 0.16 + (i % 4) * 0.03;
-      const streak = ctx.createLinearGradient(sx, floorY, sx, h);
-      streak.addColorStop(0, col + a0 + ')');
-      streak.addColorStop(0.5, col + (a0 * 0.45) + ')');
-      streak.addColorStop(1, col + '0)');
-      ctx.fillStyle = streak;
-      ctx.fillRect(sx, floorY, 2.5 + (i % 4), h - floorY);
-    }
-    // Warm lamp pools on wet floor
     const pool1 = ctx.createRadialGradient(w * 0.55, floorY + 28, 4, w * 0.55, floorY + 36, 90);
-    pool1.addColorStop(0, 'rgba(255,180,70,0.18)');
+    pool1.addColorStop(0, 'rgba(255,180,70,0.14)');
     pool1.addColorStop(1, 'rgba(255,180,70,0)');
     ctx.fillStyle = pool1;
     ctx.fillRect(0, floorY, w, h - floorY);
     const pool2 = ctx.createRadialGradient(w * 0.72, floorY + 22, 3, w * 0.72, floorY + 30, 70);
-    pool2.addColorStop(0, 'rgba(80,200,255,0.14)');
-    pool2.addColorStop(0.5, 'rgba(255,40,180,0.06)');
-    pool2.addColorStop(1, 'rgba(80,200,255,0)');
+    pool2.addColorStop(0, 'rgba(255,200,120,0.08)');
+    pool2.addColorStop(1, 'rgba(255,200,120,0)');
     ctx.fillStyle = pool2;
     ctx.fillRect(0, floorY, w, h - floorY);
     ctx.restore();
@@ -6839,19 +6826,47 @@
     ctx.textAlign = 'left';
   }
 
+  /** Lazy-load dash photo for canvas title backdrop (HTML overlay sits on top). */
+  let _titleDashImg = null;
+  function titleDashImage() {
+    if (_titleDashImg) return _titleDashImg;
+    _titleDashImg = new Image();
+    _titleDashImg.src = 'assets/title-dash-bg.jpg?v=18';
+    return _titleDashImg;
+  }
+
   function drawTitleBackdrop(ctx, w, h, t) {
-    drawSky(ctx, w, h, t);
-    drawMountains(ctx, w, h * 0.7, t * 0.02);
-    const titleGrass = ctx.createLinearGradient(0, h * 0.7, 0, h);
-    titleGrass.addColorStop(0, '#2a5a38');
-    titleGrass.addColorStop(1, '#142418');
-    ctx.fillStyle = titleGrass;
-    ctx.fillRect(0, h * 0.7, w, h * 0.3);
-    drawClayUFO(ctx, w / 2 + Math.sin(t * 0.001) * 40, 118 + Math.cos(t * 0.0007) * 12, 1.72, t, true, { showPilots: true, legExtend: 0 });
-    // brothers on title
-    drawZakk(ctx, w / 2 - 80, h * 0.7, 1, false, t, { smoking: true, jointLit: true, puffing: true, puffProg: 0.85 });
-    drawTayler(ctx, w / 2 + 90, h * 0.7, -1, false, t, { smoking: true, jointLit: true, puffing: true });
-    ctx.fillStyle = 'rgba(5,20,10,0.35)';
+    const img = titleDashImage();
+    if (img.complete && img.naturalWidth) {
+      // cover
+      const iw = img.naturalWidth;
+      const ih = img.naturalHeight;
+      const scale = Math.max(w / iw, h / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      const dx = (w - dw) / 2;
+      const dy = (h - dh) / 2;
+      ctx.drawImage(img, dx, dy, dw, dh);
+    } else {
+      // Warm dark wood-dash fallback while image loads
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, '#1a120c');
+      g.addColorStop(0.45, '#2a1a10');
+      g.addColorStop(1, '#0a0604');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+      // soft amber gauge glow hint
+      const glow = ctx.createRadialGradient(w * 0.28, h * 0.38, 8, w * 0.28, h * 0.4, w * 0.28);
+      glow.addColorStop(0, 'rgba(255, 140, 40, 0.22)');
+      glow.addColorStop(1, 'rgba(255, 140, 40, 0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, w, h);
+    }
+    // Cinematic vignette
+    const vig = ctx.createRadialGradient(w * 0.45, h * 0.4, h * 0.12, w * 0.5, h * 0.5, h * 0.78);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(0,0,0,0.55)');
+    ctx.fillStyle = vig;
     ctx.fillRect(0, 0, w, h);
   }
 

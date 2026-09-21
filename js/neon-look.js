@@ -1,32 +1,23 @@
 /**
  * Neon-noir grade so scenes match the trading-card portraits:
- * wet night street, magenta/cyan rim, comic contrast, wet-ground specular.
+ * wet night street, magenta/cyan rim, comic contrast.
+ * Soft wet-ground pools only — no pink/teal vertical streaks.
  */
 (function (global) {
   function wetSpecular(ctx, w, h, t) {
-    // Long vertical neon reflections on the lower third (wet asphalt feel)
+    // Soft lamp pools on wet ground (no vertical neon line streaks)
     var ground = h * 0.68;
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    var seed = ((t || 0) / 90) | 0;
-    for (var i = 0; i < 14; i++) {
-      var x = ((i * 73 + seed * 17) % (w + 40)) - 20;
-      var mag = i % 3 === 0;
-      var col = mag ? 'rgba(255, 58, 214,' : 'rgba(61, 240, 255,';
-      var a0 = 0.14 + (i % 4) * 0.02;
-      var grad = ctx.createLinearGradient(x, ground, x, h);
-      grad.addColorStop(0, col + a0 + ')');
-      grad.addColorStop(0.55, col + (a0 * 0.45) + ')');
-      grad.addColorStop(1, col + '0)');
-      ctx.fillStyle = grad;
-      var tw = 3 + (i % 5);
-      ctx.fillRect(x, ground, tw, h - ground);
-    }
-    // Warm lamp pools on wet ground
     var lamp = ctx.createRadialGradient(w * 0.28, h * 0.82, 4, w * 0.28, h * 0.88, w * 0.22);
-    lamp.addColorStop(0, 'rgba(255, 170, 70, 0.16)');
+    lamp.addColorStop(0, 'rgba(255, 170, 70, 0.12)');
     lamp.addColorStop(1, 'rgba(255, 170, 70, 0)');
     ctx.fillStyle = lamp;
+    ctx.fillRect(0, ground, w, h - ground);
+    var lamp2 = ctx.createRadialGradient(w * 0.72, h * 0.86, 3, w * 0.72, h * 0.9, w * 0.18);
+    lamp2.addColorStop(0, 'rgba(255, 200, 120, 0.08)');
+    lamp2.addColorStop(1, 'rgba(255, 200, 120, 0)');
+    ctx.fillStyle = lamp2;
     ctx.fillRect(0, ground, w, h - ground);
     ctx.restore();
   }
@@ -113,6 +104,8 @@
           var w = ctx.canvas ? ctx.canvas.width : 960;
           var h = ctx.canvas ? ctx.canvas.height : 540;
           var t = arguments[arguments.length - 1];
+          // Skip neon grade on title — HTML dash photo owns the mood
+          if (name === 'drawTitleBackdrop') return r;
           neonGrade(ctx, w, h, typeof t === 'number' ? t : 0);
         } catch (e) {}
         return r;

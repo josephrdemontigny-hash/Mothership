@@ -423,355 +423,164 @@ html, body {
   letter-spacing: 0.04em;
 }
 
-/* ——— Oxblood dash cassette player (title) ——— */
+/* ——— Title: vintage dash photo + floating cassette ——— */
+#screen-title.screen-title--dash {
+  background: #080604;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.title-dash-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    #0a0604 url("../assets/title-dash-bg.jpg") center center / cover no-repeat;
+  filter: saturate(1.05) contrast(1.08);
+  transform: scale(1.02);
+}
+
+.title-dash-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 42% 40%, transparent 18%, rgba(0, 0, 0, 0.45) 62%, rgba(0, 0, 0, 0.78) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.25) 0%, transparent 22%, transparent 70%, rgba(0, 0, 0, 0.55) 100%);
+}
+
 .stereo-wrap {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  max-width: 560px;
+  gap: 14px;
+  max-width: 520px;
   width: 100%;
-  z-index: 1;
+  z-index: 2;
 }
 
-/* Maroon / oxblood vinyl dash surround */
-.dash-panel {
-  position: absolute;
-  inset: -36px -40px -48px;
-  z-index: -1;
-  border-radius: 18px;
-  background:
-    radial-gradient(ellipse at 28% 12%, rgba(180, 90, 90, 0.35) 0%, transparent 45%),
-    radial-gradient(ellipse at 72% 80%, rgba(40, 8, 12, 0.55) 0%, transparent 50%),
-    linear-gradient(165deg, #6a2430 0%, #4a1520 32%, #3a1018 62%, #2a0c12 100%);
-  box-shadow:
-    0 22px 48px rgba(0, 0, 0, 0.6),
-    inset 0 2px 1px rgba(180, 100, 100, 0.22),
-    inset 0 -12px 28px rgba(20, 4, 8, 0.55),
-    inset 0 0 0 1px rgba(90, 30, 40, 0.7);
-  pointer-events: none;
-  overflow: hidden;
+/* Amber LED / gauge readouts */
+.dash-led-row {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
 }
 
-/* AC vent above the head unit */
-.dash-vent {
-  position: absolute;
-  left: 18%;
-  right: 18%;
-  top: 10px;
-  height: 22px;
+.dash-led {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 12px 5px;
   border-radius: 3px;
   background:
-    repeating-linear-gradient(
-      180deg,
-      #1a0a10 0 3px,
-      #2a1218 3px 5px
-    );
-  border: 1px solid rgba(60, 20, 28, 0.9);
+    linear-gradient(180deg, #1a120a 0%, #0c0806 100%);
+  border: 1px solid rgba(255, 160, 60, 0.28);
   box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.65),
-    0 1px 0 rgba(120, 60, 70, 0.25);
+    inset 0 0 14px rgba(255, 120, 30, 0.12),
+    inset 0 1px 0 rgba(255, 200, 100, 0.08),
+    0 0 10px rgba(255, 120, 40, 0.15);
+  font-variant-numeric: tabular-nums;
 }
 
-/* Dark woodgrain strip framing the stereo */
-.dash-wood {
-  position: absolute;
-  left: 6%;
-  right: 6%;
-  top: 40px;
-  height: 118px;
-  border-radius: 4px;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(60, 30, 14, 0.35) 0 2px,
-      transparent 2px 5px
-    ),
-    linear-gradient(
-      180deg,
-      #5a3a22 0%,
-      #3e2818 28%,
-      #2a1a10 55%,
-      #4a301c 78%,
-      #342014 100%
-    );
-  box-shadow:
-    inset 0 1px 0 rgba(160, 110, 60, 0.35),
-    inset 0 -2px 6px rgba(0, 0, 0, 0.45),
-    0 0 0 1px rgba(20, 10, 6, 0.7);
-  opacity: 0.95;
+.led-tag {
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: rgba(255, 170, 70, 0.55);
+}
+
+.dash-led .highscore,
+.dash-led .play-count {
+  margin: 0;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #ffb24a;
+  text-shadow:
+    0 0 6px rgba(255, 140, 40, 0.75),
+    0 0 14px rgba(255, 100, 20, 0.35);
 }
 
 .car-stereo {
   position: relative;
   width: 100%;
-  max-width: 500px;
+  max-width: 340px;
   padding: 0;
   background: transparent;
   border: none;
   box-shadow: none;
-  margin-top: 28px;
-}
-
-.stereo-face {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px 14px;
-  border-radius: 8px;
-  /* Recessed black head-unit face inside chrome */
-  background:
-    linear-gradient(180deg, #1a1216 0%, #0c0a0c 50%, #080608 100%);
-  border: 1px solid #2a1a1e;
-  box-shadow:
-    0 0 0 2px rgba(200, 200, 210, 0.55),
-    0 0 0 3px rgba(40, 20, 24, 0.9),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 -3px 10px rgba(0, 0, 0, 0.65),
-    0 10px 24px rgba(0, 0, 0, 0.45);
-}
-
-/* ——— Chrome dual-ring knobs ——— */
-.stereo-knob {
-  position: relative;
-  width: 56px;
-  flex-shrink: 0;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: transparent;
-}
-
-.knob-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background:
-    repeating-conic-gradient(
-      from 0deg,
-      #e8e8ee 0deg 3deg,
-      #9a9aa4 3deg 6deg,
-      #d0d0d8 6deg 9deg,
-      #6a6a74 9deg 12deg
-    );
-  box-shadow:
-    0 3px 6px rgba(0, 0, 0, 0.55),
-    inset 0 2px 2px rgba(255, 255, 255, 0.55),
-    inset 0 -3px 5px rgba(0, 0, 0, 0.4);
-  border: 1px solid #f0f0f4;
-}
-
-.knob-cap {
-  position: absolute;
-  inset: 11px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 35% 28%, #ffffff 0%, #d8d8e0 32%, #8a8a94 68%, #3a3a42 100%);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.45),
-    inset 0 2px 3px rgba(255, 255, 255, 0.7),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.35);
-}
-
-.knob-mark {
-  position: absolute;
-  left: 50%;
-  top: 14px;
-  width: 2.5px;
-  height: 10px;
-  margin-left: -1.25px;
-  background: linear-gradient(180deg, #fff, #888);
-  border-radius: 1px;
-  box-shadow: 0 0 2px #000;
-  z-index: 3;
-}
-.stereo-knob-l .knob-mark { transform: rotate(-38deg); transform-origin: center 16px; }
-.stereo-knob-r .knob-mark { transform: rotate(42deg); transform-origin: center 16px; }
-
-/* Legacy wing/face bits (inert if markup returns) */
-.knob-wing,
-.knob-face { display: none; }
-
-/* Thin chrome bezel around dial + slot + presets */
-.stereo-chrome {
-  flex: 1;
-  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px 9px 8px;
-  border-radius: 6px;
-  background:
-    linear-gradient(
-      145deg,
-      #f2f2f6 0%,
-      #c8c8d0 16%,
-      #8a8a94 34%,
-      #ececf0 50%,
-      #6a6a74 70%,
-      #d4d4dc 86%,
-      #9a9aa4 100%
-    );
-  border: 1px solid #f8f8fa;
-  box-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.3);
+  align-items: center;
+  gap: 8px;
 }
 
-/* Amber analog dial + needle */
+/* Small amber status LED strip */
 .stereo-display {
   position: relative;
+  width: 100%;
+  max-width: 280px;
+  min-height: 28px;
+  padding: 6px 12px;
+  border-radius: 2px;
   background:
-    linear-gradient(180deg, #c8a030 0%, #a87818 40%, #8a6010 100%);
-  border: 2px solid #2a2010;
-  border-radius: 3px;
-  padding: 6px 10px 8px;
+    linear-gradient(180deg, #2a1a08 0%, #140c04 100%);
+  border: 1px solid rgba(255, 160, 50, 0.35);
+  box-shadow:
+    inset 0 0 16px rgba(255, 140, 40, 0.22),
+    0 0 12px rgba(255, 120, 30, 0.18);
   display: flex;
   align-items: center;
-  gap: 6px;
-  box-shadow:
-    inset 0 0 18px rgba(255, 200, 60, 0.45),
-    inset 0 2px 4px rgba(0, 0, 0, 0.35),
-    0 1px 0 rgba(255, 255, 255, 0.25);
-  min-height: 44px;
-  overflow: hidden;
-}
-
-.dial-glass {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.dial-band {
-  position: absolute;
-  left: 8px;
-  top: 4px;
-  font-family: "Courier New", ui-monospace, monospace;
-  font-size: 7px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  color: rgba(40, 24, 8, 0.7);
-}
-
-.dial-ticks {
-  position: absolute;
-  left: 10%;
-  right: 22%;
-  top: 14px;
-  height: 16px;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(40, 24, 8, 0.55) 0 1px,
-      transparent 1px 9px
-    ),
-    linear-gradient(
-      180deg,
-      transparent 0 6px,
-      rgba(40, 24, 8, 0.35) 6px 7px,
-      transparent 7px
-    );
-  opacity: 0.85;
-}
-
-.dial-needle {
-  position: absolute;
-  left: 42%;
-  top: 8px;
-  bottom: 10px;
-  width: 2px;
-  margin-left: -1px;
-  background: linear-gradient(180deg, #2a1008, #8a2010);
-  border-radius: 1px;
-  box-shadow: 0 0 3px rgba(120, 20, 10, 0.5);
-  transform-origin: 50% 100%;
-}
-
-.car-stereo.playing .dial-needle {
-  animation: needleWobble 2.4s ease-in-out infinite;
-}
-@keyframes needleWobble {
-  0%, 100% { transform: rotate(-2deg); }
-  50% { transform: rotate(3deg); }
-}
-
-/* Glowing red STEREO lamp */
-.stereo-indicator {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-family: "Courier New", ui-monospace, monospace;
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  color: rgba(80, 10, 10, 0.45);
-  text-shadow: none;
-  transition: color 0.2s, text-shadow 0.2s;
-}
-.car-stereo.playing .stereo-indicator,
-.car-stereo.inserted .stereo-indicator {
-  color: #ff2a2a;
-  text-shadow:
-    0 0 4px rgba(255, 40, 40, 0.95),
-    0 0 10px rgba(255, 20, 20, 0.75),
-    0 0 18px rgba(255, 0, 0, 0.45);
+  justify-content: center;
 }
 
 .stereo-lcd {
-  position: relative;
-  z-index: 1;
   font-family: "Courier New", ui-monospace, monospace;
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.12em;
-  color: rgba(40, 20, 8, 0.82);
-  text-shadow: 0 1px 0 rgba(255, 220, 120, 0.35);
-  flex: 1;
-  text-align: center;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  margin-top: 14px;
-}
-.stereo-eq {
-  position: relative;
-  z-index: 1;
-  width: 18px;
-  height: 10px;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(60, 30, 10, 0.55) 0 2px,
-      transparent 2px 4px
-    );
-  opacity: 0.25;
-  flex-shrink: 0;
-  transform-origin: bottom center;
-  margin-top: 14px;
-}
-.car-stereo.playing .stereo-eq {
-  opacity: 0.7;
-  animation: eqPulse 0.45s ease-in-out infinite alternate;
-}
-@keyframes eqPulse {
-  from { transform: scaleY(0.55); }
-  to { transform: scaleY(1.15); }
+  color: #ffb24a;
+  text-shadow:
+    0 0 6px rgba(255, 150, 40, 0.85),
+    0 0 14px rgba(255, 100, 20, 0.4);
 }
 
-/* Cassette slot under amber dial */
+.dial-glass,
+.dial-band,
+.dial-ticks,
+.dial-needle,
+.stereo-indicator,
+.stereo-eq,
+.dash-panel,
+.dash-vent,
+.dash-wood,
+.stereo-face,
+.stereo-knob,
+.stereo-chrome,
+.stereo-buttons {
+  display: none !important;
+}
+
+/* Deck mouth — tape slides into this */
 .cassette-slot {
   position: relative;
-  height: 18px;
+  width: 100%;
+  max-width: 300px;
+  height: 16px;
   border-radius: 2px;
   background:
-    linear-gradient(180deg, #050506 0%, #121216 45%, #030304 100%);
-  border: 1px solid #3a3a42;
+    linear-gradient(180deg, #050406 0%, #121014 45%, #030204 100%);
+  border: 1px solid rgba(180, 140, 90, 0.35);
   box-shadow:
-    inset 0 4px 8px rgba(0, 0, 0, 0.95),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
-    0 1px 0 rgba(255, 255, 255, 0.35);
+    inset 0 4px 10px rgba(0, 0, 0, 0.95),
+    0 0 10px rgba(255, 120, 40, 0.12);
   overflow: hidden;
   cursor: pointer;
 }
@@ -781,16 +590,15 @@ html, body {
   right: 4%;
   top: 0;
   height: 3px;
-  background: linear-gradient(180deg, #c8c8d0, #5a5a64);
+  background: linear-gradient(180deg, #c8b090, #5a4830);
   border-radius: 0 0 1px 1px;
-  opacity: 0.9;
+  opacity: 0.75;
 }
 .slot-dark {
   position: absolute;
   inset: 5px 8% 3px;
   background: #000;
   border-radius: 1px;
-  box-shadow: inset 0 0 6px #000;
 }
 .slot-hint {
   position: absolute;
@@ -799,25 +607,11 @@ html, body {
   align-items: center;
   justify-content: center;
   font-family: "Courier New", ui-monospace, monospace;
-  font-size: 7px;
+  font-size: 8px;
   font-weight: 800;
-  letter-spacing: 0.18em;
-  color: rgba(255, 180, 60, 0.45);
+  letter-spacing: 0.22em;
+  color: rgba(255, 170, 60, 0.55);
   pointer-events: none;
-  opacity: 0.7;
-  animation: slotBlink 1.6s ease-in-out infinite;
-  text-indent: -9999px;
-  overflow: hidden;
-}
-.slot-hint::after {
-  content: "";
-  position: absolute;
-  left: 12%;
-  right: 12%;
-  top: 50%;
-  height: 2px;
-  margin-top: -1px;
-  background: linear-gradient(90deg, transparent, rgba(255,180,60,0.4), transparent);
   animation: slotBlink 1.6s ease-in-out infinite;
 }
 .car-stereo.inserted .slot-hint { display: none; }
@@ -826,100 +620,193 @@ html, body {
   50% { opacity: 0.95; }
 }
 
-/* Five chrome preset buttons */
-.stereo-buttons {
-  display: flex;
-  justify-content: stretch;
-  gap: 5px;
-  padding: 1px 1px 0;
-}
-.stereo-buttons span {
-  flex: 1;
-  height: 15px;
-  border-radius: 2px;
-  background:
-    linear-gradient(180deg, #f0f0f4 0%, #b8b8c0 35%, #6a6a74 70%, #c8c8d0 100%);
-  border: 1px solid #e8e8ee;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    inset 0 -2px 3px rgba(0, 0, 0, 0.35);
-}
-
-/* Cassette tape (menu) — photo-real Retrofit tape */
+/* Floating cassette — amber rim glow */
 .menu-cassette {
   display: block;
-  width: calc(100% - 88px);
-  max-width: 280px;
-  margin: 14px auto 2px;
+  width: 100%;
+  max-width: 300px;
+  margin: 4px auto 0;
   padding: 0;
   border: none;
   background: transparent;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transform-origin: 50% 0%;
-  transition: transform 0.18s ease, filter 0.18s ease;
-  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.55));
-  perspective: 600px;
+  transition: transform 0.2s ease, filter 0.2s ease;
+  perspective: 700px;
+  z-index: 3;
 }
 .menu-cassette:hover,
 .menu-cassette:focus {
-  transform: translateY(-5px) scale(1.03);
+  transform: translateY(-6px) scale(1.03);
   outline: none;
-  filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.6))
-          drop-shadow(0 0 12px rgba(255, 80, 60, 0.22));
 }
-.menu-cassette:focus-visible .tape-shell {
-  box-shadow:
-    0 0 0 3px rgba(255, 100, 60, 0.5),
-    0 10px 22px rgba(0, 0, 0, 0.5);
+.menu-cassette:focus-visible .tape-body {
+  outline: 2px solid rgba(255, 160, 60, 0.7);
+  outline-offset: 4px;
 }
 .menu-cassette:active {
-  transform: translateY(-1px) scale(0.99);
+  transform: translateY(-2px) scale(0.99);
 }
 
-.tape-shell {
+.tape-shell--dash {
   display: block;
   position: relative;
-  border-radius: 6px;
-  overflow: hidden;
   line-height: 0;
-  background: #141416;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.06) inset,
-    0 0 0 1px rgba(0, 0, 0, 0.65);
+  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.65));
 }
-.tape-shell--photo {
-  border: none;
-  padding: 0;
-  background: #0c0c0e;
-  border-radius: 6px;
-  transform: perspective(520px) rotateX(8deg);
+
+.tape-glow {
+  position: absolute;
+  inset: -18px -22px;
+  border-radius: 18px;
+  background: radial-gradient(ellipse at 50% 50%,
+    rgba(255, 140, 40, 0.55) 0%,
+    rgba(255, 100, 20, 0.22) 42%,
+    transparent 72%);
+  pointer-events: none;
+  z-index: 0;
+  animation: tapeGlowPulse 2.8s ease-in-out infinite;
+}
+@keyframes tapeGlowPulse {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.04); }
+}
+
+.tape-body {
+  position: relative;
+  z-index: 1;
+  display: block;
+  aspect-ratio: 1.55 / 1;
+  border-radius: 7px;
+  background:
+    linear-gradient(165deg, #2a2a2e 0%, #121214 40%, #0a0a0c 100%);
+  border: 1px solid #3a3a40;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 24px rgba(255, 120, 30, 0.45),
+    0 0 48px rgba(255, 90, 20, 0.22);
+  overflow: hidden;
+  transform: perspective(560px) rotateX(7deg);
   transform-origin: 50% 100%;
 }
-.tape-face {
+
+.tape-screw {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 30%, #d0d0d4, #6a6a70 55%, #2a2a30);
+  box-shadow: 0 0 1px #000;
+  z-index: 3;
+}
+.tape-screw--tl { top: 7px; left: 8px; }
+.tape-screw--tr { top: 7px; right: 8px; }
+.tape-screw--bl { bottom: 7px; left: 8px; }
+.tape-screw--br { bottom: 7px; right: 8px; }
+
+.tape-label-face {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 14%;
+  height: 38%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 2px;
+  background:
+    linear-gradient(180deg, #1a1814 0%, #0c0a08 100%);
+  border: 1px solid rgba(255, 180, 80, 0.22);
+  box-shadow: inset 0 0 12px rgba(255, 140, 40, 0.1);
+  line-height: 1.15;
+  text-align: center;
+}
+
+.tape-presents {
   display: block;
-  width: 100%;
-  height: auto;
-  max-width: 100%;
-  border-radius: 6px;
-  pointer-events: none;
-  user-select: none;
-  -webkit-user-drag: none;
-  object-fit: cover;
-  aspect-ratio: 960 / 597;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: clamp(10px, 2.6vw, 13px);
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #e8c888;
+  text-shadow: 0 0 8px rgba(255, 160, 60, 0.35);
 }
 
-.tape-window,
-.tape-label,
+.tape-gametitle {
+  display: block;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: clamp(14px, 3.6vw, 20px);
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #ffc060;
+  text-shadow:
+    0 0 10px rgba(255, 140, 40, 0.55),
+    0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+.tape-window {
+  display: block !important;
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  bottom: 12%;
+  height: 28%;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #1a1a1e, #08080a);
+  border: 1px solid #3a3a42;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.85);
+  overflow: hidden;
+}
+
 .reel {
-  display: none;
+  display: block !important;
+  position: absolute;
+  top: 50%;
+  width: 28%;
+  aspect-ratio: 1;
+  margin-top: -14%;
+  border-radius: 50%;
+  background:
+    repeating-conic-gradient(from 0deg, #c8c0b0 0 12deg, #3a3428 12deg 24deg);
+  box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.55), 0 0 0 2px #1a1814;
+}
+.reel-l { left: 12%; }
+.reel-r { right: 12%; }
+.car-stereo.playing .reel {
+  animation: reelSpin 1.1s linear infinite;
+}
+@keyframes reelSpin {
+  to { transform: rotate(360deg); }
 }
 
-/* Insert animation: photo tape slides up into the slot */
+.tape-prompt {
+  margin: 2px 0 0;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 180, 90, 0.7);
+  text-shadow: 0 0 8px rgba(255, 120, 40, 0.35);
+  animation: slotBlink 2s ease-in-out infinite;
+}
+.car-stereo.inserting .tape-prompt,
+.car-stereo.inserted .tape-prompt {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Insert: slide tape up into the deck mouth */
 .car-stereo.inserting .menu-cassette {
   pointer-events: none;
-  animation: tapeInsert 0.52s cubic-bezier(0.4, 0.05, 0.55, 1) forwards;
+  animation: tapeInsertDash 0.55s cubic-bezier(0.4, 0.05, 0.55, 1) forwards;
 }
 .car-stereo.inserted .menu-cassette {
   visibility: hidden;
@@ -929,72 +816,90 @@ html, body {
   overflow: hidden;
   filter: none;
 }
-@keyframes tapeInsert {
+@keyframes tapeInsertDash {
   0% {
-    transform: translateY(0) scale(1) perspective(520px) rotateX(8deg);
+    transform: translateY(0) scale(1);
     opacity: 1;
-    filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.55));
   }
-  35% {
-    transform: translateY(-36px) scale(0.9) perspective(520px) rotateX(14deg);
+  40% {
+    transform: translateY(-42px) scale(0.88);
     opacity: 1;
-    filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.45));
   }
-  68% {
-    transform: translateY(-78px) scale(0.62) perspective(520px) rotateX(28deg);
-    opacity: 0.9;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+  72% {
+    transform: translateY(-92px) scale(0.55) scaleY(0.45);
+    opacity: 0.85;
   }
   100% {
-    transform: translateY(-108px) scaleX(0.78) scaleY(0.14) perspective(520px) rotateX(68deg);
+    transform: translateY(-118px) scaleX(0.72) scaleY(0.12);
     opacity: 0;
-    filter: none;
   }
 }
 
-.stereo-stats {
-  display: flex;
-  gap: 18px;
-  justify-content: center;
-  align-items: baseline;
-  flex-wrap: wrap;
-  margin: 0;
-  opacity: 0.88;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
+.stereo-stats { display: none; }
+
+/* Leaderboard as amber gauge plate */
+.leaderboard.dash-led-board,
+#screen-title .leaderboard {
+  margin: 4px auto 0;
+  max-width: 300px;
+  width: 100%;
+  padding: 8px 10px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 160, 50, 0.28);
+  background:
+    linear-gradient(180deg, rgba(24, 14, 6, 0.88) 0%, rgba(8, 5, 3, 0.92) 100%);
+  box-shadow:
+    inset 0 0 18px rgba(255, 120, 30, 0.1),
+    0 0 14px rgba(255, 100, 20, 0.12);
+  text-align: left;
 }
-.stereo-stats .highscore {
-  margin: 0;
-  font-size: 12px;
-  color: #ffb070;
-  text-shadow: 0 0 8px rgba(255, 120, 60, 0.35);
+#screen-title .lb-title {
+  margin: 0 0 6px;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  font-weight: 800;
+  color: #ffb24a;
+  text-align: center;
+  text-shadow: 0 0 8px rgba(255, 140, 40, 0.45);
 }
-.stereo-stats .play-count {
-  margin: 0;
-  font-size: 12px;
-  opacity: 0.9;
-  color: #f0d8c0;
+#screen-title .lb-row {
+  color: #ffd090;
+  border-bottom: 1px solid rgba(255, 160, 50, 0.1);
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 11px;
+}
+#screen-title .lb-rank { color: rgba(255, 170, 70, 0.7); }
+#screen-title .lb-score {
+  color: #ffb24a;
+  text-shadow: 0 0 6px rgba(255, 140, 40, 0.4);
+}
+#screen-title .lb-row--new {
+  color: #ffe0a0;
+  background: rgba(255, 140, 40, 0.12);
+  box-shadow: 0 0 10px rgba(255, 120, 30, 0.2);
+}
+#screen-title .lb-empty {
+  color: rgba(255, 180, 100, 0.45);
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
-  .dash-panel { inset: -16px -22px -22px; border-radius: 14px; }
-  .dash-vent { top: 4px; height: 14px; }
-  .dash-wood { top: 22px; height: 88px; }
-  .car-stereo { margin-top: 14px; }
-  .stereo-face { padding: 8px 8px 8px; }
-  .menu-cassette { margin-top: 8px; max-width: 200px; width: calc(100% - 64px); }
-  .stereo-knob { width: 44px; }
-  .stereo-display { min-height: 32px; padding: 4px 8px 6px; }
-  .stereo-lcd { font-size: 10px; margin-top: 10px; }
-  .stereo-buttons span { height: 12px; }
-  .cassette-slot { height: 14px; }
-  .stereo-indicator { font-size: 7px; }
+  .title-dash-bg { background-position: center 35%; }
+  .dash-led { padding: 4px 8px; }
+  .dash-led .highscore, .dash-led .play-count { font-size: 10px; }
+  .menu-cassette { max-width: 200px; }
+  .tape-gametitle { font-size: 13px; }
+  .tape-presents { font-size: 9px; }
+  .cassette-slot { height: 12px; max-width: 210px; }
+  .stereo-display { min-height: 22px; max-width: 200px; }
+  .stereo-lcd { font-size: 9px; }
+  .tape-prompt { font-size: 8px; }
+  #screen-title .leaderboard { max-width: 220px; max-height: 72px; overflow-y: auto; padding: 4px 6px; }
 }
 
 @media (max-width: 420px) {
-  .dash-panel { inset: -18px -14px -28px; }
-  .stereo-knob { width: 46px; }
-  .menu-cassette { width: calc(100% - 36px); max-width: 260px; }
-  .stereo-lcd { font-size: 10px; letter-spacing: 0.1em; }
+  .menu-cassette { max-width: 260px; }
+  .tape-gametitle { font-size: 15px; }
 }
 
 #btn-destruct {

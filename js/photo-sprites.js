@@ -6,11 +6,16 @@
  */
 (function (global) {
   var PATHS = {
-    zakk: "assets/zakk-cutout.png?v=17",
-    tayler: "assets/tayler-cutout.png?v=17",
+    zakk: "assets/zakk-cutout.png?v=18",
+    tayler: "assets/tayler-cutout.png?v=18",
   };
   var IMGS = {};
   var LABELS = { zakk: "Zakk", tayler: "Tayler" };
+  /** Transparent pad trim (px) so visible feet sit on ground y */
+  var TRIM = {
+    zakk: { top: 20, bottom: 20, left: 30, right: 31 },
+    tayler: { top: 20, bottom: 20, left: 22, right: 23 },
+  };
 
   Object.keys(PATHS).forEach(function (k) {
     var img = new Image();
@@ -59,7 +64,6 @@
   function poseMotion(moving, seated, t) {
     var tt = t || 0;
     if (seated) {
-      // Seated: still (no idle bob/sway)
       return {
         bob: 0,
         sway: 0,
@@ -82,18 +86,17 @@
         walk: 0,
       };
     }
-    // WALKING: side-profile silhouette cycle
-    // forward lean + alternating leg shear + opposite arm swing + step bounce
-    var phase = tt * 0.032;
+    // WALKING: smooth side-profile stride (slow phase, modest motion)
+    var phase = tt * 0.018;
     var s = Math.sin(phase);
     var absS = Math.abs(s);
     var land = Math.max(0, Math.cos(phase * 2));
-    var squash = 1 - land * 0.045;
-    var stretch = 1 + absS * 0.028;
+    var squash = 1 - land * 0.018;
+    var stretch = 1 + absS * 0.012;
     return {
-      bob: absS * 3.6,           // vertical step bounce ONLY while moving
-      sway: s * 0.55,            // minimal lateral; stride reads via shear
-      lean: 4.2 + absS * 0.9,    // clear forward lean into facing
+      bob: Math.min(1.2, absS * 1.15), // torso bob only — feet stay planted
+      sway: s * 0.35,
+      lean: Math.min(2, 1.6 + absS * 0.35),
       squash: squash,
       stretch: stretch,
       phase: phase,
@@ -107,7 +110,8 @@
     ctx.beginPath();
     var rx = Math.max(9, drawW * (seated ? 0.28 : 0.24));
     var ry = seated ? 4.2 : 5.2;
-    ctx.ellipse(x + 2 + sway * 0.12, y + 1.5, rx, ry, 0, 0, Math.PI * 2);
+    // Exact foot y — no +1.5 gap
+    ctx.ellipse(x + 2 + sway * 0.12, y, rx, ry, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -115,25 +119,26 @@
   /**
    * Subtle limb motion for photo cutouts: layered soft warps of arm/leg
    * regions (no stick limbs). Legs shear opposite to arms.
+   * Bob is applied to torso/arms only so feet stay locked to ground.
    */
   function drawCutoutBody(ctx, img, srcX, srcY, srcW, srcH, drawW, drawH, motion) {
     var walk = motion.walk || 0;
+    var bob = motion.bob || 0;
     if (!motion.walk) {
+      // Idle / seated: full body, optional tiny torso bob unused (0)
       ctx.drawImage(img, srcX, srcY, srcW, srcH, -drawW / 2, -drawH, drawW, drawH);
       return;
     }
 
-    // Side-profile walk: clearer alternating stride + opposite arm swing
-    // Region splits as fractions of draw height (feet at 0, head at -drawH)
     var legTop = 0.44;
     var armBandTop = 0.62;
     var armBandBot = 0.28;
     var s = walk;
-    var legShear = s * 0.085;      // stronger side-view stride shear
-    var armShear = -s * 0.065;     // arms opposite legs
-    var legLift = Math.abs(s) * 2.2;
-    var armSwing = s * 2.6;
-    var strideX = s * 1.35;
+    var legShear = s * 0.035; // smooth stride shear
+    var armShear = -s * 0.028;
+    var legLift = Math.abs(s) * 0.55; // slight plant/swing — not floaty
+    var armSwing = s * 1.4;
+    var strideX = s * 0.75;
 
     function blitFrac(y0Frac, y1Frac, shear, dx, dy, pivotYFrac) {
       var top = -drawH * y1Frac;
@@ -166,14 +171,13 @@
       ctx.restore();
     }
 
-    // Far/back leg (recedes)
-    blitFrac(0, legTop, -legShear * 0.85, -strideX * 0.85, s > 0 ? 0 : legLift * 0.45, 0.18);
-    // Near leg (plants / strides forward)
-    blitFrac(0, legTop, legShear, strideX * 0.95, s < 0 ? 0 : legLift * 0.45, 0.18);
-    // Torso + head — stable, tiny counter
-    blitFrac(legTop, 1, -s * 0.012, strideX * 0.2, 0, 0.74);
+    // Legs stay foot-locked (no vertical bob). Plant foot dy ≈ 0.
+    blitFrac(0, legTop, -legShear * 0.85, -strideX * 0.85, s > 0 ? 0 : legLift * 0.35, 0.18);
+    blitFrac(0, legTop, legShear, strideX * 0.95, s < 0 ? 0 : legLift * 0.35, 0.18);
+    // Torso + head — bob above ankles only
+    blitFrac(legTop, 1, -s * 0.008, strideX * 0.15, -bob, 0.74);
     // Soft arm band opposite the legs
-    blitFrac(armBandBot, armBandTop, armShear, -armSwing * 0.22, -Math.abs(s) * 0.55, 0.48);
+    blitFrac(armBandBot, armBandTop, armShear, -armSwing * 0.18, -bob - Math.abs(s) * 0.3, 0.48);
   }
 
   function attachJoint(ctx, key, x, y, facing, drawH, bob, opts) {
@@ -216,7 +220,18 @@
     var seated = !!opts.seated;
     var motion = poseMotion(!!moving, seated, t);
     var targetH = targetHeight(opts, seated);
-    var aspect = img.naturalWidth / Math.max(1, img.naturalHeight);
+    var trim = TRIM[key] || { top: 0, bottom: 0, left: 0, right: 0 };
+    var srcX = trim.left;
+    var srcY = trim.top;
+    var srcW = img.naturalWidth - trim.left - trim.right;
+    var srcH = img.naturalHeight - trim.top - trim.bottom;
+    if (srcW < 8 || srcH < 8) {
+      srcX = 0;
+      srcY = 0;
+      srcW = img.naturalWidth;
+      srcH = img.naturalHeight;
+    }
+    var aspect = srcW / Math.max(1, srcH);
     var drawH = targetH;
     var drawW = drawH * aspect;
     var f = facing >= 0 ? 1 : -1;
@@ -224,14 +239,10 @@
     var sway = motion.sway;
     var leanDeg = motion.lean * 0.018 * f;
 
-    var srcX = 0;
-    var srcY = 0;
-    var srcW = img.naturalWidth;
-    var srcH = img.naturalHeight;
-    // Legs crop only when explicitly requested (seatedCrop) — never from seated alone
+    // Legs crop only when explicitly requested (seatedCrop)
     if (seated && opts.seatedCrop) {
       var cropFrac = 0.12;
-      srcH = Math.floor(img.naturalHeight * (1 - cropFrac));
+      srcH = Math.floor(srcH * (1 - cropFrac));
       aspect = srcW / Math.max(1, srcH);
       drawH = targetH;
       drawW = drawH * aspect;
@@ -241,8 +252,9 @@
       drawSoftShadow(ctx, x, y, drawW, seated, sway);
     }
 
+    // Feet locked to y — do NOT lift whole sprite with bob
     ctx.save();
-    ctx.translate(x + sway * 0.35, y - bob);
+    ctx.translate(x + sway * 0.25, y);
     ctx.rotate(leanDeg);
     ctx.scale(f * motion.stretch, motion.squash);
     drawCutoutBody(ctx, img, srcX, srcY, srcW, srcH, drawW, drawH, motion);

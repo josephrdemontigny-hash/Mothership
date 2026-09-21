@@ -1096,7 +1096,7 @@
     if (el.carStereo) {
       el.carStereo.classList.remove('inserting', 'inserted', 'playing');
     }
-    setStereoLcd('INSERT TAPE');
+    setStereoLcd('SLIDE TAPE IN');
     if (el.slotHint) el.slotHint.classList.remove('hidden');
   }
 
