@@ -983,8 +983,8 @@
   }
 
   function makeAvatar(x, y) {
-    // Hitbox sized for CHAR_SCALE ~1.48 sprites
-    return { x, y, vx: 0, vy: 0, facing: 1, onGround: true, w: 28, h: 70 };
+    // Hitbox sized for CHAR_SCALE ~1.72 sprites
+    return { x, y, vx: 0, vy: 0, facing: 1, onGround: true, w: 32, h: 82 };
   }
 
   function gestureUnlock() {

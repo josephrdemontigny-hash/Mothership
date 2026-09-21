@@ -172,11 +172,11 @@
   const SHED_WINDOW_W = 380;
   const SHED_WINDOW_Y = 32;
   const SHED_WINDOW_H = 168;
-  /** Default human sprite scale — taller vs shed interior (~1.48×). */
-  const CHAR_SCALE = 1.48;
+  /** Default human sprite scale — taller vs shed interior (~1.72×). */
+  const CHAR_SCALE = 1.72;
   /** Shared on-screen standing height (px, feet→crown). All standing humans match this. */
   const VECTOR_LOCAL_H = 73; // go avatar feet→head-top in local units
-  const STANDING_HEIGHT = Math.round(VECTOR_LOCAL_H * CHAR_SCALE); // ~108
+  const STANDING_HEIGHT = Math.round(VECTOR_LOCAL_H * CHAR_SCALE); // ~125
   const SEATED_HEIGHT = Math.round(52 * CHAR_SCALE); // seated ok shorter
   /** Slightly shrink shed furniture so characters dominate room height. */
   const PROP_SCALE = 0.88;
@@ -1731,7 +1731,7 @@
     img._failed = false;
     img.onload = function () { img._ready = !!(img.naturalWidth && img.naturalHeight); };
     img.onerror = function () { img._failed = true; img._ready = false; };
-    img.src = 'assets/posters/band-' + n + '.jpeg?v=15';
+    img.src = 'assets/posters/band-' + n + '.jpeg?v=16';
     return img;
   });
 
@@ -1896,7 +1896,7 @@
     img._failed = false;
     img.onload = function () { img._ready = !!(img.naturalWidth && img.naturalHeight); };
     img.onerror = function () { img._failed = true; img._ready = false; };
-    img.src = 'assets/elcamino-side.png?v=15';
+    img.src = 'assets/elcamino-side.png?v=16';
     return img;
   })();
 

@@ -6,8 +6,8 @@
  */
 (function (global) {
   var PATHS = {
-    zakk: "assets/zakk-cutout.png?v=15",
-    tayler: "assets/tayler-cutout.png?v=15",
+    zakk: "assets/zakk-cutout.png?v=16",
+    tayler: "assets/tayler-cutout.png?v=16",
   };
   var IMGS = {};
   var LABELS = { zakk: "Zakk", tayler: "Tayler" };
@@ -36,7 +36,7 @@
     var W = global.MothershipWorld;
     if (opts && opts.scale != null) return opts.scale;
     if (W && W.CHAR_SCALE != null) return W.CHAR_SCALE;
-    return 1.48;
+    return 1.72;
   }
 
   /**
@@ -47,7 +47,7 @@
    */
   function targetHeight(opts, seated) {
     var W = global.MothershipWorld;
-    var defSc = W && W.CHAR_SCALE != null ? W.CHAR_SCALE : 1.48;
+    var defSc = W && W.CHAR_SCALE != null ? W.CHAR_SCALE : 1.72;
     var stand = W && W.STANDING_HEIGHT != null ? W.STANDING_HEIGHT : Math.round(73 * defSc);
     var seat = W && W.SEATED_HEIGHT != null ? W.SEATED_HEIGHT : Math.round(52 * defSc);
     var cropSeat = !!(opts && opts.seatedCrop);
