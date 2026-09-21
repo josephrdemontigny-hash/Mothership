@@ -408,45 +408,113 @@
     ctx.fillRect(0, base - 100, w, 110);
   }
 
-  function drawSmokePuffs(ctx, x, y, t, seed) {
-    ctx.fillStyle = 'rgba(200,220,180,0.42)';
-    for (let i = 0; i < 4; i++) {
-      const ox = Math.sin(t * 0.003 + seed + i * 1.7) * 7;
-      const oy = -8 - i * 11 - Math.sin(t * 0.004 + i + seed) * 4;
-      const r = 5 + i * 2.2 + Math.sin(t * 0.005 + i) * 1.5;
-      ctx.beginPath();
-      ctx.arc(x + ox + i * 3, y + oy, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  function drawJoint(ctx, x, y, angle, opts) {
-    opts = opts || {};
+  /**
+   * Soft rising smoke. (x,y) = origin (mouth or tip).
+   * intensity ~0.4 tip wisp … ~2.2 heavy exhale. Rises upward (-y).
+   */
+  function drawSmokePuffs(ctx, x, y, t, intensity) {
+    const mul = intensity != null ? Number(intensity) : 1;
+    const tt = t || 0;
     ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(angle || -0.4);
-    const len = opts.len != null ? opts.len : 18;
-    ctx.strokeStyle = opts.color || '#c4a070';
-    ctx.lineWidth = opts.lineW || 2.5;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(len, 0);
-    ctx.stroke();
-    // paper tip / filter
-    ctx.fillStyle = '#e8d8b0';
-    ctx.fillRect(-2, -2.2, 5, 4.4);
-    // Cherry only when lit is explicitly truthy (false/0/undefined = unlit)
-    if (opts.lit) {
-      const glow = opts.lit === true ? 1 : Number(opts.lit);
-      ctx.fillStyle = '#ff8844';
-      ctx.shadowColor = '#ff6622';
-      ctx.shadowBlur = 6 * glow;
+    const n = Math.max(5, Math.min(10, Math.round(5 + mul * 2.5)));
+    for (let i = 0; i < n; i++) {
+      const life = (i + 1) / n;
+      const drift = Math.sin(tt * 0.0026 + i * 1.7 + mul) * (4 + i * 2.4) * (0.5 + mul * 0.3);
+      const rise = -5 - i * (8 + mul * 3.2) - Math.sin(tt * 0.0032 + i) * 2.5;
+      const wob = Math.cos(tt * 0.004 + i * 2.1) * (1.5 + i * 0.5);
+      const px = x + drift + wob;
+      const py = y + rise;
+      const r = (3.2 + i * 2.3 + Math.sin(tt * 0.005 + i) * 1.1) * (0.6 + mul * 0.38);
+      const a = (0.32 - life * 0.26) * Math.min(1.4, 0.5 + mul * 0.45);
+      if (a <= 0.02) continue;
+      const g = ctx.createRadialGradient(px - r * 0.15, py - r * 0.2, r * 0.08, px, py, r);
+      g.addColorStop(0, 'rgba(240,245,235,' + (a * 1.1).toFixed(3) + ')');
+      g.addColorStop(0.4, 'rgba(195,210,190,' + (a * 0.7).toFixed(3) + ')');
+      g.addColorStop(1, 'rgba(140,155,140,0)');
+      ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(len, 0, 2.2 * (0.7 + glow * 0.3), 0, Math.PI * 2);
+      ctx.ellipse(px, py, r * 1.1, r * 0.82, drift * 0.03, 0, Math.PI * 2);
       ctx.fill();
-      ctx.shadowBlur = 0;
     }
     ctx.restore();
+  }
+
+  /**
+   * Tapered joint. Local +x = tip. (x,y) = filter end in hand.
+   * opts: len, lit, tipSmoke, t
+   */
+  function drawJoint(ctx, x, y, angle, opts) {
+    opts = opts || {};
+    const len = opts.len != null ? opts.len : 16;
+    const ang = angle != null ? angle : -0.4;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(ang);
+    const filterLen = Math.max(3.2, len * 0.24);
+    const bodyEnd = len - 1.1;
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath();
+    ctx.ellipse(len * 0.4, 2.0, len * 0.38, 1.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const bodyG = ctx.createLinearGradient(0, -2.5, 0, 2.5);
+    bodyG.addColorStop(0, '#e6d8b8');
+    bodyG.addColorStop(0.5, '#cbb890');
+    bodyG.addColorStop(1, '#9a8258');
+    ctx.fillStyle = bodyG;
+    ctx.beginPath();
+    ctx.moveTo(filterLen, -2.0);
+    ctx.lineTo(bodyEnd, -1.25);
+    ctx.quadraticCurveTo(len + 0.4, 0, bodyEnd, 1.25);
+    ctx.lineTo(filterLen, 2.0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(80,60,30,0.25)';
+    ctx.lineWidth = 0.55;
+    ctx.beginPath();
+    ctx.moveTo(filterLen + 0.8, -0.15);
+    ctx.lineTo(bodyEnd - 0.8, -0.1);
+    ctx.stroke();
+    const fg = ctx.createLinearGradient(0, -2.3, 0, 2.3);
+    fg.addColorStop(0, '#f3e8cc');
+    fg.addColorStop(1, '#c8b488');
+    ctx.fillStyle = fg;
+    ctx.fillRect(0, -2.25, filterLen, 4.5);
+    ctx.strokeStyle = 'rgba(70,55,30,0.22)';
+    ctx.lineWidth = 0.45;
+    for (let i = 1; i < 3; i++) {
+      const fx = filterLen * (i / 3);
+      ctx.beginPath();
+      ctx.moveTo(fx, -2.0);
+      ctx.lineTo(fx, 2.0);
+      ctx.stroke();
+    }
+    if (opts.lit) {
+      const glow = opts.lit === true ? 1 : Math.max(0, Math.min(1, Number(opts.lit)));
+      ctx.fillStyle = 'rgba(55,50,45,' + (0.4 + glow * 0.3) + ')';
+      ctx.beginPath();
+      ctx.ellipse(bodyEnd - 1.2, 0, 1.5, 1.35, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.save();
+      ctx.shadowColor = 'rgba(255,100,30,' + (0.5 + glow * 0.4) + ')';
+      ctx.shadowBlur = 6 * glow;
+      const cherry = ctx.createRadialGradient(len, 0, 0.15, len, 0, 2.6);
+      cherry.addColorStop(0, 'rgba(255,245,190,1)');
+      cherry.addColorStop(0.35, 'rgba(255,140,40,0.95)');
+      cherry.addColorStop(0.8, 'rgba(210,45,10,0.8)');
+      cherry.addColorStop(1, 'rgba(60,15,0,0)');
+      ctx.fillStyle = cherry;
+      ctx.beginPath();
+      ctx.arc(len, 0, 2.0 * (0.75 + glow * 0.3), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+    if (opts.lit && opts.tipSmoke !== false) {
+      const tipX = x + Math.cos(ang) * len;
+      const tipY = y + Math.sin(ang) * len;
+      const glow = opts.lit === true ? 1 : Math.max(0, Math.min(1, Number(opts.lit)));
+      drawSmokePuffs(ctx, tipX, tipY - 1, opts.t || 0, 0.32 + glow * 0.4);
+    }
   }
 
   function drawRollingPaper(ctx, x, y, openAmt) {
@@ -5210,7 +5278,8 @@
   function drawCitizen(ctx, x, y, look, t, opts) {
     opts = opts || {};
     const localH = 62; // feet→crown in citizen local units
-    const s = opts.scale != null ? opts.scale : (STANDING_HEIGHT / localH);
+    // Town folk stay ~half hero height so they don't dwarf landmarks
+    const s = opts.scale != null ? opts.scale : (STANDING_HEIGHT / localH) * 0.48;
     const moving = !!opts.moving;
     const pose = goWalkPose(moving, false, t || 0);
     const bob = pose.bob;
@@ -6277,16 +6346,17 @@
     }
 
     if (tg.kind.human) {
+      const folkH = Math.round(STANDING_HEIGHT * 0.48);
       ctx.strokeStyle = 'rgba(125,255,58,0.7)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.ellipse(x, y - 2, 16, 5, 0, 0, Math.PI * 2);
+      ctx.ellipse(x, y - 2, 10, 3.5, 0, 0, Math.PI * 2);
       ctx.stroke();
       drawCitizen(ctx, x, y, tg.kind.look || 'denim', t + (tg.wobble || 0) * 50, { moving: true });
       ctx.fillStyle = '#7dff3a';
       ctx.font = 'bold 8px Segoe UI, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(tg.kind.label, x, y - STANDING_HEIGHT - 8);
+      ctx.fillText(tg.kind.label, x, y - folkH - 6);
     } else {
       // red warning = hazard
       ctx.strokeStyle = 'rgba(255,80,60,0.75)';

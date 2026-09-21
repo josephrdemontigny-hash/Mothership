@@ -180,36 +180,58 @@
     blitFrac(armBandBot, armBandTop, armShear, -armSwing * 0.18, -bob - Math.abs(s) * 0.3, 0.48);
   }
 
+  // Per-cutout hand / mouth anchors (fractions of drawH up from feet; handX of half-width)
+  var JOINT_ANCHOR = {
+    zakk: { handX: 0.42, handY: 0.48, mouthX: 0.12, mouthY: 0.78 },
+    tayler: { handX: 0.40, handY: 0.47, mouthX: 0.10, mouthY: 0.77 },
+  };
+
   function attachJoint(ctx, key, x, y, facing, drawH, bob, opts) {
     var W = global.MothershipWorld;
     if (!opts || !opts.smoking || !W || typeof W.drawJoint !== "function") return;
     var f = facing >= 0 ? 1 : -1;
-    var sc = charScale(opts);
     var seated = !!opts.seated;
     var jointLit = !!opts.jointLit;
     var puffing = !!opts.puffing && jointLit;
     var puffProg = opts.puffProg != null ? opts.puffProg : puffing ? 1 : 0;
+    var tt = opts._t || 0;
+    var anch = JOINT_ANCHOR[key] || JOINT_ANCHOR.zakk;
+    var drawW = drawH * 0.55;
+    var img = IMGS[key];
+    if (img && img.naturalWidth) {
+      var tr = TRIM[key] || { left: 0, right: 0, top: 0, bottom: 0 };
+      var sw = img.naturalWidth - tr.left - tr.right;
+      var sh = img.naturalHeight - tr.top - tr.bottom;
+      if (sw > 8 && sh > 8) drawW = drawH * (sw / sh);
+    }
 
-    var hx = x + f * (seated ? 16 : 20) * Math.max(0.85, sc * 0.72);
-    var hy = y - drawH * (seated ? 0.4 : 0.46) - bob;
-    var jx = hx;
-    var jy = hy;
-    var jang = f > 0 ? -0.85 : Math.PI + 0.85;
+    var handX = x + f * (drawW * 0.5 * anch.handX);
+    var handY = y - drawH * (seated ? anch.handY * 0.88 : anch.handY) - bob * 0.25;
+    var mouthX = x + f * (drawW * 0.5 * anch.mouthX + 4);
+    var mouthY = y - drawH * anch.mouthY - bob * 0.25;
+
+    var jx = handX;
+    var jy = handY;
+    var jang = f > 0 ? -0.95 : Math.PI + 0.95;
     if (puffing) {
       var rise = 0.55 + puffProg * 0.45;
-      var mx = x + f * 10 * sc;
-      var my = y - drawH * 0.72 - bob;
-      jx = hx + (mx - hx) * rise;
-      jy = hy + (my - hy) * rise;
-      jang = f > 0 ? -0.85 + 0.35 * rise : Math.PI + 0.85 - 0.35 * rise;
+      jx = handX + (mouthX - handX) * rise;
+      jy = handY + (mouthY - handY) * rise;
+      jang = f > 0 ? -1.25 + 0.15 * rise : Math.PI + 1.25 - 0.15 * rise;
     }
-    W.drawJoint(ctx, jx, jy, jang, { lit: jointLit, len: 11, lineW: 2 });
+
+    W.drawJoint(ctx, jx, jy, jang, {
+      lit: jointLit ? 1 : false,
+      len: seated ? 13 : 15,
+      tipSmoke: jointLit && !puffing,
+      t: tt,
+    });
+
     if (puffing && typeof W.drawSmokePuffs === "function") {
-      var mouthX = x + f * 10 * sc;
-      var mouthY = y - drawH * 0.72 - bob;
-      var mul = 1.6 + puffProg * 1.0;
-      W.drawSmokePuffs(ctx, mouthX + f * 10, mouthY, opts._t || 0, mul);
-      W.drawSmokePuffs(ctx, mouthX + f * 4, mouthY - 12, (opts._t || 0) + 280, 1.2 + puffProg * 0.6);
+      var mul = 1.25 + puffProg * 1.15;
+      W.drawSmokePuffs(ctx, mouthX + f * 6, mouthY - 2, tt, mul);
+      W.drawSmokePuffs(ctx, mouthX + f * 10, mouthY - 10 - puffProg * 8, tt + 160, mul * 0.8);
+      W.drawSmokePuffs(ctx, mouthX + f * 3, mouthY - 18 - puffProg * 10, tt + 300, mul * 0.55);
     }
   }
 
