@@ -2128,30 +2128,7 @@
         ctx.fillRect(w.x, w.y, w.w, w.h);
       }
 
-      // Soft rotating spoke hint over photo wheels (keeps motion readable)
-      if (wheelRot) {
-        const wfX = -drawW * 0.26;
-        const wrX = drawW * 0.27;
-        const cy = -drawH * 0.18 + yOff;
-        const r = drawH * 0.22;
-        function spokeHint(wx) {
-          ctx.save();
-          ctx.translate(wx, cy);
-          ctx.rotate(wheelRot);
-          ctx.strokeStyle = dusty ? 'rgba(220,220,230,0.35)' : 'rgba(255,255,255,0.4)';
-          ctx.lineWidth = 1.2;
-          for (let a = 0; a < 6; a++) {
-            const ang = a * (Math.PI / 3);
-            ctx.beginPath();
-            ctx.moveTo(Math.cos(ang) * 3, Math.sin(ang) * 3);
-            ctx.lineTo(Math.cos(ang) * r * 0.55, Math.sin(ang) * r * 0.55);
-            ctx.stroke();
-          }
-          ctx.restore();
-        }
-        spokeHint(wfX);
-        spokeHint(wrX);
-      }
+      // Photo already has wheels — no fake spoke overlay (was misaligned / buggy).
 
       if (dusty) {
         ctx.fillStyle = 'rgba(160,140,100,0.1)';

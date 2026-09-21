@@ -311,7 +311,7 @@
     if (Math.abs(camino.vx) > maxSpd) camino.vx = Math.sign(camino.vx) * maxSpd;
     if (Math.abs(ix) > 0.1) camino.facingRight = ix > 0;
     camino.x += camino.vx;
-    camino.wheelRot += camino.vx * 0.045;
+    camino.wheelRot = (camino.wheelRot + camino.vx * 0.045) % (Math.PI * 2);
     const pad = W.CAMINO_HALF_W * 0.55;
     camino.x = Math.max(pad, Math.min(worldW - pad, camino.x));
     // Keep avatar hitbox glued to door for camera / proximity
@@ -469,7 +469,7 @@
     if (Math.abs(street.vx) > maxSpd) street.vx = Math.sign(street.vx) * maxSpd;
     if (Math.abs(ix) > 0.1) street.facingRight = ix > 0;
     street.caminoX += street.vx;
-    street.wheelRot += street.vx * 0.045;
+    street.wheelRot = (street.wheelRot + street.vx * 0.045) % (Math.PI * 2);
 
     // Slight lane shift on the road
     const iy = inputY();
